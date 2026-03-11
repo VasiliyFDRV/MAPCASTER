@@ -10,7 +10,7 @@ FocusScope {
     property string mediaType: "color"
     property string previewValue: ""
     property string previewSourceUrl: previewSource(previewValue)
-    property color fallbackColor: "#2E2E2E"
+    property color fallbackColor: "#2A2A2A"
     property string placeholderText: "Перетащите файл, Ctrl+V или двойной клик"
     property string effectiveType: inferTypeFromValue(previewValue, mediaType)
     property bool videoPreviewReady: false
@@ -85,9 +85,9 @@ FocusScope {
     Rectangle {
         anchors.fill: parent
         radius: 10
-        color: "#1E2027"
+        color: "#232323"
         border.width: 1
-        border.color: root.activeFocus ? "#9FA7BA" : "#4C515D"
+        border.color: root.activeFocus ? "#A7A7A7" : "#4C4C4C"
 
         Rectangle {
             id: previewFrame
@@ -95,9 +95,9 @@ FocusScope {
             anchors.margins: 6
             radius: 8
             clip: true
-            color: "#14161B"
+            color: "#1A1A1A"
             border.width: 1
-            border.color: "#3F444E"
+            border.color: "#3F3F3F"
 
             Rectangle {
                 anchors.fill: parent
@@ -118,7 +118,7 @@ FocusScope {
             Rectangle {
                 anchors.fill: parent
                 visible: root.effectiveType === "video" && String(root.previewValue || "").length > 0
-                color: "#111318"
+                color: "#171717"
 
                 VideoOutput {
                     id: previewVideoOutput
@@ -130,7 +130,7 @@ FocusScope {
                 Text {
                     anchors.centerIn: parent
                     text: "VIDEO"
-                    color: "#C8CCD7"
+                    color: "#CFCFCF"
                     font.pixelSize: 14
                     font.weight: Font.DemiBold
                     visible: !root.videoPreviewReady
@@ -140,13 +140,13 @@ FocusScope {
             Rectangle {
                 anchors.fill: parent
                 visible: String(root.previewValue || "").length === 0
-                color: "#171920"
+                color: "#1D1D1D"
 
                 Text {
                     anchors.centerIn: parent
                     width: parent.width - 20
                     text: root.placeholderText
-                    color: "#8F94A1"
+                    color: "#9A9A9A"
                     font.pixelSize: 12
                     wrapMode: Text.WordWrap
                     horizontalAlignment: Text.AlignHCenter
@@ -158,7 +158,7 @@ FocusScope {
                 anchors.right: parent.right
                 anchors.bottom: parent.bottom
                 height: 24
-                color: "#101218"
+                color: "#151515"
                 opacity: 0.86
                 visible: String(root.previewValue || "").length > 0
 
@@ -168,7 +168,7 @@ FocusScope {
                     anchors.rightMargin: 8
                     verticalAlignment: Text.AlignVCenter
                     text: String(root.previewValue || "")
-                    color: "#D6D9E1"
+                    color: "#D2D2D2"
                     elide: Text.ElideMiddle
                     font.pixelSize: 11
                 }

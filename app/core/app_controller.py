@@ -1537,6 +1537,7 @@ class AppController(QObject):
         return {"map": map_media, "background": bg_media, "grid": grid}
 
     def _normalize_media(self, media: dict[str, Any], defaults: dict[str, Any]) -> dict[str, Any]:
+        enabled = bool(media.get("enabled", defaults.get("enabled", True)))
         raw_type = str(media.get("type", defaults.get("type", "color"))).strip().lower()
         if raw_type not in {"color", "image", "video"}:
             raw_type = self._media_service.infer_media_type(str(media.get("value", "")), fallback="color")
@@ -1544,6 +1545,7 @@ class AppController(QObject):
         if raw_type == "color" and not value:
             value = str(defaults.get("value", "#2E2E2E"))
         return {
+            "enabled": enabled,
             "type": raw_type,
             "value": value,
             "autoplay": bool(media.get("autoplay", defaults.get("autoplay", True))),
@@ -1621,6 +1623,8 @@ class AppController(QObject):
         label: str,
     ) -> str:
         media_type = str(media.get("type", "color")).strip().lower()
+        if not bool(media.get("enabled", True)):
+            return ""
         value = str(media.get("value", "")).strip()
         if media_type == "color":
             return ""

@@ -7,15 +7,24 @@ import "components"
 
 Window {
     id: launcherWindow
-    width: 620
+    width: 980
     height: 820
+    minimumWidth: 450
+    minimumHeight: 370
     visible: true
     color: "#111111"
     title: "DnD Maps - Лаунчер"
     property int selectedAdventureIndex: -1
     property int selectedSceneIndex: -1
     property string pendingFileTarget: "map"
+    property string pendingColorTarget: "map"
     property string sceneDialogModeCode: "create"
+    property bool sceneMapEnabled: true
+    property bool sceneBgEnabled: true
+    property string sceneMapTypeValue: "color"
+    property string sceneBgTypeValue: "color"
+    property string sceneMapValueText: "#000000"
+    property string sceneBgValueText: "#000000"
     property color bgBase: "#161616"
     property color bgDeep: "#1B1B1B"
     property color bgCard: "#262626"
@@ -27,16 +36,6 @@ Window {
     property color accentStrong: "#777777"
     property string adventureDialogMode: "create"
     property string adventureOriginalName: ""
-
-    function mediaIndex(mediaType) {
-        if (mediaType === "image") {
-            return 1
-        }
-        if (mediaType === "video") {
-            return 2
-        }
-        return 0
-    }
 
     function detectMediaTypeFromValue(rawValue, fallbackType) {
         var value = String(rawValue || "").trim().toLowerCase()
@@ -53,12 +52,15 @@ Window {
         return fallbackType || "color"
     }
 
-    function applyDetectedMediaType(value, comboBox) {
-        if (!comboBox) {
-            return
+    function normalizeColorValue(raw) {
+        var value = String(raw || "").trim()
+        if (value.length === 0) {
+            return "#000000"
         }
-        var detected = detectMediaTypeFromValue(value, comboBox.currentText || "color")
-        comboBox.currentIndex = mediaIndex(detected)
+        if (value.length === 9 && value[0] === "#") {
+            return "#" + value.slice(3)
+        }
+        return value
     }
 
     function applyDraftToDialog(draft) {
@@ -71,17 +73,13 @@ Window {
         sceneOriginalName.text = draft.original_name || ""
         sceneNameField.enabled = true
 
-        sceneMapType.currentIndex = mediaIndex(draft.map.type || "color")
-        sceneMapValue.text = draft.map.value || ""
-        sceneMapAutoplay.checked = draft.map.autoplay
-        sceneMapLoop.checked = draft.map.loop
-        sceneMapMute.checked = draft.map.mute
+        sceneMapEnabled = draft.map.enabled === undefined ? true : Boolean(draft.map.enabled)
+        sceneMapTypeValue = draft.map.type || detectMediaTypeFromValue(draft.map.value || "", "color")
+        sceneMapValueText = normalizeColorValue(draft.map.value || "#000000")
 
-        sceneBgType.currentIndex = mediaIndex(draft.background.type || "color")
-        sceneBgValue.text = draft.background.value || ""
-        sceneBgAutoplay.checked = draft.background.autoplay
-        sceneBgLoop.checked = draft.background.loop
-        sceneBgMute.checked = draft.background.mute
+        sceneBgEnabled = draft.background.enabled === undefined ? true : Boolean(draft.background.enabled)
+        sceneBgTypeValue = draft.background.type || detectMediaTypeFromValue(draft.background.value || "", "color")
+        sceneBgValueText = normalizeColorValue(draft.background.value || "#000000")
 
         sceneGridSize.text = Number(draft.grid.cell_size_ft || 5).toFixed(2)
         sceneGridThickness.text = Number(draft.grid.line_thickness_px || 1.5).toFixed(2)
@@ -164,23 +162,29 @@ Window {
     }
 
     function collectDialogDraft() {
+        var mapValue = sceneMapEnabled ? sceneMapValueText : "#000000"
+        var bgValue = sceneBgEnabled ? sceneBgValueText : "#000000"
+        var mapType = sceneMapEnabled ? detectMediaTypeFromValue(mapValue, sceneMapTypeValue || "color") : "color"
+        var bgType = sceneBgEnabled ? detectMediaTypeFromValue(bgValue, sceneBgTypeValue || "color") : "color"
         return {
             "mode": sceneDialogModeCode,
             "name": sceneNameField.text,
             "original_name": sceneOriginalName.text,
             "map": {
-                "type": sceneMapType.currentText,
-                "value": sceneMapValue.text,
-                "autoplay": sceneMapAutoplay.checked,
-                "loop": sceneMapLoop.checked,
-                "mute": sceneMapMute.checked
+                "enabled": sceneMapEnabled,
+                "type": mapType,
+                "value": mapValue,
+                "autoplay": true,
+                "loop": true,
+                "mute": true
             },
             "background": {
-                "type": sceneBgType.currentText,
-                "value": sceneBgValue.text,
-                "autoplay": sceneBgAutoplay.checked,
-                "loop": sceneBgLoop.checked,
-                "mute": sceneBgMute.checked
+                "enabled": sceneBgEnabled,
+                "type": bgType,
+                "value": bgValue,
+                "autoplay": true,
+                "loop": true,
+                "mute": true
             },
             "grid": {
                 "cell_size_ft": Number(sceneGridSize.text),
@@ -267,9 +271,24 @@ Window {
         property string iconSource: ""
         property string glyph: ""
         property string toolTip: ""
+        property real tipX: 0
+        property real tipY: 0
         signal clicked()
         width: 24
         height: 24
+
+        function updateTipPosition() {
+            if (!tipPopup.visible || !tipPopup.parent) {
+                return
+            }
+            var p = iconRoot.mapToItem(tipPopup.parent, iconRoot.width / 2, 0)
+            var xPos = Math.round(p.x - tipPopup.width / 2)
+            var yPos = Math.round(p.y - tipPopup.height - 8)
+            var maxX = Math.max(0, tipPopup.parent.width - tipPopup.width)
+            var maxY = Math.max(0, tipPopup.parent.height - tipPopup.height)
+            iconRoot.tipX = Math.max(0, Math.min(xPos, maxX))
+            iconRoot.tipY = Math.max(0, Math.min(yPos, maxY))
+        }
 
         Rectangle {
             anchors.fill: parent
@@ -300,15 +319,47 @@ Window {
             font.weight: Font.DemiBold
         }
 
-        ToolTip.visible: hitArea.containsMouse && toolTip.length > 0
-        ToolTip.text: toolTip
-        ToolTip.delay: 350
+        Popup {
+            id: tipPopup
+            parent: Overlay.overlay
+            modal: false
+            focus: false
+            closePolicy: Popup.NoAutoClose
+            visible: hitArea.containsMouse && iconRoot.toolTip.length > 0
+            x: iconRoot.tipX
+            y: iconRoot.tipY
+            padding: 8
+
+            onVisibleChanged: iconRoot.updateTipPosition()
+            onWidthChanged: iconRoot.updateTipPosition()
+            onHeightChanged: iconRoot.updateTipPosition()
+            Connections {
+                target: tipPopup.parent
+                enabled: tipPopup.visible && target !== null
+                function onWidthChanged() { iconRoot.updateTipPosition() }
+                function onHeightChanged() { iconRoot.updateTipPosition() }
+            }
+
+            contentItem: Text {
+                text: iconRoot.toolTip
+                color: "#E6E6E6"
+                font.pixelSize: 12
+            }
+            background: Rectangle {
+                radius: 8
+                color: "#2B2B2B"
+                border.width: 1
+                border.color: "#5E5E5E"
+            }
+        }
 
         MouseArea {
             id: hitArea
             anchors.fill: parent
             enabled: iconRoot.enabled
             hoverEnabled: true
+            onPositionChanged: iconRoot.updateTipPosition()
+            onEntered: iconRoot.updateTipPosition()
             onClicked: iconRoot.clicked()
         }
     }
@@ -392,9 +443,11 @@ Window {
                     }
                 }
 
-                AppButton {
-                    text: "Настройки"
-                    accent: true
+                IconButton {
+                    width: 36
+                    height: 36
+                    iconSource: "icons/settings.svg"
+                    toolTip: "Настройки"
                     onClicked: settingsDrawer.open()
                 }
             }
@@ -822,10 +875,10 @@ Window {
     Dialog {
         id: sceneDialog
         modal: true
-        x: (launcherWindow.width - width) / 2
-        y: 40
-        width: Math.min(launcherWindow.width - 40, 560)
-        height: Math.min(launcherWindow.height - 80, 700)
+        x: Math.round((launcherWindow.width - width) / 2)
+        y: 16
+        width: Math.min(launcherWindow.width - 32, 960)
+        height: Math.min(launcherWindow.height - 32, 960)
         standardButtons: Dialog.NoButton
         closePolicy: Popup.CloseOnEscape
         opacity: 1.0
@@ -850,12 +903,19 @@ Window {
         }
 
         contentItem: ScrollView {
+            id: sceneDialogScroll
             clip: true
-            ScrollBar.vertical: AppScrollBar {}
+            padding: 12
+            ScrollBar.vertical: ScrollBar {
+                policy: ScrollBar.AlwaysOff
+                visible: false
+                implicitWidth: 0
+                implicitHeight: 0
+            }
+            ScrollBar.horizontal.policy: ScrollBar.AlwaysOff
             ColumnLayout {
-                width: sceneDialog.width - 32
-                x: 12
-                y: 12
+                id: sceneDialogContent
+                width: sceneDialogScroll.availableWidth
                 spacing: 10
 
                 Label {
@@ -878,86 +938,124 @@ Window {
 
                 Rectangle { Layout.fillWidth: true; Layout.preferredHeight: 1; color: "#4C4C4C" }
 
-                Label { text: "Медиа карты"; color: launcherWindow.textPrimary }
-                AppComboBox {
-                    id: sceneMapType
-                    model: ["color", "image", "video"]
-                    Layout.fillWidth: true
-                }
-                MediaDropTile {
-                    id: sceneMapDrop
-                    Layout.fillWidth: true
-                    mediaType: sceneMapType.currentText
-                    previewValue: sceneMapValue.text
-                    fallbackColor: "#2E2E2E"
-                    placeholderText: "Кликните, Ctrl+V, перетащите или двойной клик"
-                    onDropValue: function(value) {
-                        sceneMapValue.text = value
-                        launcherWindow.applyDetectedMediaType(value, sceneMapType)
-                    }
-                    onPasteRequest: {
-                        var pastedMap = appController.paste_media_value("map")
-                        sceneMapValue.text = pastedMap
-                        launcherWindow.applyDetectedMediaType(pastedMap, sceneMapType)
-                    }
-                    onBrowseRequest: {
-                        launcherWindow.pendingFileTarget = "map"
-                        mediaFileDialog.open()
-                    }
-                }
-
-                AppTextField {
-                    id: sceneMapValue
-                    Layout.fillWidth: true
-                    placeholderText: sceneMapType.currentText === "color" ? "#2E2E2E" : "Путь / URL"
-                }
                 RowLayout {
                     Layout.fillWidth: true
-                    AppCheckBox { id: sceneMapAutoplay; text: "Авто"; checked: true }
-                    AppCheckBox { id: sceneMapLoop; text: "Цикл"; checked: true }
-                    AppCheckBox { id: sceneMapMute; text: "Без звука"; checked: true }
+                    spacing: 8
+                    Label { text: "Карта"; color: launcherWindow.textPrimary; Layout.fillWidth: true }
+                    AppToggle {
+                        id: sceneMapEnabledSwitch
+                        Layout.preferredWidth: implicitWidth
+                        Layout.preferredHeight: implicitHeight
+                        Layout.maximumWidth: implicitWidth
+                        Layout.maximumHeight: implicitHeight
+                        Layout.alignment: Qt.AlignRight | Qt.AlignVCenter
+                        checked: sceneMapEnabled
+                        onToggled: function(next) { sceneMapEnabled = next }
+                    }
+                }
+                RowLayout {
+                    visible: sceneMapEnabled
+                    Layout.fillWidth: true
+                    spacing: 8
+                    MediaDropTile {
+                        id: sceneMapDrop
+                        Layout.fillWidth: true
+                        Layout.minimumWidth: 0
+                        Layout.preferredHeight: 92
+                        mediaType: sceneMapTypeValue
+                        previewValue: sceneMapValueText
+                        fallbackColor: "#000000"
+                        placeholderText: "Клик / Ctrl+V / Перетащить / Двойной клик"
+                        onDropValue: function(value) {
+                            sceneMapValueText = value
+                            sceneMapTypeValue = detectMediaTypeFromValue(value, "color")
+                        }
+                        onPasteRequest: {
+                            var pastedMap = appController.paste_media_value("map")
+                            if (pastedMap && pastedMap.length > 0) {
+                                sceneMapValueText = pastedMap
+                                sceneMapTypeValue = detectMediaTypeFromValue(pastedMap, "color")
+                            }
+                        }
+                        onBrowseRequest: {
+                            launcherWindow.pendingFileTarget = "map"
+                            mediaFileDialog.open()
+                        }
+                    }
+                    IconButton {
+                        width: 30
+                        height: 30
+                        enabled: sceneMapEnabled
+                        opacity: enabled ? 1.0 : 0.4
+                        iconSource: "icons/palette.svg"
+                        toolTip: "Выбрать цвет карты"
+                        onClicked: {
+                            launcherWindow.pendingColorTarget = "map"
+                            colorPickerDialog.selectedColor = sceneMapValueText
+                            colorPickerDialog.open()
+                        }
+                    }
                 }
 
                 Rectangle { Layout.fillWidth: true; Layout.preferredHeight: 1; color: "#4C4C4C" }
 
-                Label { text: "Медиа фона"; color: launcherWindow.textPrimary }
-                AppComboBox {
-                    id: sceneBgType
-                    model: ["color", "image", "video"]
-                    Layout.fillWidth: true
-                }
-                MediaDropTile {
-                    id: sceneBgDrop
-                    Layout.fillWidth: true
-                    mediaType: sceneBgType.currentText
-                    previewValue: sceneBgValue.text
-                    fallbackColor: "#1F1F1F"
-                    placeholderText: "Кликните, Ctrl+V, перетащите или двойной клик"
-                    onDropValue: function(value) {
-                        sceneBgValue.text = value
-                        launcherWindow.applyDetectedMediaType(value, sceneBgType)
-                    }
-                    onPasteRequest: {
-                        var pastedBg = appController.paste_media_value("background")
-                        sceneBgValue.text = pastedBg
-                        launcherWindow.applyDetectedMediaType(pastedBg, sceneBgType)
-                    }
-                    onBrowseRequest: {
-                        launcherWindow.pendingFileTarget = "background"
-                        mediaFileDialog.open()
-                    }
-                }
-
-                AppTextField {
-                    id: sceneBgValue
-                    Layout.fillWidth: true
-                    placeholderText: sceneBgType.currentText === "color" ? "#1F1F1F" : "Путь / URL"
-                }
                 RowLayout {
                     Layout.fillWidth: true
-                    AppCheckBox { id: sceneBgAutoplay; text: "Авто"; checked: true }
-                    AppCheckBox { id: sceneBgLoop; text: "Цикл"; checked: true }
-                    AppCheckBox { id: sceneBgMute; text: "Без звука"; checked: true }
+                    spacing: 8
+                    Label { text: "Фон"; color: launcherWindow.textPrimary; Layout.fillWidth: true }
+                    AppToggle {
+                        id: sceneBgEnabledSwitch
+                        Layout.preferredWidth: implicitWidth
+                        Layout.preferredHeight: implicitHeight
+                        Layout.maximumWidth: implicitWidth
+                        Layout.maximumHeight: implicitHeight
+                        Layout.alignment: Qt.AlignRight | Qt.AlignVCenter
+                        checked: sceneBgEnabled
+                        onToggled: function(next) { sceneBgEnabled = next }
+                    }
+                }
+                RowLayout {
+                    visible: sceneBgEnabled
+                    Layout.fillWidth: true
+                    spacing: 8
+                    MediaDropTile {
+                        id: sceneBgDrop
+                        Layout.fillWidth: true
+                        Layout.minimumWidth: 0
+                        Layout.preferredHeight: 92
+                        mediaType: sceneBgTypeValue
+                        previewValue: sceneBgValueText
+                        fallbackColor: "#000000"
+                        placeholderText: "Клик / Ctrl+V / Перетащить / Двойной клик"
+                        onDropValue: function(value) {
+                            sceneBgValueText = value
+                            sceneBgTypeValue = detectMediaTypeFromValue(value, "color")
+                        }
+                        onPasteRequest: {
+                            var pastedBg = appController.paste_media_value("background")
+                            if (pastedBg && pastedBg.length > 0) {
+                                sceneBgValueText = pastedBg
+                                sceneBgTypeValue = detectMediaTypeFromValue(pastedBg, "color")
+                            }
+                        }
+                        onBrowseRequest: {
+                            launcherWindow.pendingFileTarget = "background"
+                            mediaFileDialog.open()
+                        }
+                    }
+                    IconButton {
+                        width: 30
+                        height: 30
+                        enabled: sceneBgEnabled
+                        opacity: enabled ? 1.0 : 0.4
+                        iconSource: "icons/palette.svg"
+                        toolTip: "Выбрать цвет фона"
+                        onClicked: {
+                            launcherWindow.pendingColorTarget = "background"
+                            colorPickerDialog.selectedColor = sceneBgValueText
+                            colorPickerDialog.open()
+                        }
+                    }
                 }
 
                 Rectangle { Layout.fillWidth: true; Layout.preferredHeight: 1; color: "#4C4C4C" }
@@ -970,7 +1068,22 @@ Window {
                 Label { text: "Прозрачность (0..1)"; color: launcherWindow.textSecondary }
                 AppTextField { id: sceneGridOpacity; Layout.fillWidth: true; text: "0.45" }
                 Label { text: "Цвет сетки"; color: launcherWindow.textSecondary }
-                AppTextField { id: sceneGridColor; Layout.fillWidth: true; text: "#9D9D9D" }
+                RowLayout {
+                    Layout.fillWidth: true
+                    spacing: 8
+                    AppTextField { id: sceneGridColor; Layout.fillWidth: true; text: "#9D9D9D" }
+                    IconButton {
+                        width: 30
+                        height: 30
+                        iconSource: "icons/palette.svg"
+                        toolTip: "Выбрать цвет сетки"
+                        onClicked: {
+                            launcherWindow.pendingColorTarget = "grid"
+                            colorPickerDialog.selectedColor = sceneGridColor.text
+                            colorPickerDialog.open()
+                        }
+                    }
+                }
 
                 Item { Layout.fillWidth: true; Layout.preferredHeight: 6 }
 
@@ -1069,11 +1182,70 @@ Window {
         onAccepted: {
             var selected = selectedFile.toString()
             if (launcherWindow.pendingFileTarget === "background") {
-                sceneBgValue.text = selected
-                launcherWindow.applyDetectedMediaType(selected, sceneBgType)
+                sceneBgValueText = selected
+                sceneBgTypeValue = detectMediaTypeFromValue(selected, "color")
             } else {
-                sceneMapValue.text = selected
-                launcherWindow.applyDetectedMediaType(selected, sceneMapType)
+                sceneMapValueText = selected
+                sceneMapTypeValue = detectMediaTypeFromValue(selected, "color")
+            }
+        }
+    }
+
+    component AppToggle: Item {
+        id: toggleRoot
+        property bool checked: false
+        signal toggled(bool checked)
+        implicitWidth: 38
+        implicitHeight: 20
+        width: implicitWidth
+        height: implicitHeight
+
+        Rectangle {
+            id: track
+            anchors.fill: parent
+            radius: height / 2
+            color: toggleRoot.checked ? "#646464" : "#353535"
+            border.width: 1
+            border.color: toggleRoot.checked ? "#A8A8A8" : "#5C5C5C"
+            Behavior on color { ColorAnimation { duration: 120 } }
+            Behavior on border.color { ColorAnimation { duration: 120 } }
+        }
+
+        Rectangle {
+            id: knob
+            width: 14
+            height: 14
+            radius: 7
+            y: (toggleRoot.height - height) / 2
+            x: toggleRoot.checked ? (toggleRoot.width - width - 3) : 3
+            color: "#EAEAEA"
+            border.width: 1
+            border.color: "#B2B2B2"
+            Behavior on x { NumberAnimation { duration: 120; easing.type: Easing.OutCubic } }
+        }
+
+        MouseArea {
+            anchors.fill: parent
+            onClicked: {
+                toggleRoot.checked = !toggleRoot.checked
+                toggleRoot.toggled(toggleRoot.checked)
+            }
+        }
+    }
+
+    ColorDialog {
+        id: colorPickerDialog
+        title: "Выбор цвета"
+        onAccepted: {
+            var value = normalizeColorValue(selectedColor)
+            if (launcherWindow.pendingColorTarget === "background") {
+                sceneBgValueText = value
+                sceneBgTypeValue = "color"
+            } else if (launcherWindow.pendingColorTarget === "grid") {
+                sceneGridColor.text = value
+            } else {
+                sceneMapValueText = value
+                sceneMapTypeValue = "color"
             }
         }
     }
@@ -1084,9 +1256,12 @@ Window {
         active: hovered || pressed || visualSize < 1.0
         hoverEnabled: true
         implicitWidth: 10
+        implicitHeight: 10
+        minimumSize: 0.08
 
         contentItem: Rectangle {
             implicitWidth: 6
+            implicitHeight: 6
             radius: 3
             color: control.pressed
                 ? "#AEAEAE"
@@ -1098,6 +1273,7 @@ Window {
 
         background: Rectangle {
             implicitWidth: 10
+            implicitHeight: 10
             radius: 5
             color: "#202020"
             border.width: 1
@@ -1228,7 +1404,7 @@ Window {
 
     Drawer {
         id: settingsDrawer
-        width: 430
+        width: Math.min(460, Math.max(360, launcherWindow.width * 0.45))
         height: launcherWindow.height
         edge: Qt.RightEdge
         modal: false
@@ -1254,14 +1430,20 @@ Window {
         }
 
         ScrollView {
+            id: settingsScroll
             anchors.fill: parent
             clip: true
-            ScrollBar.vertical: AppScrollBar {}
+            padding: 12
+            ScrollBar.vertical: ScrollBar {
+                policy: ScrollBar.AlwaysOff
+                visible: false
+                implicitWidth: 0
+                implicitHeight: 0
+            }
+            ScrollBar.horizontal.policy: ScrollBar.AlwaysOff
 
             ColumnLayout {
-                width: settingsDrawer.width - 24
-                x: 12
-                y: 12
+                width: settingsScroll.availableWidth
                 spacing: 10
 
                 Label {
@@ -1296,107 +1478,17 @@ Window {
                     color: "#4C4C4C"
                 }
 
-                Label { text: "Карта по умолчанию"; color: launcherWindow.textPrimary }
-                AppComboBox {
-                    id: mapTypeCombo
-                    model: ["color", "image", "video"]
-                    currentIndex: launcherWindow.mediaIndex(appController.mapMediaType)
+                Label {
+                    text: "Раздел в переработке"
+                    color: launcherWindow.textPrimary
+                    font.pixelSize: 16
                     Layout.fillWidth: true
                 }
-                AppTextField {
-                    id: mapValueField
-                    text: appController.mapMediaValue
-                    placeholderText: mapTypeCombo.currentText === "color" ? "#2E2E2E" : "Путь или URL"
+                Label {
+                    text: "Параметры сцены по умолчанию временно скрыты."
+                    color: launcherWindow.textSecondary
+                    wrapMode: Text.WordWrap
                     Layout.fillWidth: true
-                }
-                RowLayout {
-                    Layout.fillWidth: true
-                    AppCheckBox { id: mapAutoplay; text: "Авто"; checked: appController.mapMediaAutoplay }
-                    AppCheckBox { id: mapLoop; text: "Цикл"; checked: appController.mapMediaLoop }
-                    AppCheckBox { id: mapMute; text: "Без звука"; checked: appController.mapMediaMute }
-                }
-                AppButton {
-                    text: "Применить карту"
-                    accent: true
-                    onClicked: {
-                        appController.update_media("map", mapTypeCombo.currentText, mapValueField.text)
-                        appController.update_playback("map", mapAutoplay.checked, mapLoop.checked, mapMute.checked)
-                    }
-                }
-
-                Rectangle {
-                    Layout.fillWidth: true
-                    Layout.preferredHeight: 1
-                    color: "#4C4C4C"
-                }
-
-                Label { text: "Фон по умолчанию"; color: launcherWindow.textPrimary }
-                AppComboBox {
-                    id: bgTypeCombo
-                    model: ["color", "image", "video"]
-                    currentIndex: launcherWindow.mediaIndex(appController.backgroundMediaType)
-                    Layout.fillWidth: true
-                }
-                AppTextField {
-                    id: bgValueField
-                    text: appController.backgroundMediaValue
-                    placeholderText: bgTypeCombo.currentText === "color" ? "#1F1F1F" : "Путь или URL"
-                    Layout.fillWidth: true
-                }
-                RowLayout {
-                    Layout.fillWidth: true
-                    AppCheckBox { id: bgAutoplay; text: "Авто"; checked: appController.backgroundMediaAutoplay }
-                    AppCheckBox { id: bgLoop; text: "Цикл"; checked: appController.backgroundMediaLoop }
-                    AppCheckBox { id: bgMute; text: "Без звука"; checked: appController.backgroundMediaMute }
-                }
-                AppButton {
-                    text: "Применить фон"
-                    accent: true
-                    onClicked: {
-                        appController.update_media("background", bgTypeCombo.currentText, bgValueField.text)
-                        appController.update_playback("background", bgAutoplay.checked, bgLoop.checked, bgMute.checked)
-                    }
-                }
-
-                Rectangle {
-                    Layout.fillWidth: true
-                    Layout.preferredHeight: 1
-                    color: "#4C4C4C"
-                }
-
-                Label { text: "Сетка по умолчанию"; color: launcherWindow.textPrimary }
-                Label { text: "Размер клетки (ft)"; color: launcherWindow.textSecondary }
-                AppTextField {
-                    id: cellSizeField
-                    text: Number(appController.gridCellSizeFt).toFixed(2)
-                    Layout.fillWidth: true
-                }
-                Label { text: "Толщина линии (px)"; color: launcherWindow.textSecondary }
-                AppTextField {
-                    id: lineThicknessField
-                    text: Number(appController.gridLineThicknessPx).toFixed(2)
-                    Layout.fillWidth: true
-                }
-                Label { text: "Прозрачность сетки (0..1)"; color: launcherWindow.textSecondary }
-                AppTextField {
-                    id: opacityField
-                    text: Number(appController.gridOpacity).toFixed(2)
-                    Layout.fillWidth: true
-                }
-                Label { text: "Цвет сетки"; color: launcherWindow.textSecondary }
-                AppTextField {
-                    id: gridColorField
-                    text: appController.gridColor
-                    Layout.fillWidth: true
-                }
-                AppButton {
-                    text: "Применить сетку"
-                    accent: true
-                    onClicked: appController.update_grid(
-                                   Number(cellSizeField.text),
-                                   Number(lineThicknessField.text),
-                                   Number(opacityField.text),
-                                   gridColorField.text)
                 }
 
                 Rectangle {

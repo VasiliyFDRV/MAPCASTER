@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 from pathlib import Path
 
@@ -16,15 +16,28 @@ class WindowManager:
         self._engine = QQmlApplicationEngine()
         self._engine.rootContext().setContextProperty("appController", app_controller)
         self._engine.rootContext().setContextProperty("eventBus", event_bus)
-        self._windows: dict[str, object] = {}
+        self._windows: dict[str, object | None] = {}
 
         self._event_bus.subscribe("scene.open_requested", self._on_scene_open_requested)
         self._event_bus.subscribe("scene.saved", self._on_scene_saved)
 
     def create_windows(self) -> None:
+        # Launcher starts immediately; map/background are created lazily on first scene open.
         self._windows["launcher"] = self._create_window("LauncherWindow.qml")
-        self._windows["map"] = self._create_window("MapWindow.qml")
-        self._windows["background"] = self._create_window("BackgroundWindow.qml")
+        self._windows["map"] = None
+        self._windows["background"] = None
+
+    def _ensure_window(self, key: str) -> None:
+        if key == "map":
+            qml_name = "MapWindow.qml"
+        elif key == "background":
+            qml_name = "BackgroundWindow.qml"
+        elif key == "launcher":
+            qml_name = "LauncherWindow.qml"
+        else:
+            return
+        if self._windows.get(key) is None:
+            self._windows[key] = self._create_window(qml_name)
 
     def _create_window(self, qml_name: str) -> object:
         qml_path = self._qml_root / qml_name
@@ -47,6 +60,8 @@ class WindowManager:
         scene = str(payload.get("scene", "")).strip()
         if not adventure or not scene:
             return
+        self._ensure_window("map")
+        self._ensure_window("background")
         self._set_window_title("launcher", f"DnD Maps - Лаунчер - {adventure}")
         self._set_window_title("map", f"DnD Maps - Карта - {adventure}/{scene}")
         self._set_window_title("background", f"DnD Maps - Фон - {adventure}/{scene}")
