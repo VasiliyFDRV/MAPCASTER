@@ -558,6 +558,24 @@ class AppController(QObject):
         self._set_status(f"Приключение '{deleted}' удалено.")
         self._emit_library_changed()
 
+
+    @Slot(str, str)
+    def rename_adventure(self, name: str, new_name: str) -> None:
+        old_name = name.strip()
+        try:
+            renamed = self._adventure_service.rename_adventure(old_name, new_name)
+        except ValueError as exc:
+            self._set_status(str(exc))
+            return
+        self._adventures = self._adventure_service.list_adventures()
+        if self._current_adventure == old_name:
+            self._current_adventure = renamed
+            self._refresh_scenes()
+        if self._active_scene_adventure == old_name:
+            self._active_scene_adventure = renamed
+        self._set_status(f"Приключение '{old_name}' переименовано в '{renamed}'.")
+        self._emit_library_changed()
+
     @Slot(str)
     def create_scene(self, scene_name: str) -> None:
         if not self._current_adventure:
@@ -1669,3 +1687,4 @@ class AppController(QObject):
         except (TypeError, ValueError):
             return fallback
         return parsed
+

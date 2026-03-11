@@ -58,6 +58,31 @@ class FilesystemRepository:
             raise ValueError(f"Приключение '{safe_name}' не существует.")
         shutil.rmtree(path)
 
+    def rename_adventure(self, name: str, new_name: str) -> str:
+        old_name = self._sanitize_name(name)
+        target_name = self._sanitize_name(new_name)
+        if old_name == target_name:
+            return old_name
+        old_path = self._adventures_root / old_name
+        new_path = self._adventures_root / target_name
+        if not old_path.exists():
+            raise ValueError(f"Adventure '{old_name}' does not exist.")
+        if new_path.exists():
+            raise ValueError(f"Adventure '{target_name}' already exists.")
+        try:
+            old_path.rename(new_path)
+        except PermissionError as exc:
+            raise ValueError(
+                "Cannot rename adventure folder because files are in use. "
+                "Close related scenes and try again."
+            ) from exc
+        except OSError as exc:
+            raise ValueError(f"Failed to rename adventure '{old_name}' to '{target_name}': {exc}") from exc
+        payload = read_json(new_path / "adventure.json", default={"name": target_name, "scene_order": []})
+        payload["name"] = target_name
+        write_json(new_path / "adventure.json", payload)
+        return target_name
+
     def list_scenes(self, adventure_name: str) -> list[str]:
         adventure_path = self._adventure_path(adventure_name)
         data = self.load_adventure(adventure_name)
@@ -243,3 +268,6 @@ class FilesystemRepository:
 
     def _now_iso(self) -> str:
         return datetime.now(timezone.utc).isoformat()
+
+
+

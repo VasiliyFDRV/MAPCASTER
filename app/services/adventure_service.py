@@ -28,6 +28,9 @@ class AdventureService:
     def delete_adventure(self, name: str) -> None:
         self._repository.delete_adventure(name)
 
+    def rename_adventure(self, name: str, new_name: str) -> str:
+        return self._repository.rename_adventure(name, new_name)
+
     def list_scenes(self, adventure_name: str) -> list[str]:
         return self._repository.list_scenes(adventure_name)
 
