@@ -1,4 +1,4 @@
-import QtQuick
+﻿import QtQuick
 import QtQuick.Controls
 import QtQuick.Dialogs
 import QtQuick.Layouts
@@ -10,21 +10,21 @@ Window {
     width: 620
     height: 820
     visible: true
-    color: "#0F1218"
+    color: "#111111"
     title: "DnD Maps - Лаунчер"
     property int selectedAdventureIndex: -1
     property int selectedSceneIndex: -1
     property string pendingFileTarget: "map"
     property string sceneDialogModeCode: "create"
-    property color bgBase: "#17181B"
-    property color bgDeep: "#1C1D22"
-    property color bgCard: "#26282F"
-    property color bgCardSoft: "#2E3139"
-    property color lineColor: "#4A4E58"
+    property color bgBase: "#161616"
+    property color bgDeep: "#1B1B1B"
+    property color bgCard: "#262626"
+    property color bgCardSoft: "#2E2E2E"
+    property color lineColor: "#4A4A4A"
     property color textPrimary: "#EFEFF2"
-    property color textSecondary: "#ABADB5"
-    property color accentColor: "#8E939F"
-    property color accentStrong: "#777C87"
+    property color textSecondary: "#B0B0B0"
+    property color accentColor: "#8E8E8E"
+    property color accentStrong: "#777777"
     property string adventureDialogMode: "create"
     property string adventureOriginalName: ""
 
@@ -86,7 +86,7 @@ Window {
         sceneGridSize.text = Number(draft.grid.cell_size_ft || 5).toFixed(2)
         sceneGridThickness.text = Number(draft.grid.line_thickness_px || 1.5).toFixed(2)
         sceneGridOpacity.text = Number(draft.grid.opacity || 0.45).toFixed(2)
-        sceneGridColor.text = draft.grid.color || "#9DA6B0"
+        sceneGridColor.text = draft.grid.color || "#9D9D9D"
     }
 
     function openCreateSceneDialog() {
@@ -202,7 +202,7 @@ Window {
             text: control.text
             color: control.enabled
                 ? (control.accent ? "#F7F7F8" : launcherWindow.textPrimary)
-                : "#8A8E97"
+                : "#8A8A8A"
             horizontalAlignment: Text.AlignHCenter
             verticalAlignment: Text.AlignVCenter
             font.pixelSize: control.font.pixelSize
@@ -213,20 +213,20 @@ Window {
         background: Rectangle {
             radius: 12
             border.width: 1
-            border.color: control.accent ? "#B4BAC6" : "#505663"
+            border.color: control.accent ? "#B4B4B4" : "#505050"
             opacity: control.enabled ? 1.0 : 0.5
             gradient: Gradient {
                 GradientStop {
                     position: 0
                     color: control.accent
-                        ? (control.down ? "#727987" : (control.hovered ? "#858D9C" : "#7D8492"))
-                        : (control.down ? "#323740" : (control.hovered ? "#3B414C" : "#363B45"))
+                        ? (control.down ? "#727272" : (control.hovered ? "#858585" : "#7D7D7D"))
+                        : (control.down ? "#323232" : (control.hovered ? "#3B3B3B" : "#363636"))
                 }
                 GradientStop {
                     position: 1
                     color: control.accent
-                        ? (control.down ? "#666E7D" : (control.hovered ? "#747D8C" : "#6E7685"))
-                        : (control.down ? "#292E36" : (control.hovered ? "#323741" : "#2D323B"))
+                        ? (control.down ? "#666666" : (control.hovered ? "#747474" : "#6E6E6E"))
+                        : (control.down ? "#292929" : (control.hovered ? "#323232" : "#2D2D2D"))
                 }
             }
             scale: control.down ? 0.97 : (control.hovered ? 1.025 : 1.0)
@@ -247,15 +247,15 @@ Window {
         id: control
         color: launcherWindow.textPrimary
         selectedTextColor: "#F4F4F6"
-        selectionColor: "#6C717D"
-        placeholderTextColor: "#8F919A"
+        selectionColor: "#6C6C6C"
+        placeholderTextColor: "#909090"
         padding: 10
 
         background: Rectangle {
             radius: 11
-            color: "#23262E"
+            color: "#232323"
             border.width: 1
-            border.color: control.activeFocus ? "#ABB1BE" : (control.hovered ? "#626977" : "#4D515C")
+            border.color: control.activeFocus ? "#ABABAB" : (control.hovered ? "#626262" : "#4D4D4D")
             Behavior on border.color {
                 ColorAnimation { duration: 120 }
             }
@@ -274,9 +274,9 @@ Window {
         Rectangle {
             anchors.fill: parent
             radius: 6
-            color: hitArea.pressed ? "#646A77" : (hitArea.containsMouse ? "#555B67" : "transparent")
+            color: hitArea.pressed ? "#646464" : (hitArea.containsMouse ? "#555555" : "transparent")
             border.width: hitArea.containsMouse ? 1 : 0
-            border.color: "#969CAA"
+            border.color: "#969696"
             Behavior on color { ColorAnimation { duration: 90 } }
         }
 
@@ -295,7 +295,7 @@ Window {
             anchors.centerIn: parent
             visible: iconRoot.iconSource.length === 0 && iconRoot.glyph.length > 0
             text: iconRoot.glyph
-            color: "#E8EAF0"
+            color: "#E8E8E8"
             font.pixelSize: 16
             font.weight: Font.DemiBold
         }
@@ -319,7 +319,7 @@ Window {
             orientation: Gradient.Vertical
             GradientStop { position: 0.0; color: launcherWindow.bgDeep }
             GradientStop { position: 0.6; color: launcherWindow.bgBase }
-            GradientStop { position: 1.0; color: "#121316" }
+            GradientStop { position: 1.0; color: "#121212" }
         }
 
         Rectangle {
@@ -329,7 +329,7 @@ Window {
             radius: 210
             x: -140
             y: -170
-            color: "#4A4D54"
+            color: "#4A4A4A"
             opacity: 0.18
 
             SequentialAnimation on x {
@@ -351,7 +351,7 @@ Window {
             radius: 240
             x: launcherWindow.width - width + 130
             y: launcherWindow.height - height + 180
-            color: "#5A5E67"
+            color: "#5A5A5A"
             opacity: 0.14
 
             SequentialAnimation on x {
@@ -401,45 +401,6 @@ Window {
 
             Rectangle {
                 Layout.fillWidth: true
-                radius: 10
-                color: "#23262E"
-                border.color: "#606572"
-                border.width: 1
-                implicitHeight: statusLabel.implicitHeight + 12
-                gradient: Gradient {
-                    orientation: Gradient.Vertical
-                    GradientStop { position: 0.0; color: "#2B2F38" }
-                    GradientStop { position: 1.0; color: "#22262E" }
-                }
-
-                Rectangle {
-                    width: 4
-                    radius: 2
-                    color: "#A8AEBB"
-                    anchors.left: parent.left
-                    anchors.leftMargin: 6
-                    anchors.top: parent.top
-                    anchors.bottom: parent.bottom
-                    anchors.topMargin: 6
-                    anchors.bottomMargin: 6
-                    opacity: 0.9
-                }
-
-                Label {
-                    id: statusLabel
-                    anchors.fill: parent
-                    anchors.leftMargin: 16
-                    anchors.rightMargin: 8
-                    anchors.topMargin: 6
-                    anchors.bottomMargin: 6
-                    text: appController.statusMessage
-                    color: "#D2D4DB"
-                    wrapMode: Text.WordWrap
-                }
-            }
-
-            Rectangle {
-                Layout.fillWidth: true
                 Layout.fillHeight: true
                 radius: 14
                 color: launcherWindow.bgCard
@@ -461,9 +422,9 @@ Window {
                     Rectangle {
                         Layout.fillHeight: true
                         Layout.preferredWidth: parent.width * 0.42
-                        color: "#22252D"
+                        color: "#222222"
                         radius: 12
-                        border.color: "#4F535D"
+                        border.color: "#4F4F4F"
                         border.width: 1
 
                         ColumnLayout {
@@ -471,16 +432,14 @@ Window {
                             anchors.margins: 10
                             spacing: 8
 
-                            Label {
-                                text: "Приключения"
-                                color: launcherWindow.textPrimary
-                                font.pixelSize: 18
-                                Layout.fillWidth: true
-                            }
-
                             RowLayout {
                                 Layout.fillWidth: true
-                                Item { Layout.fillWidth: true }
+                                Label {
+                                    text: "Приключения"
+                                    color: launcherWindow.textPrimary
+                                    font.pixelSize: 18
+                                    Layout.fillWidth: true
+                                }
                                 IconButton {
                                     glyph: "+"
                                     toolTip: "Создать приключение"
@@ -508,10 +467,10 @@ Window {
                                         anchors.fill: parent
                                         radius: 9
                                         color: ListView.isCurrentItem
-                                            ? "#4A4D55"
-                                            : (adventureDelegate.hovered ? "#373A42" : "transparent")
+                                            ? "#4A4A4A"
+                                            : (adventureDelegate.hovered ? "#373737" : "transparent")
                                         border.width: ListView.isCurrentItem ? 1 : 0
-                                        border.color: "#A7A9B1"
+                                        border.color: "#A7A7A7"
                                         Behavior on color { ColorAnimation { duration: 120 } }
                                     }
 
@@ -524,7 +483,7 @@ Window {
                                         Label {
                                             Layout.fillWidth: true
                                             text: modelData.name
-                                            color: ListView.isCurrentItem ? "#F2F2F4" : "#CFD1D8"
+                                            color: ListView.isCurrentItem ? "#F2F2F4" : "#CFCFCF"
                                             font.pixelSize: 14
                                             font.weight: ListView.isCurrentItem ? Font.DemiBold : Font.Normal
                                             elide: Text.ElideRight
@@ -610,9 +569,9 @@ Window {
                     Rectangle {
                         Layout.fillHeight: true
                         Layout.fillWidth: true
-                        color: "#22252D"
+                        color: "#222222"
                         radius: 12
-                        border.color: "#4F535D"
+                        border.color: "#4F4F4F"
                         border.width: 1
 
                         ColumnLayout {
@@ -620,16 +579,14 @@ Window {
                             anchors.margins: 10
                             spacing: 8
 
-                            Label {
-                                text: appController.currentAdventure ? ("Сцены: " + appController.currentAdventure) : "Сцены"
-                                color: launcherWindow.textPrimary
-                                font.pixelSize: 18
-                                Layout.fillWidth: true
-                            }
-
                             RowLayout {
                                 Layout.fillWidth: true
-                                Item { Layout.fillWidth: true }
+                                Label {
+                                    text: appController.currentAdventure ? ("Сцены: " + appController.currentAdventure) : "Сцены"
+                                    color: launcherWindow.textPrimary
+                                    font.pixelSize: 18
+                                    Layout.fillWidth: true
+                                }
                                 IconButton {
                                     glyph: "+"
                                     toolTip: "Создать сцену"
@@ -661,10 +618,10 @@ Window {
                                         anchors.fill: parent
                                         radius: 9
                                         color: ListView.isCurrentItem
-                                            ? "#535660"
-                                            : (sceneDelegate.hovered ? "#3B3E47" : "transparent")
+                                            ? "#535353"
+                                            : (sceneDelegate.hovered ? "#3B3B3B" : "transparent")
                                         border.width: ListView.isCurrentItem ? 1 : 0
-                                        border.color: "#B8BAC2"
+                                        border.color: "#B8B8B8"
                                         Behavior on color { ColorAnimation { duration: 120 } }
                                     }
 
@@ -684,7 +641,7 @@ Window {
                                         Label {
                                             Layout.fillWidth: true
                                             text: modelData.name
-                                            color: ListView.isCurrentItem ? "#F2F2F4" : "#CFD1D8"
+                                            color: ListView.isCurrentItem ? "#F2F2F4" : "#CFCFCF"
                                             font.pixelSize: 14
                                             font.weight: ListView.isCurrentItem ? Font.DemiBold : Font.Normal
                                             elide: Text.ElideRight
@@ -881,14 +838,14 @@ Window {
         }
 
         background: Rectangle {
-            color: "#262830"
-            border.color: "#626876"
+            color: "#262626"
+            border.color: "#626262"
             border.width: 1
             radius: 12
             gradient: Gradient {
                 orientation: Gradient.Vertical
-                GradientStop { position: 0.0; color: "#2E323C" }
-                GradientStop { position: 1.0; color: "#252932" }
+                GradientStop { position: 0.0; color: "#2E2E2E" }
+                GradientStop { position: 1.0; color: "#252525" }
             }
         }
 
@@ -919,7 +876,7 @@ Window {
                     visible: false
                 }
 
-                Rectangle { Layout.fillWidth: true; Layout.preferredHeight: 1; color: "#4C505A" }
+                Rectangle { Layout.fillWidth: true; Layout.preferredHeight: 1; color: "#4C4C4C" }
 
                 Label { text: "Медиа карты"; color: launcherWindow.textPrimary }
                 AppComboBox {
@@ -961,7 +918,7 @@ Window {
                     AppCheckBox { id: sceneMapMute; text: "Без звука"; checked: true }
                 }
 
-                Rectangle { Layout.fillWidth: true; Layout.preferredHeight: 1; color: "#4C505A" }
+                Rectangle { Layout.fillWidth: true; Layout.preferredHeight: 1; color: "#4C4C4C" }
 
                 Label { text: "Медиа фона"; color: launcherWindow.textPrimary }
                 AppComboBox {
@@ -1003,7 +960,7 @@ Window {
                     AppCheckBox { id: sceneBgMute; text: "Без звука"; checked: true }
                 }
 
-                Rectangle { Layout.fillWidth: true; Layout.preferredHeight: 1; color: "#4C505A" }
+                Rectangle { Layout.fillWidth: true; Layout.preferredHeight: 1; color: "#4C4C4C" }
 
                 Label { text: "Гекс-сетка"; color: launcherWindow.textPrimary }
                 Label { text: "Размер клетки (ft)"; color: launcherWindow.textSecondary }
@@ -1013,7 +970,7 @@ Window {
                 Label { text: "Прозрачность (0..1)"; color: launcherWindow.textSecondary }
                 AppTextField { id: sceneGridOpacity; Layout.fillWidth: true; text: "0.45" }
                 Label { text: "Цвет сетки"; color: launcherWindow.textSecondary }
-                AppTextField { id: sceneGridColor; Layout.fillWidth: true; text: "#9DA6B0" }
+                AppTextField { id: sceneGridColor; Layout.fillWidth: true; text: "#9D9D9D" }
 
                 Item { Layout.fillWidth: true; Layout.preferredHeight: 6 }
 
@@ -1053,8 +1010,8 @@ Window {
         closePolicy: Popup.CloseOnEscape
 
         background: Rectangle {
-            color: "#262830"
-            border.color: "#626876"
+            color: "#262626"
+            border.color: "#626262"
             border.width: 1
             radius: 12
         }
@@ -1132,8 +1089,8 @@ Window {
             implicitWidth: 6
             radius: 3
             color: control.pressed
-                ? "#AEB4C2"
-                : (control.hovered ? "#979EAD" : "#747B89")
+                ? "#AEAEAE"
+                : (control.hovered ? "#979797" : "#747474")
             opacity: control.active ? 0.95 : 0.65
             Behavior on color { ColorAnimation { duration: 110 } }
             Behavior on opacity { NumberAnimation { duration: 110 } }
@@ -1142,9 +1099,9 @@ Window {
         background: Rectangle {
             implicitWidth: 10
             radius: 5
-            color: "#20232B"
+            color: "#202020"
             border.width: 1
-            border.color: "#3F4552"
+            border.color: "#3F3F3F"
             opacity: control.active ? 0.9 : 0.55
             Behavior on opacity { NumberAnimation { duration: 110 } }
         }
@@ -1179,16 +1136,16 @@ Window {
                 ctx.lineTo(width, 0)
                 ctx.lineTo(width / 2, height)
                 ctx.closePath()
-                ctx.fillStyle = "#C6CAD4"
+                ctx.fillStyle = "#C6C6C6"
                 ctx.fill()
             }
         }
 
         background: Rectangle {
             radius: 10
-            color: "#23262E"
+            color: "#232323"
             border.width: 1
-            border.color: control.activeFocus ? "#A7ABB6" : (control.hovered ? "#707681" : "#4D515C")
+            border.color: control.activeFocus ? "#A7A7A7" : (control.hovered ? "#707070" : "#4D4D4D")
             Behavior on border.color {
                 ColorAnimation { duration: 120 }
             }
@@ -1200,7 +1157,7 @@ Window {
             hoverEnabled: true
             contentItem: Text {
                 text: control.textAt(index)
-                color: highlighted ? "#F4F5F7" : "#D1D4DC"
+                color: highlighted ? "#F4F5F7" : "#D1D1D1"
                 verticalAlignment: Text.AlignVCenter
                 elide: Text.ElideRight
                 font.pixelSize: 13
@@ -1208,7 +1165,7 @@ Window {
             highlighted: control.highlightedIndex === index
             background: Rectangle {
                 radius: 8
-                color: parent.highlighted ? "#545A66" : (parent.hovered ? "#3A3F49" : "transparent")
+                color: parent.highlighted ? "#545454" : (parent.hovered ? "#3A3A3A" : "transparent")
             }
         }
 
@@ -1219,9 +1176,9 @@ Window {
             implicitHeight: Math.min(contentItem.implicitHeight + 8, 220)
             background: Rectangle {
                 radius: 10
-                color: "#252933"
+                color: "#252525"
                 border.width: 1
-                border.color: "#59606C"
+                border.color: "#595959"
             }
             contentItem: ListView {
                 clip: true
@@ -1244,9 +1201,9 @@ Window {
             x: control.leftPadding
             y: (control.height - height) / 2
             radius: 5
-            color: control.checked ? "#6D7482" : "#252931"
+            color: control.checked ? "#6D6D6D" : "#252931"
             border.width: 1
-            border.color: control.checked ? "#C1C6D1" : (control.hovered ? "#7A8190" : "#545B68")
+            border.color: control.checked ? "#C1C1C1" : (control.hovered ? "#7A7A7A" : "#545454")
             Behavior on color { ColorAnimation { duration: 120 } }
             Behavior on border.color { ColorAnimation { duration: 120 } }
 
@@ -1286,13 +1243,13 @@ Window {
         }
 
         background: Rectangle {
-            color: "#1F2128"
-            border.color: "#606675"
+            color: "#1F1F1F"
+            border.color: "#606060"
             border.width: 1
             gradient: Gradient {
                 orientation: Gradient.Vertical
-                GradientStop { position: 0.0; color: "#252A34" }
-                GradientStop { position: 1.0; color: "#1C2028" }
+                GradientStop { position: 0.0; color: "#252525" }
+                GradientStop { position: 1.0; color: "#1C1C1C" }
             }
         }
 
@@ -1317,7 +1274,7 @@ Window {
                 Rectangle {
                     Layout.fillWidth: true
                     Layout.preferredHeight: 1
-                    color: "#4C505A"
+                    color: "#4C4C4C"
                 }
 
                 Label { text: "Корневая папка приключений"; color: launcherWindow.textPrimary }
@@ -1336,7 +1293,7 @@ Window {
                 Rectangle {
                     Layout.fillWidth: true
                     Layout.preferredHeight: 1
-                    color: "#4C505A"
+                    color: "#4C4C4C"
                 }
 
                 Label { text: "Карта по умолчанию"; color: launcherWindow.textPrimary }
@@ -1370,7 +1327,7 @@ Window {
                 Rectangle {
                     Layout.fillWidth: true
                     Layout.preferredHeight: 1
-                    color: "#4C505A"
+                    color: "#4C4C4C"
                 }
 
                 Label { text: "Фон по умолчанию"; color: launcherWindow.textPrimary }
@@ -1404,7 +1361,7 @@ Window {
                 Rectangle {
                     Layout.fillWidth: true
                     Layout.preferredHeight: 1
-                    color: "#4C505A"
+                    color: "#4C4C4C"
                 }
 
                 Label { text: "Сетка по умолчанию"; color: launcherWindow.textPrimary }
@@ -1445,7 +1402,7 @@ Window {
                 Rectangle {
                     Layout.fillWidth: true
                     Layout.preferredHeight: 1
-                    color: "#4C505A"
+                    color: "#4C4C4C"
                 }
 
                 Label { text: "Левая панель"; color: launcherWindow.textPrimary }
@@ -1494,3 +1451,4 @@ Window {
         }
     }
 }
+
