@@ -49,6 +49,7 @@ class AppController(QObject):
         self._active_scene_dir: Path | None = None
         self._scene_dirty = False
         self._undo_stack: list[dict[str, Any]] = []
+        self._visual_revision = 0
         self._default_runtime_scene = self._build_default_runtime_scene()
 
         self._adventure_service.set_root(Path(self.adventuresRoot))
@@ -277,6 +278,10 @@ class AppController(QObject):
     @Property(str, notify=scene_view_changed)
     def activeEraseStrokesJson(self) -> str:
         return json.dumps(self._erase_strokes_ref(), ensure_ascii=False)
+
+    @Property(int, notify=scene_view_changed)
+    def visualRevision(self) -> int:
+        return int(self._visual_revision)
 
     @Slot()
     def request_manual_save(self) -> None:
@@ -1641,6 +1646,7 @@ class AppController(QObject):
         self._emit_scene_view_changed()
 
     def _emit_scene_view_changed(self) -> None:
+        self._visual_revision += 1
         self.scene_view_changed.emit()
         self.sceneViewChanged.emit()
 

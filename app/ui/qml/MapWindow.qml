@@ -74,6 +74,8 @@ Window {
     property var currentEraserCursor: null
     property bool eraserCommitPending: false
     property bool eraserAwaitingStaticPaint: false
+    property int eraserAwaitRevision: -1
+    property bool renderTraceEnabled: true
     property bool measureActive: false
     property var measureStart: null
     property var measureEnd: null
@@ -231,11 +233,32 @@ Window {
         cursorOverlay.requestPaint()
     }
 
+    function traceRender(tag) {
+        if (!renderTraceEnabled) {
+            return
+        }
+        var ts = Date.now()
+        console.log(
+            "[render]",
+            ts,
+            tag,
+            "rev=" + Number(appController.visualRevision),
+            "commit=" + eraserCommitPending,
+            "awaitPaint=" + eraserAwaitingStaticPaint,
+            "awaitRev=" + eraserAwaitRevision,
+            "path=" + currentEraserPath.length,
+            "cursor=" + (currentEraserCursor ? "1" : "0")
+        )
+    }
+
     function clearAllVisualLayersLocal() {
         currentStrokePoints = []
         pendingCommittedStroke = null
         eraserCommitPending = false
         eraserAwaitingStaticPaint = false
+        eraserAwaitRevision = -1
+        currentEraserPath = []
+        currentEraserCursor = null
         strokes = []
         eraseStrokes = []
         fillLayers = []
@@ -1581,6 +1604,9 @@ Window {
         opacity: appController.activeGridOpacity
 
         onPaint: {
+            if (eraserCommitPending || eraserAwaitingStaticPaint) {
+                traceRender("drawStaticCache.onPaint")
+            }
             var ctx = getContext("2d")
             ctx.setTransform(1, 0, 0, 1, 0, 0)
             ctx.clearRect(0, 0, width, height)
@@ -1646,12 +1672,18 @@ Window {
         }
 
         onPainted: {
+            if (eraserCommitPending || eraserAwaitingStaticPaint) {
+                traceRender("drawStaticCache.onPainted")
+            }
             if (pendingCommittedStroke) {
                 pendingCommittedStroke = null
                 drawOverlay.requestPaint()
             }
             if (eraserAwaitingStaticPaint) {
                 eraserAwaitingStaticPaint = false
+                currentEraserPath = []
+                currentEraserCursor = null
+                eraserAwaitRevision = -1
                 drawOverlay.requestPaint()
             }
         }
@@ -1671,7 +1703,13 @@ Window {
             ctx.clearRect(0, 0, width, height)
             ctx.setTransform(viewScale, 0, 0, viewScale, viewOffsetX, viewOffsetY)
             var erasingNow = currentTool === "eraser"
-                && (currentEraserPath.length > 0 || currentEraserCursor)
+                && (eraserCommitPending
+                    || eraserAwaitingStaticPaint
+                    || currentEraserPath.length > 0
+                    || currentEraserCursor)
+            if (erasingNow) {
+                traceRender("drawOverlay.onPaint")
+            }
             if (erasingNow) {
                 renderLayerWithEraserTimeline(ctx, strokes, function(context, stroke) {
                     drawStroke(context, stroke)
@@ -1857,6 +1895,7 @@ Window {
             if (currentTool === "eraser") {
                 eraserCommitPending = false
                 eraserAwaitingStaticPaint = false
+                eraserAwaitRevision = -1
                 currentEraserPath = []
                 currentEraserCursor = {"x": worldPoint.x, "y": worldPoint.y}
                 if (appendEraserPoint(worldPoint, true)) {
@@ -1962,6 +2001,8 @@ Window {
             if (currentTool === "eraser" && currentEraserPath.length > 0) {
                 appendEraserPoint(mapToWorldPoint(mouse.x, mouse.y), true)
                 eraserCommitPending = true
+                eraserAwaitRevision = Number(appController.visualRevision) + 1
+                traceRender("eraser.onReleased.commit")
                 var eraserRadiusPx = Math.max(1, (eraserSizeFt / 5.0) * hexRadiusPx)
                 appController.erase_with_path(
                     JSON.stringify(currentEraserPath),
@@ -2833,15 +2874,20 @@ Window {
             var nextSceneIdentity = sceneIdentity()
             var sceneChanged = nextSceneIdentity !== lastSceneIdentity
             lastSceneIdentity = nextSceneIdentity
+            if (eraserCommitPending || eraserAwaitingStaticPaint) {
+                traceRender("sceneViewChanged.start")
+            }
             refreshFillLayersFromController()
             refreshEraseStrokesFromController()
             refreshStrokesFromController()
             refreshHexGroupsFromController()
-            if (eraserCommitPending) {
+            if (eraserCommitPending
+                    && eraserAwaitRevision >= 0
+                    && Number(appController.visualRevision) >= eraserAwaitRevision) {
                 eraserCommitPending = false
                 eraserAwaitingStaticPaint = true
-                currentEraserPath = []
-                currentEraserCursor = null
+                eraserAwaitRevision = -1
+                traceRender("sceneViewChanged.toAwaitPaint")
                 drawStaticCache.requestPaint()
                 drawOverlay.requestPaint()
             }
@@ -2892,6 +2938,7 @@ Window {
         if (currentTool !== "eraser") {
             eraserCommitPending = false
             eraserAwaitingStaticPaint = false
+            eraserAwaitRevision = -1
             currentEraserPath = []
             currentEraserCursor = null
         }
