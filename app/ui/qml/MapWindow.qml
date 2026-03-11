@@ -46,6 +46,7 @@ Window {
     property var strokes: []
     property var closedFillPolygons: []
     property var currentStrokePoints: []
+    property var pendingCommittedStroke: null
     property var eraseStrokes: []
     property var presetColors: [
         "#FFFFFF",
@@ -71,13 +72,14 @@ Window {
     property real eraserSoftness: 0.5
     property var currentEraserPath: []
     property var currentEraserCursor: null
+    property bool eraserCommitPending: false
+    property bool eraserAwaitingStaticPaint: false
     property bool measureActive: false
     property var measureStart: null
     property var measureEnd: null
     property real measureDistanceFt: 0
     property real lastToolClickAtMs: 0
     property string lastToolClickTool: ""
-    property bool penCommitPending: false
     property string lastSceneIdentity: ""
     property string lastStrokesRaw: ""
     property string lastHexRaw: ""
@@ -151,14 +153,35 @@ Window {
         var dx = Number(worldPoint.x) - Number(last.x)
         var dy = Number(worldPoint.y) - Number(last.y)
         var distance = Math.sqrt(dx * dx + dy * dy)
-        if (!forceAppend) {
-            var minStep = Math.max(0.6, penBrushSizePx() * 0.08)
-            if (distance < minStep) {
-                return false
-            }
+        var minStep = Math.max(0.75, penBrushSizePx() * 0.22)
+        if (!forceAppend && distance < minStep) {
+            return false
         }
-        currentStrokePoints.push({"x": worldPoint.x, "y": worldPoint.y})
-        return true
+        if (distance < 1e-6) {
+            return false
+        }
+        var added = false
+        if (distance <= minStep) {
+            currentStrokePoints.push({"x": worldPoint.x, "y": worldPoint.y})
+            return true
+        }
+        var segments = Math.max(1, Math.floor(distance / minStep))
+        for (var s = 1; s <= segments; s++) {
+            var t = s / segments
+            currentStrokePoints.push({
+                "x": Number(last.x) + dx * t,
+                "y": Number(last.y) + dy * t
+            })
+            added = true
+        }
+        var tail = currentStrokePoints[currentStrokePoints.length - 1]
+        if (forceAppend
+                && (Math.abs(Number(worldPoint.x) - Number(tail.x)) > 1e-4
+                    || Math.abs(Number(worldPoint.y) - Number(tail.y)) > 1e-4)) {
+            currentStrokePoints.push({"x": worldPoint.x, "y": worldPoint.y})
+            added = true
+        }
+        return added
     }
 
     function appendEraserPoint(worldPoint, forceAppend) {
@@ -206,6 +229,24 @@ Window {
         hexOverlay.requestPaint()
         measureOverlay.requestPaint()
         cursorOverlay.requestPaint()
+    }
+
+    function clearAllVisualLayersLocal() {
+        currentStrokePoints = []
+        pendingCommittedStroke = null
+        eraserCommitPending = false
+        eraserAwaitingStaticPaint = false
+        strokes = []
+        eraseStrokes = []
+        fillLayers = []
+        hexGroups = []
+        currentHexCells = ({})
+        closedFillPolygons = []
+        lastStrokesRaw = "__force_refresh__"
+        lastEraseRaw = "__force_refresh__"
+        lastFillRaw = "__force_refresh__"
+        lastHexRaw = "__force_refresh__"
+        requestFullMapRepaint()
     }
 
     function zoomAt(screenX, screenY, steps) {
@@ -1586,6 +1627,11 @@ Window {
         id: drawStaticCache
         anchors.fill: parent
         z: 3
+        visible: !(currentTool === "eraser"
+                   && (eraserCommitPending
+                       || eraserAwaitingStaticPaint
+                       || currentEraserPath.length > 0
+                       || currentEraserCursor))
         renderTarget: Canvas.FramebufferObject
         renderStrategy: Canvas.Threaded
 
@@ -1600,12 +1646,16 @@ Window {
         }
 
         onPainted: {
-            if (penCommitPending) {
-                penCommitPending = false
-                currentStrokePoints = []
+            if (pendingCommittedStroke) {
+                pendingCommittedStroke = null
+                drawOverlay.requestPaint()
+            }
+            if (eraserAwaitingStaticPaint) {
+                eraserAwaitingStaticPaint = false
                 drawOverlay.requestPaint()
             }
         }
+
     }
 
     Canvas {
@@ -1626,8 +1676,6 @@ Window {
                 renderLayerWithEraserTimeline(ctx, strokes, function(context, stroke) {
                     drawStroke(context, stroke)
                 })
-            } else {
-                ctx.drawImage(drawStaticCache, 0, 0)
             }
             if (currentStrokePoints.length > 1) {
                 drawStroke(ctx, {
@@ -1636,6 +1684,9 @@ Window {
                     "opacity": penOpacity,
                     "points": currentStrokePoints
                 })
+            }
+            if (pendingCommittedStroke) {
+                drawStroke(ctx, pendingCommittedStroke)
             }
             applyLiveEraserMask(ctx)
         }
@@ -1804,6 +1855,8 @@ Window {
                 return
             }
             if (currentTool === "eraser") {
+                eraserCommitPending = false
+                eraserAwaitingStaticPaint = false
                 currentEraserPath = []
                 currentEraserCursor = {"x": worldPoint.x, "y": worldPoint.y}
                 if (appendEraserPoint(worldPoint, true)) {
@@ -1888,16 +1941,27 @@ Window {
                         "y": currentStrokePoints[0].y
                     })
                 }
-                penCommitPending = true
+                var committedPoints = currentStrokePoints.slice(0)
+                pendingCommittedStroke = {
+                    "color": String(penColor),
+                    "size_ft": penSizeFt,
+                    "opacity": penOpacity,
+                    "points": committedPoints
+                }
+                strokes = strokes.concat([pendingCommittedStroke])
+                buildClosedFillPolygons()
+                drawStaticCache.requestPaint()
                 appController.add_draw_stroke(
-                    JSON.stringify(currentStrokePoints),
+                    JSON.stringify(committedPoints),
                     String(penColor),
                     penSizeFt,
                     penOpacity
                 )
+                currentStrokePoints = []
             }
             if (currentTool === "eraser" && currentEraserPath.length > 0) {
                 appendEraserPoint(mapToWorldPoint(mouse.x, mouse.y), true)
+                eraserCommitPending = true
                 var eraserRadiusPx = Math.max(1, (eraserSizeFt / 5.0) * hexRadiusPx)
                 appController.erase_with_path(
                     JSON.stringify(currentEraserPath),
@@ -1929,11 +1993,11 @@ Window {
                 measureDistanceFt = 0
                 measureOverlay.requestPaint()
             }
-            if (currentTool !== "pen" || !penCommitPending) {
-                currentStrokePoints = []
+            currentStrokePoints = []
+            if (!eraserCommitPending) {
+                currentEraserPath = []
+                currentEraserCursor = null
             }
-            currentEraserPath = []
-            currentEraserCursor = null
             drawOverlay.requestPaint()
             fillOverlay.requestPaint()
             hexOverlay.requestPaint()
@@ -2714,7 +2778,10 @@ Window {
                 iconSource: "icons/clear.svg"
                 Layout.alignment: Qt.AlignHCenter
                 hintText: "Очистить все слои."
-                onClicked: appController.clear_all_visual_layers()
+                onClicked: {
+                    clearAllVisualLayersLocal()
+                    appController.clear_all_visual_layers()
+                }
             }
 
             IconSquareButton {
@@ -2770,6 +2837,14 @@ Window {
             refreshEraseStrokesFromController()
             refreshStrokesFromController()
             refreshHexGroupsFromController()
+            if (eraserCommitPending) {
+                eraserCommitPending = false
+                eraserAwaitingStaticPaint = true
+                currentEraserPath = []
+                currentEraserCursor = null
+                drawStaticCache.requestPaint()
+                drawOverlay.requestPaint()
+            }
             if (sceneChanged) {
                 resetMapView()
                 panningView = false
@@ -2781,9 +2856,7 @@ Window {
                 measureDistanceFt = 0
                 cursorRipples = []
             }
-            if (!penCommitPending) {
-                currentStrokePoints = []
-            }
+            currentStrokePoints = []
             measureOverlay.requestPaint()
             gridOverlay.requestPaint()
             cursorOverlay.requestPaint()
@@ -2816,6 +2889,16 @@ Window {
         if (currentTool !== "pan_zoom") {
             panningView = false
         }
+        if (currentTool !== "eraser") {
+            eraserCommitPending = false
+            eraserAwaitingStaticPaint = false
+            currentEraserPath = []
+            currentEraserCursor = null
+        }
+        if (currentTool !== "pen") {
+            currentStrokePoints = []
+            pendingCommittedStroke = null
+        }
         toolHintVisible = false
         toolHintOwner = null
         cursorOverlay.requestPaint()
@@ -2843,3 +2926,4 @@ Window {
         refreshHexGroupsFromController()
     }
 }
+
