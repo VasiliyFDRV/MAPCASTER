@@ -288,6 +288,10 @@ class AppController(QObject):
         self._event_bus.publish("scene.save_requested", {"source": "map_window"})
 
     @Slot()
+    def request_open_dice(self) -> None:
+        self._event_bus.publish("dice.open_requested", {"source": "launcher_window"})
+
+    @Slot()
     def request_next_scene(self) -> None:
         self._event_bus.publish("scene.navigate_next_requested", {"source": "map_window"})
 

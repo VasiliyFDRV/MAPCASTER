@@ -7,8 +7,8 @@ import "components"
 
 Window {
     id: launcherWindow
-    width: 980
-    height: 820
+    width: 450
+    height: 370
     minimumWidth: 450
     minimumHeight: 370
     visible: true
@@ -450,12 +450,24 @@ Window {
                     }
                 }
 
-                IconButton {
-                    width: 36
-                    height: 36
-                    iconSource: "icons/settings.svg"
-                    toolTip: "Настройки"
-                    onClicked: settingsDrawer.open()
+                RowLayout {
+                    spacing: 8
+
+                    IconButton {
+                        width: 36
+                        height: 36
+                        iconSource: "icons/dice.svg"
+                        toolTip: "Дайсы"
+                        onClicked: appController.request_open_dice()
+                    }
+
+                    IconButton {
+                        width: 36
+                        height: 36
+                        iconSource: "icons/settings.svg"
+                        toolTip: "Настройки"
+                        onClicked: settingsDrawer.open()
+                    }
                 }
             }
 

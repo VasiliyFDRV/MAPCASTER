@@ -8,15 +8,23 @@ from PySide6.QtQml import QQmlApplicationEngine, QQmlComponent
 
 from app.core.app_controller import AppController
 from app.core.event_bus import EventBus
+from app.core.dice_controller import DiceController
 
 
 class WindowManager:
-    def __init__(self, qml_root: Path, app_controller: AppController, event_bus: EventBus) -> None:
+    def __init__(
+        self,
+        qml_root: Path,
+        app_controller: AppController,
+        dice_controller: DiceController,
+        event_bus: EventBus,
+    ) -> None:
         self._qml_root = qml_root
         self._event_bus = event_bus
         self._engine = QQmlApplicationEngine()
         self._engine.quit.connect(self._on_engine_quit)
         self._engine.rootContext().setContextProperty("appController", app_controller)
+        self._engine.rootContext().setContextProperty("diceController", dice_controller)
         self._engine.rootContext().setContextProperty("eventBus", event_bus)
         self._windows: dict[str, object | None] = {}
         self._launcher_closing_connected = False
@@ -24,6 +32,7 @@ class WindowManager:
 
         self._event_bus.subscribe("scene.open_requested", self._on_scene_open_requested)
         self._event_bus.subscribe("scene.saved", self._on_scene_saved)
+        self._event_bus.subscribe("dice.open_requested", self._on_dice_open_requested)
         self._event_bus.subscribe("app.exit_requested", self._on_app_exit_requested)
 
     def create_windows(self) -> None:
@@ -40,6 +49,7 @@ class WindowManager:
 
         self._windows["map"] = None
         self._windows["background"] = None
+        self._windows["dice"] = None
 
     def _ensure_window(self, key: str) -> None:
         if key == "map":
@@ -48,6 +58,8 @@ class WindowManager:
             qml_name = "BackgroundWindow.qml"
         elif key == "launcher":
             qml_name = "LauncherWindow.qml"
+        elif key == "dice":
+            qml_name = "DiceWindow.qml"
         else:
             return
         if self._windows.get(key) is None:
@@ -68,6 +80,35 @@ class WindowManager:
         if hasattr(window, "show"):
             window.show()
         return window
+
+
+    def _is_window_alive(self, window: object | None) -> bool:
+        if window is None:
+            return False
+        try:
+            if hasattr(window, "isVisible"):
+                window.isVisible()
+            return True
+        except RuntimeError:
+            return False
+
+    def _open_or_recreate_window(self, key: str) -> object | None:
+        window = self._windows.get(key)
+        if not self._is_window_alive(window):
+            self._windows[key] = None
+            self._ensure_window(key)
+            window = self._windows.get(key)
+            if not self._is_window_alive(window):
+                return None
+        return window
+
+    def _activate_window(self, window: object) -> None:
+        if hasattr(window, "show"):
+            window.show()
+        if hasattr(window, "raise_"):
+            window.raise_()
+        if hasattr(window, "requestActivate"):
+            window.requestActivate()
 
     def _on_engine_quit(self) -> None:
         app = QGuiApplication.instance()
@@ -110,12 +151,32 @@ class WindowManager:
             return
         self._set_window_title("map", f"DnD Maps - Карта - {adventure}/{scene} [сохранено]")
 
+    def _on_dice_open_requested(self, event_name: str, payload: dict[str, object]) -> None:
+        window = self._open_or_recreate_window("dice")
+        if window is None:
+            return
+
+        try:
+            if hasattr(window, "setProperty") and hasattr(window, "property"):
+                current = int(window.property("resetToken") or 0)
+                window.setProperty("resetToken", current + 1)
+            self._activate_window(window)
+        except RuntimeError:
+            self._windows["dice"] = None
+            window = self._open_or_recreate_window("dice")
+            if window is None:
+                return
+            try:
+                self._activate_window(window)
+            except RuntimeError:
+                self._windows["dice"] = None
+
     def _on_app_exit_requested(self, event_name: str, payload: dict[str, object]) -> None:
         if self._shutdown_in_progress:
             return
         self._shutdown_in_progress = True
 
-        for key in ("map", "background", "launcher"):
+        for key in ("map", "background", "dice", "launcher"):
             window = self._windows.get(key)
             if window is None:
                 continue
