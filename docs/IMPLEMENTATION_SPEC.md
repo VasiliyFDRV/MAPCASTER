@@ -33,7 +33,6 @@
 - NumPy (операции по маскам/слоям)
 - Pillow (обработка изображений, при необходимости)
 - JSON/orjson (настройки и метаданные сцен)
-- PyInstaller (сборка .exe и ярлык запуска)
 
 ## 4) Архитектура
 UI (QML) -> Application Services (Python) -> Domain Models -> Storage/Filesystem
@@ -81,7 +80,6 @@ Map Window (целевая послойная схема):
 9. Hex selection groups + measure center-to-center.  
 10. Левая скрытая панель, hotkeys, undo(50), Save button.  
 11. Политика сохранения: ручное + при switch/close scene.  
-12. Сборка .exe, ярлык, базовая документация.
 
 ## 7) Этап 1 (текущий)
 Цель этапа:
