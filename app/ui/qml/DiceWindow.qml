@@ -142,37 +142,64 @@ Window {
         border.width: 1
     }
 
-    component AppButton: Button {
+
+    component AppButton: AbstractButton {
         id: control
         property bool accent: false
         hoverEnabled: true
         focusPolicy: Qt.NoFocus
         activeFocusOnTab: false
-        implicitHeight: 34
+        implicitHeight: 36
+        font.pixelSize: 13
 
         contentItem: Text {
             text: control.text
-            color: control.enabled ? "#F4F4F6" : "#8A8A8A"
+            color: control.enabled
+                ? (control.accent ? "#F7F7F8" : textPrimary)
+                : "#8A8A8A"
             horizontalAlignment: Text.AlignHCenter
             verticalAlignment: Text.AlignVCenter
-            font.pixelSize: 13
+            font.pixelSize: control.font.pixelSize
             font.weight: control.accent ? Font.DemiBold : Font.Medium
+            elide: Text.ElideRight
         }
 
         background: Rectangle {
-            radius: 10
+            radius: 12
             border.width: 1
-            border.color: control.accent ? "#A9A9A9" : "#555555"
-            color: control.accent
-                ? (control.down ? "#606060" : (control.hovered ? "#6E6E6E" : "#676767"))
-                : (control.down ? "#2D2D2D" : (control.hovered ? "#363636" : "#313131"))
-            opacity: control.enabled ? 1.0 : 0.45
+            border.color: control.accent ? "#B4B4B4" : "#505050"
+            opacity: control.enabled ? 1.0 : 0.5
+            gradient: Gradient {
+                GradientStop {
+                    position: 0
+                    color: control.accent
+                        ? (control.pressed ? "#727272" : (control.hovered ? "#858585" : "#7D7D7D"))
+                        : (control.pressed ? "#323232" : (control.hovered ? "#3B3B3B" : "#363636"))
+                }
+                GradientStop {
+                    position: 1
+                    color: control.accent
+                        ? (control.pressed ? "#666666" : (control.hovered ? "#747474" : "#6E6E6E"))
+                        : (control.pressed ? "#292929" : (control.hovered ? "#323232" : "#2D2D2D"))
+                }
+            }
+            scale: control.pressed ? 0.97 : (control.hovered ? 1.025 : 1.0)
+
+            Behavior on scale {
+                NumberAnimation { duration: 120; easing.type: Easing.OutCubic }
+            }
+            Behavior on opacity {
+                NumberAnimation { duration: 120 }
+            }
+            Behavior on border.color {
+                ColorAnimation { duration: 120 }
+            }
         }
     }
 
-    component ModeArrowButton: Button {
+    component ModeArrowButton: AbstractButton {
         id: control
-        property string arrowText: "▲"
+        property string arrowText: "?"
         property color activeColor: "#3F7A4A"
         property bool active: false
         implicitWidth: 26
@@ -181,24 +208,34 @@ Window {
         focusPolicy: Qt.NoFocus
         activeFocusOnTab: false
 
-        text: ""
-
         contentItem: Text {
             text: control.arrowText
             color: "#F0F0F0"
             horizontalAlignment: Text.AlignHCenter
             verticalAlignment: Text.AlignVCenter
-            font.pixelSize: 11
+            font.pixelSize: 10
             font.weight: Font.DemiBold
         }
 
         background: Rectangle {
-            radius: 6
+            radius: 7
             border.width: 1
-            border.color: control.active ? "#BBBBBB" : "#5B5B5B"
-            color: control.active
-                ? control.activeColor
-                : (control.down ? "#3D3D3D" : (control.hovered ? "#363636" : "#2E2E2E"))
+            border.color: control.active ? "#C4C4C4" : "#5B5B5B"
+            gradient: Gradient {
+                GradientStop {
+                    position: 0
+                    color: control.active
+                        ? Qt.lighter(control.activeColor, control.pressed ? 0.92 : (control.hovered ? 1.03 : 1.0))
+                        : (control.pressed ? "#353535" : (control.hovered ? "#3D3D3D" : "#333333"))
+                }
+                GradientStop {
+                    position: 1
+                    color: control.active
+                        ? Qt.darker(control.activeColor, control.pressed ? 1.15 : 1.05)
+                        : (control.pressed ? "#2C2C2C" : (control.hovered ? "#343434" : "#2A2A2A"))
+                }
+            }
+            Behavior on border.color { ColorAnimation { duration: 120 } }
         }
     }
 
@@ -423,24 +460,27 @@ Window {
 
         spacing: 4
 
-        Button {
+        Rectangle {
             implicitWidth: 20
             implicitHeight: 20
-            text: "\u25C0"
-            focusPolicy: Qt.NoFocus
-            onClicked: stepper.value = stepper.clamp(stepper.value - 1)
-            contentItem: Text {
-                text: parent.text
+            radius: 6
+            color: leftHit.pressed ? "#4D4D4D" : (leftHit.containsMouse ? "#444444" : "#3A3A3A")
+            border.width: 1
+            border.color: leftHit.pressed ? "#767676" : "#595959"
+
+            Text {
+                anchors.centerIn: parent
+                text: "◀"
                 color: "#E7E7EA"
-                horizontalAlignment: Text.AlignHCenter
-                verticalAlignment: Text.AlignVCenter
                 font.pixelSize: 9
+                font.weight: Font.DemiBold
             }
-            background: Rectangle {
-                radius: 5
-                color: parent.down ? "#4A4A4A" : (parent.hovered ? "#3F3F3F" : "#353535")
-                border.color: "#5A5A5A"
-                border.width: 1
+
+            MouseArea {
+                id: leftHit
+                anchors.fill: parent
+                hoverEnabled: true
+                onClicked: stepper.value = stepper.clamp(stepper.value - 1)
             }
         }
 
@@ -474,24 +514,27 @@ Window {
             }
         }
 
-        Button {
+        Rectangle {
             implicitWidth: 20
             implicitHeight: 20
-            text: "\u25B6"
-            focusPolicy: Qt.NoFocus
-            onClicked: stepper.value = stepper.clamp(stepper.value + 1)
-            contentItem: Text {
-                text: parent.text
+            radius: 6
+            color: rightHit.pressed ? "#4D4D4D" : (rightHit.containsMouse ? "#444444" : "#3A3A3A")
+            border.width: 1
+            border.color: rightHit.pressed ? "#767676" : "#595959"
+
+            Text {
+                anchors.centerIn: parent
+                text: "▶"
                 color: "#E7E7EA"
-                horizontalAlignment: Text.AlignHCenter
-                verticalAlignment: Text.AlignVCenter
                 font.pixelSize: 9
+                font.weight: Font.DemiBold
             }
-            background: Rectangle {
-                radius: 5
-                color: parent.down ? "#4A4A4A" : (parent.hovered ? "#3F3F3F" : "#353535")
-                border.color: "#5A5A5A"
-                border.width: 1
+
+            MouseArea {
+                id: rightHit
+                anchors.fill: parent
+                hoverEnabled: true
+                onClicked: stepper.value = stepper.clamp(stepper.value + 1)
             }
         }
 
@@ -553,6 +596,7 @@ Window {
             Layout.fillWidth: true
             Layout.fillHeight: true
             clip: true
+
 
             ColumnLayout {
                 width: Math.max(220, diceWindow.width - 32)
