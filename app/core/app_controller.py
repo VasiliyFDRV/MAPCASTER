@@ -305,6 +305,10 @@ class AppController(QObject):
         self._event_bus.publish("scene.back_requested", {"source": "map_window"})
 
     @Slot()
+    def request_app_exit(self) -> None:
+        self._event_bus.publish("app.exit_requested", {"source": "launcher_window"})
+
+    @Slot()
     def mark_scene_dirty(self) -> None:
         if self._active_scene_data is None:
             return

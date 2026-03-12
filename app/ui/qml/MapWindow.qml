@@ -17,7 +17,7 @@ Window {
     property bool panelExpanded: false
     property real panelHandleWidth: 22
     property real panelBodyWidth: 72
-    property real panelRevealZoneWidth: 124
+    property real panelRevealZoneWidth: 62
     property real viewScale: 1.0
     property real viewOffsetX: 0.0
     property real viewOffsetY: 0.0
@@ -111,10 +111,9 @@ Window {
     }
 
     function shouldShowPanelPeek() {
-        var threshold = panelBodyWidth + panelHandleWidth + 40
         return panelExpanded
             || pointerOverPanelUi
-            || (pointerInsideMap && pointerX <= threshold)
+            || (pointerInsideMap && pointerX <= panelRevealZoneWidth)
     }
 
     function canToggleFullscreenByDoubleClick(toolName) {
@@ -1345,10 +1344,13 @@ Window {
         }
     }
 
-    component ToolButton: Button {
+    component ToolButton: AbstractButton {
         id: control
         property bool accent: false
+        property bool highlighted: false
         hoverEnabled: true
+        focusPolicy: Qt.NoFocus
+        activeFocusOnTab: false
         implicitHeight: 32
         font.pixelSize: 13
 
@@ -1409,13 +1411,15 @@ Window {
         }
     }
 
-    component IconSquareButton: Button {
+    component IconSquareButton: AbstractButton {
         id: control
         property string iconText: ""
         property url iconSource: ""
         property bool selectedState: false
         property string hintText: ""
         hoverEnabled: true
+        focusPolicy: Qt.NoFocus
+        activeFocusOnTab: false
         implicitWidth: 52
         implicitHeight: 52
 
@@ -2669,9 +2673,9 @@ Window {
             radius: 14
             anchors.right: parent.right
             anchors.verticalCenter: parent.verticalCenter
-            color: "#2A3038"
+            color: "transparent"
             visible: panelExpanded || shouldShowPanelPeek()
-            opacity: panelExpanded ? 0.96 : 0.92
+            opacity: 1.0
 
             Column {
                 anchors.centerIn: parent
@@ -2682,7 +2686,7 @@ Window {
                         width: 8
                         height: 8
                         radius: 4
-                        color: "#E9EDF3"
+                        color: "#E8E8E8"
                         opacity: 0.9
                     }
                 }

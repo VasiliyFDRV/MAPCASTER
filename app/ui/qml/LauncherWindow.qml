@@ -14,6 +14,11 @@ Window {
     visible: true
     color: "#111111"
     title: "DnD Maps - Лаунчер"
+
+    onClosing: function(close) {
+        close.accepted = true
+        appController.request_app_exit()
+    }
     property int selectedAdventureIndex: -1
     property int selectedSceneIndex: -1
     property string pendingFileTarget: "map"
@@ -195,10 +200,12 @@ Window {
         }
     }
 
-    component AppButton: Button {
+    component AppButton: AbstractButton {
         id: control
         property bool accent: false
         hoverEnabled: true
+        focusPolicy: Qt.NoFocus
+        activeFocusOnTab: false
         implicitHeight: 36
         font.pixelSize: 13
 

@@ -3,6 +3,7 @@
 from pathlib import Path
 
 from PySide6.QtCore import QUrl
+from PySide6.QtGui import QGuiApplication
 from PySide6.QtQml import QQmlApplicationEngine, QQmlComponent
 
 from app.core.app_controller import AppController
@@ -14,16 +15,29 @@ class WindowManager:
         self._qml_root = qml_root
         self._event_bus = event_bus
         self._engine = QQmlApplicationEngine()
+        self._engine.quit.connect(self._on_engine_quit)
         self._engine.rootContext().setContextProperty("appController", app_controller)
         self._engine.rootContext().setContextProperty("eventBus", event_bus)
         self._windows: dict[str, object | None] = {}
+        self._launcher_closing_connected = False
+        self._shutdown_in_progress = False
 
         self._event_bus.subscribe("scene.open_requested", self._on_scene_open_requested)
         self._event_bus.subscribe("scene.saved", self._on_scene_saved)
+        self._event_bus.subscribe("app.exit_requested", self._on_app_exit_requested)
 
     def create_windows(self) -> None:
         # Launcher starts immediately; map/background are created lazily on first scene open.
         self._windows["launcher"] = self._create_window("LauncherWindow.qml")
+        launcher = self._windows["launcher"]
+        if launcher is not None and hasattr(launcher, "closing") and not self._launcher_closing_connected:
+            launcher.closing.connect(self._on_launcher_closing)
+            self._launcher_closing_connected = True
+        if launcher is not None and hasattr(launcher, "visibleChanged"):
+            launcher.visibleChanged.connect(self._on_launcher_visible_changed)
+        if launcher is not None and hasattr(launcher, "destroyed"):
+            launcher.destroyed.connect(self._on_launcher_destroyed)
+
         self._windows["map"] = None
         self._windows["background"] = None
 
@@ -55,6 +69,29 @@ class WindowManager:
             window.show()
         return window
 
+    def _on_engine_quit(self) -> None:
+        app = QGuiApplication.instance()
+        if app is not None:
+            app.quit()
+
+    def _on_launcher_closing(self, close_event: object) -> None:
+        # User closed launcher window -> terminate full application.
+        self._on_app_exit_requested("app.exit_requested", {})
+
+    def _on_launcher_destroyed(self, _obj: object = None) -> None:
+        self._on_app_exit_requested("app.exit_requested", {})
+
+    def _on_launcher_visible_changed(self) -> None:
+        launcher = self._windows.get("launcher")
+        if launcher is None or not hasattr(launcher, "isVisible"):
+            return
+        try:
+            if not bool(launcher.isVisible()):
+                self._on_app_exit_requested("app.exit_requested", {})
+        except RuntimeError:
+            # Underlying object is already gone; continue with shutdown path.
+            self._on_app_exit_requested("app.exit_requested", {})
+
     def _on_scene_open_requested(self, event_name: str, payload: dict[str, object]) -> None:
         adventure = str(payload.get("adventure", "")).strip()
         scene = str(payload.get("scene", "")).strip()
@@ -72,6 +109,26 @@ class WindowManager:
         if not adventure or not scene:
             return
         self._set_window_title("map", f"DnD Maps - Карта - {adventure}/{scene} [сохранено]")
+
+    def _on_app_exit_requested(self, event_name: str, payload: dict[str, object]) -> None:
+        if self._shutdown_in_progress:
+            return
+        self._shutdown_in_progress = True
+
+        for key in ("map", "background", "launcher"):
+            window = self._windows.get(key)
+            if window is None:
+                continue
+            if hasattr(window, "close"):
+                try:
+                    window.close()
+                except RuntimeError:
+                    pass
+            self._windows[key] = None
+
+        app = QGuiApplication.instance()
+        if app is not None:
+            app.quit()
 
     def _set_window_title(self, key: str, title: str) -> None:
         window = self._windows.get(key)
