@@ -111,6 +111,10 @@
         return Math.random() * (max - min) + min;
       }
 
+      function jitter(base, spread) {
+        return base * (1 + random(-spread, spread));
+      }
+
       function clamp(v, min, max) {
         return Math.max(min, Math.min(max, v));
       }
@@ -244,21 +248,25 @@
 
         const rollId = ++rollSeq;
 
+        const throwPower = random(0.85, 1.2);
+        const spinPower = random(1.05, 1.65);
+        const driftPower = random(0.75, 1.3);
+
         const state = {
-          px: centerX + random(-w * 0.02, w * 0.02),
-          py: h * random(0.12, 0.16),
-          vx: random(-0.05, 0.05),
-          vy: random(2.2, 3.4),
+          px: centerX + random(-w * 0.03, w * 0.03),
+          py: h * random(0.10, 0.19),
+          vx: random(-0.08, 0.08) * driftPower,
+          vy: random(1.8, 4.2) * throwPower,
 
-          z: random(210, 250),
-          vz: random(30, 70),
+          z: random(190, 280),
+          vz: random(20, 95) * throwPower,
 
-          rx: random(-130, -70),
-          ry: random(6, 30),
-          rz: random(-35, 35),
-          vrx: random(180, 310),
-          vry: random(220, 380),
-          vrz: random(90, 180),
+          rx: random(-170, -30),
+          ry: random(-45, 260),
+          rz: random(-80, 80),
+          vrx: random(180, 620) * spinPower,
+          vry: random(210, 700) * spinPower,
+          vrz: random(110, 420) * spinPower,
 
           bounces: 0,
           settledFor: 0,
@@ -274,8 +282,11 @@
           alignFrames: 0
         };
 
-        const gravity = 1850;
-        const restitution = 0.2;
+        const gravity = jitter(1850, 0.11);
+        const restitution = clamp(jitter(0.2, 0.2), 0.12, 0.34);
+        const dampVx = jitter(0.988, 0.01);
+        const dampVy = jitter(0.996, 0.006);
+        const dampRot = jitter(0.982, 0.012);
 
         let lastTs = performance.now();
 
@@ -296,21 +307,21 @@
             state.ry += state.vry * dt;
             state.rz += state.vrz * dt;
 
-            state.vx *= 0.988;
-            state.vy *= 0.996;
-            state.vrx *= 0.982;
-            state.vry *= 0.982;
-            state.vrz *= 0.982;
+            state.vx *= dampVx;
+            state.vy *= dampVy;
+            state.vrx *= dampRot;
+            state.vry *= dampRot;
+            state.vrz *= dampRot;
 
             if (state.z <= 0) {
               state.z = 0;
-              if (Math.abs(state.vz) > 65 && state.bounces < 2) {
+              if (Math.abs(state.vz) > random(55, 82) && state.bounces < (Math.random() < 0.45 ? 3 : 2)) {
                 state.vz = -Math.abs(state.vz) * restitution;
-                state.vx += random(-0.025, 0.025);
-                state.vy += random(-0.10, 0.08);
-                state.vrx += random(-14, 14);
-                state.vry += random(-16, 16);
-                state.vrz += random(-10, 10);
+                state.vx += random(-0.04, 0.04) * driftPower;
+                state.vy += random(-0.16, 0.12) * driftPower;
+                state.vrx += random(-22, 22) * spinPower;
+                state.vry += random(-24, 24) * spinPower;
+                state.vrz += random(-16, 16) * spinPower;
                 state.bounces += 1;
               } else {
                 state.vz = 0;
@@ -440,6 +451,12 @@
   </script>
 </body>
 </html>
+
+
+
+
+
+
 
 
 
