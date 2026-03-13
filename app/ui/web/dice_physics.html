@@ -287,6 +287,10 @@
         const dampVx = jitter(0.988, 0.01);
         const dampVy = jitter(0.996, 0.006);
         const dampRot = jitter(0.982, 0.012);
+        const alignStartGroundedDelay = random(0.03, 0.18);
+        const alignSpeedBoost = random(1.6, 2.4);
+        const alignPlopBoost = random(1.3, 2.0);
+        const alignForceSnapDelay = random(0.28, 0.62);
 
         let lastTs = performance.now();
 
@@ -348,7 +352,7 @@
             }
 
             // Continuous stabilization with locked target to avoid jitter.
-            if (grounded && planarSpeed < 0.62 && alignSpin < 90 && !state.alignReady) {
+            if (grounded && state.groundedFor >= alignStartGroundedDelay && planarSpeed < 1.05 && alignSpin < 180 && !state.alignReady) {
               if (!state.alignTarget) {
                 state.alignTarget = faceUpTargetFromPose(state.rx, state.ry).target;
                 state.alignReady = false;
@@ -369,20 +373,20 @@
               const alignDistance = angularDistance(state.rx, target.rx)
                 + angularDistance(state.ry, target.ry);
               const closeness = clamp(1 - alignDistance / 180, 0, 1);
-              const settleGate = clamp((0.72 - planarSpeed) / 0.72, 0, 1) * clamp((110 - alignSpin) / 110, 0, 1);
+              const settleGate = clamp((1.18 - planarSpeed) / 1.18, 0, 1) * clamp((210 - alignSpin) / 210, 0, 1);
 
-              const slowZone = clamp((0.24 - planarSpeed) / 0.24, 0, 1);
-              const plopBoost = slowZone * slowZone * (0.24 + closeness * 0.56);
-              const baseAssist = (0.014 + closeness * 0.11) * settleGate;
+              const slowZone = clamp((0.58 - planarSpeed) / 0.58, 0, 1);
+              const plopBoost = slowZone * slowZone * (0.24 + closeness * 0.56) * alignPlopBoost;
+              const baseAssist = (0.014 + closeness * 0.11) * settleGate * alignSpeedBoost;
               const assist = baseAssist + plopBoost;
 
-              const t = clamp(assist * dt * 60, 0, 1.25);
+              const t = clamp(assist * dt * 60, 0, 2.2);
               state.rx = lerpAngle(state.rx, target.rx, t);
-              state.ry = lerpAngle(state.ry, target.ry, t * 0.75);
+              state.ry = lerpAngle(state.ry, target.ry, t * 0.92);
               state.rz = state.alignStartRz;
 
               // Kill shaking once close to stable face-up orientation.
-              const forceSnap = state.groundedFor > 0.42 && alignDistance < 12.0;
+              const forceSnap = state.groundedFor > alignForceSnapDelay && alignDistance < 12.0;
               if (alignDistance < 3.2 || forceSnap) {
                 state.rx = target.rx;
                 state.ry = target.ry;
@@ -451,6 +455,9 @@
   </script>
 </body>
 </html>
+
+
+
 
 
 
