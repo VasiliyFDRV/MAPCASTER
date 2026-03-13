@@ -1,0 +1,476 @@
+﻿<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Dice Physics Overlay</title>
+  <style>
+    html, body {
+      margin: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: transparent;
+      pointer-events: none;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+
+    .scene {
+      position: absolute;
+      inset: 0;
+      perspective: 1250px;
+      transform-style: preserve-3d;
+      pointer-events: none;
+    }
+
+    .dice-wrap {
+      position: absolute;
+      width: 88px;
+      height: 88px;
+      transform-style: preserve-3d;
+      will-change: transform;
+      opacity: 0;
+    }
+
+    .dice {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      width: 50px;
+      height: 50px;
+      transform-style: preserve-3d;
+      transform: translate(-50%, -50%);
+      will-change: transform;
+    }
+
+    .face {
+      position: absolute;
+      width: 50px;
+      height: 50px;
+      border-radius: 7px;
+      border: 2px solid #8f9cb5;
+      box-sizing: border-box;
+      background: linear-gradient(150deg, #f9fbff 0%, #d9e1f0 85%);
+      color: #212736;
+      display: grid;
+      place-items: center;
+      font-family: Segoe UI, Arial, sans-serif;
+      font-size: 18px;
+      font-weight: 800;
+      backface-visibility: hidden;
+      box-shadow: inset 0 2px 8px rgba(255, 255, 255, 0.4);
+    }
+
+    .f1 { transform: rotateY(0deg) translateZ(25px); }
+    .f2 { transform: rotateY(90deg) translateZ(25px); }
+    .f3 { transform: rotateY(180deg) translateZ(25px); }
+    .f4 { transform: rotateY(-90deg) translateZ(25px); }
+    .f5 { transform: rotateX(90deg) translateZ(25px); }
+    .f6 { transform: rotateX(-90deg) translateZ(25px); }
+
+    .shadow {
+      position: absolute;
+      width: 68px;
+      height: 14px;
+      border-radius: 50%;
+      background: rgba(0, 0, 0, 0.4);
+      left: 0;
+      top: 0;
+      filter: blur(4px);
+      will-change: transform, opacity;
+      opacity: 0;
+    }
+  </style>
+</head>
+<body>
+  <div class="scene" id="scene">
+    <div class="shadow" id="shadow"></div>
+    <div class="dice-wrap" id="wrap">
+      <div class="dice" id="dice">
+        <div class="face f1">1</div>
+        <div class="face f2">2</div>
+        <div class="face f3">3</div>
+        <div class="face f4">4</div>
+        <div class="face f5">5</div>
+        <div class="face f6">6</div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    (function () {
+      const wrap = document.getElementById('wrap');
+      const dice = document.getElementById('dice');
+      const shadow = document.getElementById('shadow');
+
+      let raf = 0;
+      let rollSeq = 0;
+
+      function random(min, max) {
+        return Math.random() * (max - min) + min;
+      }
+
+      function clamp(v, min, max) {
+        return Math.max(min, Math.min(max, v));
+      }
+
+      function normalizeAngle(deg) {
+        let a = deg % 360;
+        if (a > 180) a -= 360;
+        if (a < -180) a += 360;
+        return a;
+      }
+
+      function lerpAngle(a, b, t) {
+        const delta = normalizeAngle(b - a);
+        return a + delta * t;
+      }
+
+      function angularDistance(a, b) {
+        return Math.abs(normalizeAngle(a - b));
+      }
+
+      function stopAnimation() {
+        if (raf) {
+          cancelAnimationFrame(raf);
+          raf = 0;
+        }
+      }
+
+      function rotateVec(v, rx, ry, rz) {
+        const x0 = v.x;
+        const y0 = v.y;
+        const z0 = v.z;
+
+        const az = rz * Math.PI / 180;
+        const cz = Math.cos(az);
+        const sz = Math.sin(az);
+        const x1 = x0 * cz - y0 * sz;
+        const y1 = x0 * sz + y0 * cz;
+        const z1 = z0;
+
+        const ay = ry * Math.PI / 180;
+        const cy = Math.cos(ay);
+        const sy = Math.sin(ay);
+        const x2 = x1 * cy + z1 * sy;
+        const y2 = y1;
+        const z2 = -x1 * sy + z1 * cy;
+
+        const ax = rx * Math.PI / 180;
+        const cx = Math.cos(ax);
+        const sx = Math.sin(ax);
+        const x3 = x2;
+        const y3 = y2 * cx - z2 * sx;
+        const z3 = y2 * sx + z2 * cx;
+
+        return { x: x3, y: y3, z: z3 };
+      }
+
+      function screenFacingFaceId(rx, ry) {
+        const faces = [
+          { id: 1, n: { x: 0, y: 0, z: 1 } },
+          { id: 2, n: { x: 1, y: 0, z: 0 } },
+          { id: 3, n: { x: 0, y: 0, z: -1 } },
+          { id: 4, n: { x: -1, y: 0, z: 0 } },
+          { id: 5, n: { x: 0, y: -1, z: 0 } },
+          { id: 6, n: { x: 0, y: 1, z: 0 } }
+        ];
+
+        let bestId = faces[0].id;
+        let bestDepth = -1e9;
+        for (let i = 0; i < faces.length; i += 1) {
+          // For table=screen plane we decide target face only by rx/ry.
+          const w = rotateVec(faces[i].n, rx, ry, 0);
+          if (w.z > bestDepth) {
+            bestDepth = w.z;
+            bestId = faces[i].id;
+          }
+        }
+        return bestId;
+      }
+
+      function faceUpTargetFromPose(rx, ry) {
+        const targetFace = screenFacingFaceId(rx, ry);
+        const angles = [0, 90, 180, -90];
+        let best = null;
+        let bestDist = Number.POSITIVE_INFINITY;
+
+        for (let ix = 0; ix < angles.length; ix += 1) {
+          for (let iy = 0; iy < angles.length; iy += 1) {
+            const c = { rx: angles[ix], ry: angles[iy] };
+            const face = screenFacingFaceId(c.rx, c.ry);
+            if (face !== targetFace) {
+              continue;
+            }
+            const d = angularDistance(rx, c.rx) + angularDistance(ry, c.ry);
+            if (d < bestDist) {
+              bestDist = d;
+              best = c;
+            }
+          }
+        }
+
+        if (!best) {
+          return { face: targetFace, target: { rx: rx, ry: ry } };
+        }
+
+        return { face: targetFace, target: { rx: best.rx, ry: best.ry } };
+      }
+
+      function render(state) {
+        const zNorm = clamp(state.z / 260, 0, 1);
+        const cx = state.px;
+        const cy = state.py - state.z * 0.55;
+        const scale = 0.78 + (1 - zNorm) * 0.22;
+
+        wrap.style.opacity = String(clamp(state.alpha, 0, 1));
+        wrap.style.transform = `translate(${cx}px, ${cy}px) translate(-50%, -50%) scale(${scale})`;
+        dice.style.transform =
+          `translate(-50%, -50%) rotateZ(${state.rz}deg) rotateY(${state.ry}deg) rotateX(${state.rx}deg)`;
+
+        const shadowScale = 0.78 + (1 - zNorm) * 0.26;
+        const shadowOpacity = clamp((1 - zNorm) * 0.38, 0, 0.36) * state.alpha;
+        shadow.style.opacity = String(shadowOpacity);
+        shadow.style.transform = `translate(${state.px}px, ${state.py + 28}px) translate(-50%, -50%) scale(${shadowScale})`;
+      }
+
+      window.startD6Roll = function startD6Roll() {
+        stopAnimation();
+
+        const w = window.innerWidth;
+        const h = window.innerHeight;
+        const centerX = w * 0.5;
+
+        const rollId = ++rollSeq;
+
+        const state = {
+          px: centerX + random(-w * 0.02, w * 0.02),
+          py: h * random(0.12, 0.16),
+          vx: random(-0.05, 0.05),
+          vy: random(2.2, 3.4),
+
+          z: random(210, 250),
+          vz: random(30, 70),
+
+          rx: random(-130, -70),
+          ry: random(6, 30),
+          rz: random(-35, 35),
+          vrx: random(180, 310),
+          vry: random(220, 380),
+          vrz: random(90, 180),
+
+          bounces: 0,
+          settledFor: 0,
+          alpha: 1,
+          phase: 'rolling',
+          phaseTime: 0,
+          alignTarget: null,
+          alignReady: false,
+          groundedFor: 0,
+          alignStarted: false,
+          alignStartRz: 0,
+          alignMaxRzDelta: 0,
+          alignFrames: 0
+        };
+
+        const gravity = 1850;
+        const restitution = 0.2;
+
+        let lastTs = performance.now();
+
+        render(state);
+
+        function frame(ts) {
+          const dt = Math.min(0.033, (ts - lastTs) / 1000);
+          lastTs = ts;
+
+          if (state.phase === 'rolling') {
+            state.px += state.vx * 62;
+            state.py += state.vy * 62 * dt;
+
+            state.vz += gravity * dt;
+            state.z -= state.vz * dt;
+
+            state.rx += state.vrx * dt;
+            state.ry += state.vry * dt;
+            state.rz += state.vrz * dt;
+
+            state.vx *= 0.988;
+            state.vy *= 0.996;
+            state.vrx *= 0.982;
+            state.vry *= 0.982;
+            state.vrz *= 0.982;
+
+            if (state.z <= 0) {
+              state.z = 0;
+              if (Math.abs(state.vz) > 65 && state.bounces < 2) {
+                state.vz = -Math.abs(state.vz) * restitution;
+                state.vx += random(-0.025, 0.025);
+                state.vy += random(-0.10, 0.08);
+                state.vrx += random(-14, 14);
+                state.vry += random(-16, 16);
+                state.vrz += random(-10, 10);
+                state.bounces += 1;
+              } else {
+                state.vz = 0;
+              }
+
+              state.vx *= 0.86;
+              state.vy *= 0.90;
+              state.vrx *= 0.75;
+              state.vry *= 0.75;
+              state.vrz *= 0.75;
+            }
+
+            state.px = clamp(state.px, centerX - w * 0.11, centerX + w * 0.11);
+            state.py = clamp(state.py, h * 0.22, h * 0.62);
+
+            const planarSpeed = Math.abs(state.vx) + Math.abs(state.vy);
+            const spin = Math.abs(state.vrx) + Math.abs(state.vry) + Math.abs(state.vrz);
+            const alignSpin = Math.abs(state.vrx) + Math.abs(state.vry);
+            const grounded = state.z === 0 && Math.abs(state.vz) < 1e-4;
+            if (grounded) {
+              state.groundedFor += dt;
+            } else {
+              state.groundedFor = 0;
+            }
+
+            // Continuous stabilization with locked target to avoid jitter.
+            if (grounded && planarSpeed < 0.62 && alignSpin < 90 && !state.alignReady) {
+              if (!state.alignTarget) {
+                state.alignTarget = faceUpTargetFromPose(state.rx, state.ry).target;
+                state.alignReady = false;
+                state.alignStarted = true;
+                state.alignStartRz = state.rz;
+                state.vrz = 0;
+                state.alignMaxRzDelta = 0;
+                state.alignFrames = 0;
+                console.log("[dice-debug] roll=" + rollId + " align-start rx=" + state.rx.toFixed(2) + " ry=" + state.ry.toFixed(2) + " rz=" + state.rz.toFixed(2) + " tx=" + state.alignTarget.rx.toFixed(2) + " ty=" + state.alignTarget.ry.toFixed(2));
+              }
+
+              const target = state.alignTarget;
+              state.alignFrames += 1;
+              const rzDelta = Math.abs(normalizeAngle(state.rz - state.alignStartRz));
+              if (rzDelta > state.alignMaxRzDelta) {
+                state.alignMaxRzDelta = rzDelta;
+              }
+              const alignDistance = angularDistance(state.rx, target.rx)
+                + angularDistance(state.ry, target.ry);
+              const closeness = clamp(1 - alignDistance / 180, 0, 1);
+              const settleGate = clamp((0.72 - planarSpeed) / 0.72, 0, 1) * clamp((110 - alignSpin) / 110, 0, 1);
+
+              const slowZone = clamp((0.24 - planarSpeed) / 0.24, 0, 1);
+              const plopBoost = slowZone * slowZone * (0.24 + closeness * 0.56);
+              const baseAssist = (0.014 + closeness * 0.11) * settleGate;
+              const assist = baseAssist + plopBoost;
+
+              const t = clamp(assist * dt * 60, 0, 1.25);
+              state.rx = lerpAngle(state.rx, target.rx, t);
+              state.ry = lerpAngle(state.ry, target.ry, t * 0.75);
+              state.rz = state.alignStartRz;
+
+              // Kill shaking once close to stable face-up orientation.
+              const forceSnap = state.groundedFor > 0.42 && alignDistance < 12.0;
+              if (alignDistance < 3.2 || forceSnap) {
+                state.rx = target.rx;
+                state.ry = target.ry;
+                state.rz = state.alignStartRz;
+                
+                state.vrx = 0;
+                state.vry = 0;
+                state.vrz = 0;
+                state.alignReady = true;
+                console.log(`[dice-debug] roll=${rollId} align-end reason=${forceSnap ? "force" : "normal"} ad=${alignDistance.toFixed(3)} rz=${state.rz.toFixed(2)} rzMaxDelta=${state.alignMaxRzDelta.toFixed(2)} frames=${state.alignFrames}`);
+              } else {
+                state.vrx *= 0.66;
+                state.vry *= 0.72;
+                state.vrz *= 0.66;
+              }
+            } else if (!grounded) {
+              if (state.alignStarted && !state.alignReady) {
+                console.log(`[dice-debug] roll=${rollId} align-abort rz=${state.rz.toFixed(2)} rzMaxDelta=${state.alignMaxRzDelta.toFixed(2)} frames=${state.alignFrames}`);
+              }
+              state.alignTarget = null;
+              state.alignReady = false;
+              state.alignStarted = false;
+            }
+
+            const resting = grounded && planarSpeed < 0.025 && alignSpin < 2.4 && state.alignReady;
+            if (resting) {
+              state.settledFor += dt;
+            } else {
+              state.settledFor = 0;
+            }
+
+            if (state.settledFor > 0.34) {
+              console.log(`[dice-debug] roll=${rollId} hold-enter rz=${state.rz.toFixed(2)} rzMaxDelta=${state.alignMaxRzDelta.toFixed(2)} alignReady=${state.alignReady}`);
+              state.vx = 0;
+              state.vy = 0;
+              state.vz = 0;
+              state.vrx = 0;
+              state.vry = 0;
+              state.vrz = 0;
+              state.phase = 'hold';
+              state.phaseTime = 0;
+            }
+          } else if (state.phase === 'hold') {
+            state.phaseTime += dt;
+            state.z = 0;
+            if (state.phaseTime >= 1.15) {
+              state.phase = 'fade';
+              state.phaseTime = 0;
+            }
+          } else if (state.phase === 'fade') {
+            state.alpha = Math.max(0, state.alpha - dt * 1.1);
+            if (state.alpha <= 0.02) {
+              render(state);
+              stopAnimation();
+              return;
+            }
+          }
+
+          render(state);
+          raf = requestAnimationFrame(frame);
+        }
+
+        raf = requestAnimationFrame(frame);
+      };
+    })();
+  </script>
+</body>
+</html>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

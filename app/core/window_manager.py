@@ -21,6 +21,7 @@ class WindowManager:
     ) -> None:
         self._qml_root = qml_root
         self._event_bus = event_bus
+        self._dice_controller = dice_controller
         self._engine = QQmlApplicationEngine()
         self._engine.quit.connect(self._on_engine_quit)
         self._engine.rootContext().setContextProperty("appController", app_controller)
@@ -50,6 +51,7 @@ class WindowManager:
         self._windows["map"] = None
         self._windows["background"] = None
         self._windows["dice"] = None
+        self._set_map_window_open_state(False)
 
     def _ensure_window(self, key: str) -> None:
         if key == "map":
@@ -64,6 +66,13 @@ class WindowManager:
             return
         if self._windows.get(key) is None:
             self._windows[key] = self._create_window(qml_name)
+            if key == "map":
+                self._set_map_window_open_state(True)
+                window = self._windows.get("map")
+                if window is not None and hasattr(window, "destroyed"):
+                    window.destroyed.connect(self._on_map_destroyed)
+                if window is not None and hasattr(window, "visibleChanged"):
+                    window.visibleChanged.connect(self._on_map_visible_changed)
 
     def _create_window(self, qml_name: str) -> object:
         qml_path = self._qml_root / qml_name
@@ -109,6 +118,28 @@ class WindowManager:
             window.raise_()
         if hasattr(window, "requestActivate"):
             window.requestActivate()
+
+    def _set_map_window_open_state(self, is_open: bool) -> None:
+        try:
+            if hasattr(self._dice_controller, "set_map_window_open"):
+                self._dice_controller.set_map_window_open(bool(is_open))
+        except RuntimeError:
+            pass
+
+    def _on_map_destroyed(self, _obj: object = None) -> None:
+        self._windows["map"] = None
+        self._set_map_window_open_state(False)
+
+    def _on_map_visible_changed(self) -> None:
+        window = self._windows.get("map")
+        if window is None or not hasattr(window, "isVisible"):
+            self._set_map_window_open_state(False)
+            return
+        try:
+            self._set_map_window_open_state(bool(window.isVisible()))
+        except RuntimeError:
+            self._windows["map"] = None
+            self._set_map_window_open_state(False)
 
     def _on_engine_quit(self) -> None:
         app = QGuiApplication.instance()
@@ -187,6 +218,8 @@ class WindowManager:
                     pass
             self._windows[key] = None
 
+        self._set_map_window_open_state(False)
+
         app = QGuiApplication.instance()
         if app is not None:
             app.quit()
@@ -201,3 +234,5 @@ class WindowManager:
             except RuntimeError:
                 # Window was closed by user and underlying C++ object is already destroyed.
                 self._windows[key] = None
+                if key == "map":
+                    self._set_map_window_open_state(False)

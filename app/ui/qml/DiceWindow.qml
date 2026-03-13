@@ -77,9 +77,10 @@ Window {
         }
     }
 
+
     function rollD20Only() {
         clearResults()
-        d20Result = diceController.roll_d20(effectiveCount(d20Count), d20Mode, d20Bonus)
+        diceController.request_roll_d20(effectiveCount(d20Count), d20Mode, d20Bonus)
     }
 
     function rollStandardOnly() {
@@ -87,7 +88,7 @@ Window {
             return
         }
         clearResults()
-        standardResult = diceController.roll_standard(d4Count, d6Count, d8Count, d10Count, d12Count, standardBonus)
+        diceController.request_roll_standard(d4Count, d6Count, d8Count, d10Count, d12Count, standardBonus)
     }
 
     function rollSingleStandardDie(sides, configuredCount) {
@@ -104,12 +105,12 @@ Window {
         else if (sides === 12) d12 = c
 
         clearResults()
-        standardResult = diceController.roll_standard(d4, d6, d8, d10, d12, standardBonus)
+        diceController.request_roll_standard(d4, d6, d8, d10, d12, standardBonus)
     }
 
     function rollD100Only() {
         clearResults()
-        d100Result = diceController.roll_d100()
+        diceController.request_roll_d100()
     }
 
     function rollAll() {
@@ -117,7 +118,7 @@ Window {
             return
         }
         clearResults()
-        var combined = diceController.roll_all(
+        diceController.request_roll_all(
             d20Count,
             d20Mode,
             d20Bonus,
@@ -128,12 +129,34 @@ Window {
             d12Count,
             standardBonus
         )
-        d20Result = combined.d20
-        standardResult = combined.standard
+    }
+
+    function handleRollCompleted(payload) {
+        if (!payload || !payload.kind) {
+            return
+        }
+        if (payload.kind === "d20") {
+            d20Result = payload.result
+        } else if (payload.kind === "standard") {
+            standardResult = payload.result
+        } else if (payload.kind === "d100") {
+            d100Result = payload.result
+        } else if (payload.kind === "all") {
+            d20Result = payload.result ? payload.result.d20 : null
+            standardResult = payload.result ? payload.result.standard : null
+        }
     }
 
     onResetTokenChanged: resetState()
     Component.onCompleted: resetState()
+
+    Connections {
+        target: diceController
+        function onRollCompleted(payload) {
+            diceWindow.handleRollCompleted(payload)
+        }
+    }
+
 
     component AppPanel: Rectangle {
         radius: 12

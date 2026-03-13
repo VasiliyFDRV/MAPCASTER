@@ -13,7 +13,9 @@ EventHandler = Callable[[str, dict[str, Any]], None]
 class EventBus(QObject):
     """Simple in-process event bus for app-wide signals."""
 
-    event_emitted = Signal(str, object)
+    eventEmitted = Signal(str, "QVariantMap")
+    # Backward-compatible alias for existing QML handlers/code paths.
+    event_emitted = Signal(str, "QVariantMap")
 
     def __init__(self) -> None:
         super().__init__()
@@ -21,6 +23,7 @@ class EventBus(QObject):
 
     def publish(self, event_name: str, payload: dict[str, Any] | None = None) -> None:
         data = payload or {}
+        self.eventEmitted.emit(event_name, data)
         self.event_emitted.emit(event_name, data)
         for handler in self._handlers[event_name]:
             handler(event_name, data)

@@ -7,6 +7,10 @@ from typing import Any
 class DiceService:
     """Pure dice rolling logic isolated from UI and windows."""
 
+
+    def resolve_mode(self, map_window_open: bool) -> str:
+        return "physics" if map_window_open else "random"
+
     @staticmethod
     def _clamp_int(value: int, min_value: int, max_value: int) -> int:
         return max(min_value, min(max_value, int(value)))
