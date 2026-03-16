@@ -1,4 +1,4 @@
-﻿<!doctype html>
+<!doctype html>
 <html lang="ru">
 <head>
   <meta charset="UTF-8" />
@@ -354,6 +354,10 @@
         return Math.max(min, Math.min(max, v));
       }
 
+      function clampSpinToFloor(current, floorAbs) {
+        const sign = current < 0 ? -1 : 1;
+        return sign * Math.max(Math.abs(current), floorAbs);
+      }
       function normalizeAngle(deg) {
         let a = deg % 360;
         if (a > 180) a -= 360;
@@ -492,6 +496,15 @@
         state.shadow.style.transform = `translate(${state.px}px, ${state.py + 28}px) translate(-50%, -50%) scale(${shadowScale})`;
       }
 
+      window.clearAllDice = function clearAllDice() {
+        const states = Array.from(activeRollStates.values());
+        for (let i = 0; i < states.length; i += 1) {
+          const s = states[i];
+          if (s && typeof s.cleanup === "function") {
+            s.cleanup();
+          }
+        }
+      };
       window.startD6Roll = function startD6Roll(requestId) {
         const nodes = createRollNodes();
         if (!nodes) {
@@ -519,12 +532,16 @@
           z: random(190, 280),
           vz: random(20, 95) * throwPower,
 
-          rx: random(-170, -30),
-          ry: random(-45, 260),
-          rz: random(-80, 80),
-          vrx: random(180, 620) * spinPower,
-          vry: random(210, 700) * spinPower,
-          vrz: random(110, 420) * spinPower,
+          rx: random(0, 360),
+          ry: random(0, 360),
+          rz: random(0, 360),
+          vrx: random(124, 428) * spinPower,
+          vry: random(145, 483) * spinPower,
+          vrz: random(76, 290) * spinPower,
+          baseVrx: 0,
+          baseVry: 0,
+          baseVrz: 0,
+          airTime: 0,
 
           bounces: 0,
           settledFor: 0,
@@ -551,9 +568,12 @@
           shadow: nodes.shadow
         };
 
+        state.baseVrx = Math.abs(state.vrx);
+        state.baseVry = Math.abs(state.vry);
+        state.baseVrz = Math.abs(state.vrz);
         activeRollStates.set(rollId, state);
 
-        let raf = 0;
+                let raf = 0;
         function stopRoll() {
           if (raf) {
             cancelAnimationFrame(raf);
@@ -567,6 +587,8 @@
             state.shadow.parentNode.removeChild(state.shadow);
           }
         }
+
+        state.cleanup = stopRoll;
 
         const gravity = jitter(1850, 0.11);
         const restitution = clamp(jitter(0.2, 0.2), 0.12, 0.34);
@@ -600,11 +622,20 @@
             state.ry += state.vry * dt;
             state.rz += state.vrz * dt;
 
-            state.vx *= dampVx;
+                        state.vx *= dampVx;
             state.vy *= dampVy;
             state.vrx *= dampRot;
             state.vry *= dampRot;
             state.vrz *= dampRot;
+
+            if (state.z > 0) {
+              state.airTime += dt;
+              const fade = clamp(state.airTime / 0.95, 0, 1);
+              const floorScale = 1 - 0.5 * fade; // 100% -> 50% of initial spin in air
+              state.vrx = clampSpinToFloor(state.vrx, state.baseVrx * floorScale);
+              state.vry = clampSpinToFloor(state.vry, state.baseVry * floorScale);
+              state.vrz = clampSpinToFloor(state.vrz, state.baseVrz * floorScale);
+            }
 
             if (state.z <= 0) {
               state.z = 0;
@@ -763,17 +794,6 @@
           } else if (state.phase === 'hold') {
             state.phaseTime += dt;
             state.z = 0;
-            if (state.phaseTime >= 1.15) {
-              state.phase = 'fade';
-              state.phaseTime = 0;
-            }
-          } else if (state.phase === 'fade') {
-            state.alpha = Math.max(0, state.alpha - dt * 1.1);
-            if (state.alpha <= 0.02) {
-              render(state);
-              stopRoll();
-              return;
-            }
           }
 
           if (!state.resultEmitted && state.requestId > 0 && state.resultMeasureAtMs > 0 && ts >= state.resultMeasureAtMs) {
@@ -794,6 +814,15 @@
   </script>
 </body>
 </html>
+
+
+
+
+
+
+
+
+
 
 
 

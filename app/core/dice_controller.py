@@ -189,6 +189,9 @@ class DiceController(QObject):
             },
         )
 
+    @Slot()
+    def request_clear_dice_visuals(self) -> None:
+        self._event_bus.publish("dice.visual.clear_requested", {"source": "ui_interaction"})
     @Slot(int, str, int, int, int, int, int, int, int)
     def request_roll_all(
         self,
@@ -382,7 +385,7 @@ class DiceController(QObject):
                 oldest_request_id = min(self._recent_standard_d6_requests.keys())
                 self._recent_standard_d6_requests.pop(oldest_request_id, None)
 
-        if requested_mode == "physics" and is_standard_d6_only and request_id > 0:
+        if is_standard_d6_only and request_id > 0:
             # Await physics for d6-only batches while map physics is active.
             self._pending_physics_standard_d6[request_id] = dict(req_payload)
             self._start_physics_fallback_timer(request_id, req_payload)
@@ -447,3 +450,6 @@ class DiceController(QObject):
             f"mode={payload.get('mode')}"
         )
         self.rollCompleted.emit(payload)
+
+
+

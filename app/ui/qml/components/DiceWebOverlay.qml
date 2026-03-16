@@ -21,6 +21,12 @@ Item {
         web.runJavaScript("window.startD6Roll && window.startD6Roll(" + String(req) + ");")
     }
 
+    function clearWebDiceNow() {
+        if (pageReady) {
+            web.runJavaScript("window.clearAllDice && window.clearAllDice();")
+        }
+    }
+
     function startBatchNow() {
         if (activeRequestId <= 0 || activeExpectedCount <= 0) {
             return
@@ -37,6 +43,7 @@ Item {
     }
 
     function triggerD6Batch(requestId, count) {
+        clearWebDiceNow()
         activeRequestId = Number(requestId || 0)
         activeExpectedCount = Math.max(1, Number(count || 1))
         activeValues = []
@@ -60,6 +67,7 @@ Item {
     }
 
     function clear() {
+        clearWebDiceNow()
         active = false
         web.opacity = 0.0
         web.visible = false
@@ -123,7 +131,7 @@ Item {
         opacity: 0.0
         backgroundColor: "transparent"
         url: Qt.resolvedUrl("../../web/dice_physics.html")
-        enabled: root.active
+        enabled: false
         focus: false
         z: 1
 
@@ -156,6 +164,8 @@ Item {
         id: hideTimer
         interval: 6000
         repeat: false
-        onTriggered: root.clear()
+        onTriggered: {}
     }
 }
+
+

@@ -1831,6 +1831,7 @@ Window {
     MouseArea {
         id: interactionArea
         anchors.fill: parent
+        z: 231
         hoverEnabled: true
         acceptedButtons: Qt.LeftButton
         cursorShape: currentTool === "pan_zoom"
@@ -1860,6 +1861,7 @@ Window {
         }
 
         onPressed: {
+            diceController.request_clear_dice_visuals()
             if (mouse.button !== Qt.LeftButton) {
                 return
             }
@@ -2655,7 +2657,7 @@ Window {
 
     Rectangle {
         id: leftPanel
-        z: 20
+        z: 260
         width: panelBodyWidth + panelHandleWidth + 10
         height: parent.height
         color: mapWindow.uiPanel
@@ -2974,6 +2976,11 @@ Window {
     Connections {
         target: eventBus
         function handleBusEvent(eventName, payload) {
+            if (eventName === "dice.visual.clear_requested") {
+                diceWebOverlay.clear()
+                mapDiceOverlay.clearAll()
+                return
+            }
             if (eventName !== "dice.visual_roll_requested") {
                 return
             }
@@ -3045,5 +3052,7 @@ Window {
         diceController.set_map_window_open(true)
     }
 }
+
+
 
 

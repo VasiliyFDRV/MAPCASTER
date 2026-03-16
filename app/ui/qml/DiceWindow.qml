@@ -15,6 +15,11 @@ Window {
     color: "#111111"
     title: "DnD Maps - Дайсы"
 
+    TapHandler {
+        id: windowTapClearDiceVisuals
+        acceptedButtons: Qt.AllButtons
+        onTapped: diceController.request_clear_dice_visuals()
+    }
     property int resetToken: 0
 
     property int d20Count: 0
@@ -1446,4 +1451,6 @@ Window {
         onAccepted: updateEditorField("fontColor", selectedColor)
     }
 }
+
+
 
