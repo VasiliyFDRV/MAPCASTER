@@ -1,4 +1,4 @@
-﻿import QtQuick
+import QtQuick
 import QtQuick.Controls
 import QtQuick.Dialogs
 import QtQuick.Layouts
@@ -2989,7 +2989,7 @@ Window {
             }
             if (mapWindow.shouldUseD6PhysicsVisual(payload)) {
                 console.log("[dice-visual] map -> 3d d6", payload.dice.length)
-                diceWebOverlay.triggerD6Batch(Number(payload.request_id || 0), Number(payload.dice.length || 1))
+                diceWebOverlay.triggerD6Batch(Number(payload.request_id || 0), Number(payload.dice.length || 1), Boolean(payload.append))
             } else {
                 console.log("[dice-visual] map -> 2d", payload.dice.length)
                 mapDiceOverlay.trigger2D(payload.dice)
@@ -3052,7 +3052,3 @@ Window {
         diceController.set_map_window_open(true)
     }
 }
-
-
-
-

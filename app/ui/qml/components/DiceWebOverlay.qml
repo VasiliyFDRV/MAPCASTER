@@ -1,4 +1,4 @@
-﻿import QtQuick
+import QtQuick
 import QtWebEngine
 
 Item {
@@ -39,17 +39,26 @@ Item {
     }
 
     function triggerD6(requestId) {
-        triggerD6Batch(requestId, 1)
+        triggerD6Batch(requestId, 1, false)
     }
 
-    function triggerD6Batch(requestId, count) {
-        clearWebDiceNow()
-        activeRequestId = Number(requestId || 0)
-        activeExpectedCount = Math.max(1, Number(count || 1))
-        activeValues = []
+    function triggerD6Batch(requestId, count, appendMode) {
+        var append = Boolean(appendMode)
+        var req = Number(requestId || 0)
+        var addCount = Math.max(1, Number(count || 1))
 
-        if (activeRequestId <= 0) {
+        if (req <= 0) {
             return
+        }
+
+        var sameActive = append && activeRequestId === req && activeExpectedCount > 0
+        if (!sameActive) {
+            clearWebDiceNow()
+            activeRequestId = req
+            activeExpectedCount = addCount
+            activeValues = []
+        } else {
+            activeExpectedCount = activeExpectedCount + addCount
         }
 
         active = true
@@ -59,7 +68,9 @@ Item {
 
         if (pageReady) {
             pendingRoll = false
-            startBatchNow()
+            for (var i = 0; i < addCount; i++) {
+                runD6Script(activeRequestId)
+            }
         } else {
             pendingRoll = true
             web.reload()
@@ -167,5 +178,3 @@ Item {
         onTriggered: {}
     }
 }
-
-
