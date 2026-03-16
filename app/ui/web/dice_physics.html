@@ -147,12 +147,14 @@
         const y0 = v.y;
         const z0 = v.z;
 
-        const az = rz * Math.PI / 180;
-        const cz = Math.cos(az);
-        const sz = Math.sin(az);
-        const x1 = x0 * cz - y0 * sz;
-        const y1 = x0 * sz + y0 * cz;
-        const z1 = z0;
+        // CSS applies right-most transform first.
+        // For `rotateZ(...) rotateY(...) rotateX(...)` the effective order is X -> Y -> Z.
+        const ax = rx * Math.PI / 180;
+        const cx = Math.cos(ax);
+        const sx = Math.sin(ax);
+        const x1 = x0;
+        const y1 = y0 * cx - z0 * sx;
+        const z1 = y0 * sx + z0 * cx;
 
         const ay = ry * Math.PI / 180;
         const cy = Math.cos(ay);
@@ -161,12 +163,12 @@
         const y2 = y1;
         const z2 = -x1 * sy + z1 * cy;
 
-        const ax = rx * Math.PI / 180;
-        const cx = Math.cos(ax);
-        const sx = Math.sin(ax);
-        const x3 = x2;
-        const y3 = y2 * cx - z2 * sx;
-        const z3 = y2 * sx + z2 * cx;
+        const az = rz * Math.PI / 180;
+        const cz = Math.cos(az);
+        const sz = Math.sin(az);
+        const x3 = x2 * cz - y2 * sz;
+        const y3 = x2 * sz + y2 * cz;
+        const z3 = z2;
 
         return { x: x3, y: y3, z: z3 };
       }
@@ -186,6 +188,29 @@
         for (let i = 0; i < faces.length; i += 1) {
           // For table=screen plane we decide target face only by rx/ry.
           const w = rotateVec(faces[i].n, rx, ry, 0);
+          if (w.z > bestDepth) {
+            bestDepth = w.z;
+            bestId = faces[i].id;
+          }
+        }
+        return bestId;
+      }
+
+
+      function topFaceFromEuler(rx, ry, rz) {
+        const faces = [
+          { id: 1, n: { x: 0, y: 0, z: 1 } },
+          { id: 2, n: { x: 1, y: 0, z: 0 } },
+          { id: 3, n: { x: 0, y: 0, z: -1 } },
+          { id: 4, n: { x: -1, y: 0, z: 0 } },
+          { id: 5, n: { x: 0, y: -1, z: 0 } },
+          { id: 6, n: { x: 0, y: 1, z: 0 } }
+        ];
+
+        let bestId = faces[0].id;
+        let bestDepth = -1e9;
+        for (let i = 0; i < faces.length; i += 1) {
+          const w = rotateVec(faces[i].n, rx, ry, rz);
           if (w.z > bestDepth) {
             bestDepth = w.z;
             bestId = faces[i].id;
@@ -239,7 +264,7 @@
         shadow.style.transform = `translate(${state.px}px, ${state.py + 28}px) translate(-50%, -50%) scale(${shadowScale})`;
       }
 
-      window.startD6Roll = function startD6Roll() {
+      window.startD6Roll = function startD6Roll(requestId) {
         stopAnimation();
 
         const w = window.innerWidth;
@@ -279,7 +304,12 @@
           alignStarted: false,
           alignStartRz: 0,
           alignMaxRzDelta: 0,
-          alignFrames: 0
+          alignFrames: 0,
+          alignElapsed: 0,
+          requestId: Number(requestId || 0),
+          resultFace: 0,
+          resultEmitted: false,
+          resultMeasureAtMs: 0
         };
 
         const gravity = jitter(1850, 0.11);
@@ -354,13 +384,16 @@
             // Continuous stabilization with locked target to avoid jitter.
             if (grounded && state.groundedFor >= alignStartGroundedDelay && planarSpeed < 1.05 && alignSpin < 180 && !state.alignReady) {
               if (!state.alignTarget) {
-                state.alignTarget = faceUpTargetFromPose(state.rx, state.ry).target;
+                const facePick = faceUpTargetFromPose(state.rx, state.ry);
+                state.alignTarget = facePick.target;
+                state.resultFace = Number(facePick.face || 0);
                 state.alignReady = false;
                 state.alignStarted = true;
                 state.alignStartRz = state.rz;
                 state.vrz = 0;
                 state.alignMaxRzDelta = 0;
                 state.alignFrames = 0;
+                state.alignElapsed = 0;
                 console.log("[dice-debug] roll=" + rollId + " align-start rx=" + state.rx.toFixed(2) + " ry=" + state.ry.toFixed(2) + " rz=" + state.rz.toFixed(2) + " tx=" + state.alignTarget.rx.toFixed(2) + " ty=" + state.alignTarget.ry.toFixed(2));
               }
 
@@ -396,6 +429,9 @@
                 state.vry = 0;
                 state.vrz = 0;
                 state.alignReady = true;
+                if (!state.resultEmitted && state.requestId > 0 && state.resultMeasureAtMs <= 0) {
+                  state.resultMeasureAtMs = ts + 250;
+                }
                 console.log(`[dice-debug] roll=${rollId} align-end reason=${forceSnap ? "force" : "normal"} ad=${alignDistance.toFixed(3)} rz=${state.rz.toFixed(2)} rzMaxDelta=${state.alignMaxRzDelta.toFixed(2)} frames=${state.alignFrames}`);
               } else {
                 state.vrx *= 0.66;
@@ -409,7 +445,9 @@
               state.alignTarget = null;
               state.alignReady = false;
               state.alignStarted = false;
+              state.alignElapsed = 0;
             }
+
 
             const resting = grounded && planarSpeed < 0.025 && alignSpin < 2.4 && state.alignReady;
             if (resting) {
@@ -420,6 +458,9 @@
 
             if (state.settledFor > 0.34) {
               console.log(`[dice-debug] roll=${rollId} hold-enter rz=${state.rz.toFixed(2)} rzMaxDelta=${state.alignMaxRzDelta.toFixed(2)} alignReady=${state.alignReady}`);
+              if (!state.resultEmitted && state.requestId > 0 && state.resultMeasureAtMs <= 0) {
+                state.resultMeasureAtMs = ts + 250;
+              }
               state.vx = 0;
               state.vy = 0;
               state.vz = 0;
@@ -442,6 +483,14 @@
               render(state);
               stopAnimation();
               return;
+            }
+          }
+
+          if (!state.resultEmitted && state.requestId > 0 && state.resultMeasureAtMs > 0 && ts >= state.resultMeasureAtMs) {
+            state.resultFace = Number(screenFacingFaceId(state.rx, state.ry) || 0);
+            if (state.resultFace > 0) {
+              state.resultEmitted = true;
+              console.log(`[dice-result] request=${state.requestId} value=${state.resultFace}`);
             }
           }
 

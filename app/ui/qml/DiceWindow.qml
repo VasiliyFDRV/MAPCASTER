@@ -1,8 +1,9 @@
 ﻿import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
+import QtQuick.Dialogs
 import QtQuick.Window
-
+import QtWebEngine
 Window {
     id: diceWindow
     objectName: "diceWindow"
@@ -30,11 +31,24 @@ Window {
     property var d20Result: null
     property var standardResult: null
     property var d100Result: null
+    property bool waitingStandardPhysicsResult: false
+    property var pendingStandardFallbackResult: null
 
     property color textPrimary: "#EFEFF2"
     property color textSecondary: "#B0B0B0"
     property color panelColor: "#242424"
     property color panelBorder: "#4A4A4A"
+    property var dieStyles: ({})
+    property string dieEditorDieKey: "d6"
+    property var dieEditorWorking: ({
+        "scalePercent": 100,
+        "color": "#D9E1F0",
+        "fontColor": "#EFEFF2",
+        "material": "Classic",
+        "fontName": "DemiBold",
+        "fontSize": 12
+    })
+    property bool previewWebReady: false
 
     function effectiveCount(countValue) {
         return countValue > 0 ? countValue : 1
@@ -59,6 +73,9 @@ Window {
         d20Result = null
         standardResult = null
         d100Result = null
+        waitingStandardPhysicsResult = false
+        pendingStandardFallbackResult = null
+        physicsFallbackTimer.stop()
     }
 
     function canRollStandard() {
@@ -67,6 +84,14 @@ Window {
 
     function canRollAll() {
         return (d20Count > 0) || canRollStandard()
+    }
+
+    function isSingleStandardD6Request(d4, d6, d8, d10, d12) {
+        return d4 === 0
+            && d6 === 1
+            && d8 === 0
+            && d10 === 0
+            && d12 === 0
     }
 
     function setD20Mode(newMode) {
@@ -88,6 +113,13 @@ Window {
             return
         }
         clearResults()
+        waitingStandardPhysicsResult = isSingleStandardD6Request(d4Count, d6Count, d8Count, d10Count, d12Count)
+        console.log("[dice-ui-debug] rollStandardOnly waiting=" + waitingStandardPhysicsResult
+            + " d4=" + d4Count + " d6=" + d6Count + " d8=" + d8Count + " d10=" + d10Count + " d12=" + d12Count
+            + " bonus=" + standardBonus)
+        if (waitingStandardPhysicsResult) {
+            physicsFallbackTimer.restart()
+        }
         diceController.request_roll_standard(d4Count, d6Count, d8Count, d10Count, d12Count, standardBonus)
     }
 
@@ -105,6 +137,13 @@ Window {
         else if (sides === 12) d12 = c
 
         clearResults()
+        waitingStandardPhysicsResult = isSingleStandardD6Request(d4, d6, d8, d10, d12)
+        console.log("[dice-ui-debug] rollSingleStandardDie sides=" + sides + " configured=" + configuredCount
+            + " effective=" + c + " waiting=" + waitingStandardPhysicsResult
+            + " d4=" + d4 + " d6=" + d6 + " d8=" + d8 + " d10=" + d10 + " d12=" + d12 + " bonus=" + standardBonus)
+        if (waitingStandardPhysicsResult) {
+            physicsFallbackTimer.restart()
+        }
         diceController.request_roll_standard(d4, d6, d8, d10, d12, standardBonus)
     }
 
@@ -118,6 +157,15 @@ Window {
             return
         }
         clearResults()
+        waitingStandardPhysicsResult = d20Count === 0
+            && isSingleStandardD6Request(d4Count, d6Count, d8Count, d10Count, d12Count)
+        console.log("[dice-ui-debug] rollAll waiting=" + waitingStandardPhysicsResult
+            + " d20=" + d20Count + " mode=" + d20Mode + " d20Bonus=" + d20Bonus
+            + " standard(d4/d6/d8/d10/d12)=" + d4Count + "/" + d6Count + "/" + d8Count + "/" + d10Count + "/" + d12Count
+            + " stdBonus=" + standardBonus)
+        if (waitingStandardPhysicsResult) {
+            physicsFallbackTimer.restart()
+        }
         diceController.request_roll_all(
             d20Count,
             d20Mode,
@@ -135,19 +183,187 @@ Window {
         if (!payload || !payload.kind) {
             return
         }
+        var resultTotal = payload.result && payload.result.total !== undefined ? payload.result.total : "-"
+        var resultRaw = payload.result && payload.result.raw_total !== undefined ? payload.result.raw_total : "-"
+        var firstRoll = (payload.result && payload.result.rolls && payload.result.rolls.length > 0)
+            ? payload.result.rolls[0].value : "-"
+        console.log("[dice-ui-debug] roll_completed kind=" + payload.kind
+            + " request_id=" + (payload.request_id !== undefined ? payload.request_id : "-")
+            + " mode=" + (payload.mode || "-")
+            + " requested_mode=" + (payload.requested_mode || "-")
+            + " waitingBefore=" + waitingStandardPhysicsResult
+            + " total=" + resultTotal + " raw=" + resultRaw + " firstRoll=" + firstRoll)
         if (payload.kind === "d20") {
             d20Result = payload.result
         } else if (payload.kind === "standard") {
+            var expectsPhysics = waitingStandardPhysicsResult
+                || payload.mode === "physics_fallback_random"
+                || payload.requested_mode === "physics"
+            if (expectsPhysics) {
+                if (payload.mode === "physics") {
+                    waitingStandardPhysicsResult = false
+                    pendingStandardFallbackResult = null
+                    physicsFallbackTimer.stop()
+                    standardResult = payload.result
+                    console.log("[dice-ui-debug] accepted physics result total=" + (standardResult ? standardResult.total : "-"))
+                } else if (payload.mode === "physics_fallback_random") {
+                    waitingStandardPhysicsResult = false
+                    pendingStandardFallbackResult = null
+                    physicsFallbackTimer.stop()
+                    standardResult = payload.result
+                    console.log("[dice-ui-debug] accepted physics timeout fallback total=" + (standardResult ? standardResult.total : "-"))
+                } else {
+                    waitingStandardPhysicsResult = true
+                    pendingStandardFallbackResult = payload.result
+                    console.log("[dice-ui-debug] hold fallback result mode=" + (payload.mode || "-")
+                        + " total=" + (pendingStandardFallbackResult ? pendingStandardFallbackResult.total : "-"))
+                }
+                return
+            }
             standardResult = payload.result
         } else if (payload.kind === "d100") {
             d100Result = payload.result
         } else if (payload.kind === "all") {
             d20Result = payload.result ? payload.result.d20 : null
+            if (waitingStandardPhysicsResult && payload.mode !== "physics") {
+                pendingStandardFallbackResult = payload.result ? payload.result.standard : null
+                console.log("[dice-ui-debug] hold all.standard fallback mode=" + (payload.mode || "-")
+                    + " total=" + (pendingStandardFallbackResult ? pendingStandardFallbackResult.total : "-"))
+                return
+            }
             standardResult = payload.result ? payload.result.standard : null
         }
     }
+    function cloneStyle(style) {
+        return {
+            "scalePercent": Number(style && style.scalePercent !== undefined ? style.scalePercent : 100),
+            "color": String(style && style.color ? style.color : "#D9E1F0"),
+            "fontColor": String(style && style.fontColor ? style.fontColor : "#EFEFF2"),
+            "material": String(style && style.material ? style.material : "Classic"),
+            "fontName": String(style && style.fontName ? style.fontName : "DemiBold"),
+            "fontSize": Number(style && style.fontSize !== undefined ? style.fontSize : 12)
+        }
+    }
+
+    function ensureDieStyle(key) {
+        var k = String(key)
+        var bag = dieStyles || {}
+        if (!bag[k]) {
+            bag[k] = cloneStyle(null)
+            dieStyles = Object.assign({}, bag)
+        }
+        return bag[k]
+    }
+
+    function styleForDie(key) {
+        return cloneStyle(ensureDieStyle(key))
+    }
+
+    function updateEditorField(field, value) {
+        var next = cloneStyle(dieEditorWorking)
+        next[field] = value
+        dieEditorWorking = next
+    }
+
+    function saveDieEditor() {
+        var key = String(dieEditorDieKey)
+        var bag = Object.assign({}, dieStyles || {})
+        bag[key] = cloneStyle(dieEditorWorking)
+        dieStyles = bag
+        dieStylePopup.close()
+    }
+
+
+    function openDieEditor(key) {
+        dieEditorDieKey = String(key)
+        dieEditorWorking = styleForDie(dieEditorDieKey)
+        dieStylePopup.open()
+    }
+
+    function fontFamilyFor(name) {
+        if (name === "Monospace") return "Consolas"
+        if (name === "Serif") return "Georgia"
+        if (name === "Handwritten") return "Comic Sans MS"
+        return "Segoe UI"
+    }
+
+    function fontWeightFor(name) {
+        if (name === "Bold") return Font.Bold
+        if (name === "Black") return Font.Black
+        return Font.DemiBold
+    }
+
+    function materialFaceColor(baseColor, materialName) {
+        if (materialName === "Matte") return Qt.darker(baseColor, 1.25)
+        if (materialName === "Metal") return Qt.lighter(baseColor, 1.48)
+        if (materialName === "Stone") return Qt.tint(Qt.darker(baseColor, 1.35), "#B0B0B0")
+        if (materialName === "Glass") return Qt.lighter(baseColor, 1.65)
+        return baseColor
+    }
+
+    function materialLineColor(baseColor, materialName) {
+        if (materialName === "Metal") return "#F4F4F4"
+        if (materialName === "Stone") return Qt.darker(baseColor, 2.2)
+        if (materialName === "Glass") return Qt.lighter(baseColor, 2.0)
+        return Qt.darker(baseColor, 1.6)
+    }
+
+    function materialStrokeWidth(materialName) {
+        if (materialName === "Metal") return 1.9
+        if (materialName === "Stone") return 1.8
+        if (materialName === "Glass") return 1.2
+        if (materialName === "Matte") return 1.6
+        return 1.4
+    }
+
+    function materialGlossOpacity(materialName) {
+        if (materialName === "Glass") return 0.28
+        if (materialName === "Metal") return 0.2
+        if (materialName === "Stone") return 0.05
+        if (materialName === "Matte") return 0.08
+        return 0.12
+    }
+
+
+    function jsEscape(value) {
+        var s = String(value === undefined || value === null ? "" : value)
+        return s.replace(/\\/g, "\\\\").replace(/"/g, "\\\"")
+    }
+
+    function pushD6PreviewStyle() {
+        if (!dieStylePopup || !dieStylePopup.visible) {
+            return
+        }
+        if (dieEditorDieKey !== "d6") {
+            return
+        }
+        if (!previewWeb || !previewWeb.visible) {
+            return
+        }
+
+        var stylePayload = {
+            "sizePercent": Number(dieEditorWorking.scalePercent || 100),
+            "faceColor": String(dieEditorWorking.color || "#D9E1F0"),
+            "textColor": String(dieEditorWorking.fontColor || "#EFEFF2"),
+            "material": String(dieEditorWorking.material || "Classic"),
+            "fontName": String(dieEditorWorking.fontName || "DemiBold"),
+            "fontSize": Number(dieEditorWorking.fontSize || 12)
+        }
+        var js = "window.setPreviewStyle && window.setPreviewStyle(" + JSON.stringify(stylePayload) + ");"
+        previewWeb.runJavaScript(js)
+    }
+    function materialShadowOpacity(materialName) {
+        if (materialName === "Glass") return 0.14
+        if (materialName === "Metal") return 0.22
+        if (materialName === "Stone") return 0.28
+        if (materialName === "Matte") return 0.2
+        return 0.18
+    }
+
 
     onResetTokenChanged: resetState()
+    onDieEditorWorkingChanged: pushD6PreviewStyle()
+    onDieEditorDieKeyChanged: pushD6PreviewStyle()
     Component.onCompleted: resetState()
 
     Connections {
@@ -352,6 +568,9 @@ Window {
         property color lineColor: "#E5E5E5"
         property color fillColor: "transparent"
         property color textColor: "#EFEFF2"
+        property string labelFontFamily: "Segoe UI"
+        property int labelFontWeight: Font.DemiBold
+        property int labelPixelSize: 12
         property real lineWidth: 1.4
         property real valueOpacity: 1.0
 
@@ -457,8 +676,9 @@ Window {
             anchors.centerIn: parent
             text: glyph.label
             color: glyph.textColor
-            font.pixelSize: 12
-            font.weight: Font.DemiBold
+            font.family: glyph.labelFontFamily
+            font.pixelSize: glyph.labelPixelSize
+            font.weight: glyph.labelFontWeight
             opacity: glyph.valueOpacity
         }
 
@@ -571,14 +791,15 @@ Window {
     component StandardDieRow: RowLayout {
         id: root
         property int sides: 6
+        property string dieKey: "d" + String(sides)
         property alias countValue: qty.value
 
         Layout.fillWidth: true
         spacing: 8
 
         DieGlyph {
-            dieType: "d" + String(root.sides)
-            label: "d" + String(root.sides)
+            dieType: root.dieKey
+            label: root.dieKey
             implicitWidth: 38
             implicitHeight: 38
             MouseArea {
@@ -605,6 +826,14 @@ Window {
             from: 0
             to: 20
             value: 0
+        }
+
+
+        AppButton {
+            text: "🖌"
+            implicitWidth: 26
+            implicitHeight: 22
+            onClicked: openDieEditor(root.dieKey)
         }
 
         Item { Layout.fillWidth: true }
@@ -660,7 +889,9 @@ Window {
                                 border.color: "#373737"
                                 Text {
                                     anchors.centerIn: parent
-                                    text: "\u0411\u0440\u043e\u0441\u043a\u043e\u0432 \u043f\u043e\u043a\u0430 \u043d\u0435\u0442"
+                                    text: waitingStandardPhysicsResult
+                                        ? "\u041e\u0436\u0438\u0434\u0430\u043d\u0438\u0435 \u0440\u0435\u0437\u0443\u043b\u044c\u0442\u0430\u0442\u043e\u0432..."
+                                        : "\u0411\u0440\u043e\u0441\u043a\u043e\u0432 \u043f\u043e\u043a\u0430 \u043d\u0435\u0442"
                                     color: textSecondary
                                     font.pixelSize: 12
                                 }
@@ -832,6 +1063,14 @@ Window {
                                 onValueChanged: d20Count = value
                             }
 
+
+                            AppButton {
+                                text: "🖌"
+                                implicitWidth: 26
+                                implicitHeight: 22
+                                onClicked: openDieEditor("d20")
+                            }
+
                             Label { text: "\u0411\u043e\u043d\u0443\u0441:"; color: textSecondary; font.pixelSize: 11 }
                             CountStepper {
                                 from: -20
@@ -916,4 +1155,292 @@ Window {
             onClicked: rollAll()
         }
     }
+
+
+    Timer {
+        id: physicsFallbackTimer
+        interval: 2300
+        repeat: false
+        onTriggered: {
+            if (waitingStandardPhysicsResult && pendingStandardFallbackResult) {
+                waitingStandardPhysicsResult = false
+                standardResult = pendingStandardFallbackResult
+                pendingStandardFallbackResult = null
+                console.log("[dice-ui-debug] fallback timer committed result total=" + (standardResult ? standardResult.total : "-"))
+            } else {
+                console.log("[dice-ui-debug] fallback timer fired without pending result")
+            }
+        }
+    }
+
+    Popup {
+        id: dieStylePopup
+        modal: true
+        focus: true
+        width: Math.min(360, diceWindow.width - 24)
+        height: 440
+        closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
+        anchors.centerIn: Overlay.overlay
+        padding: 0
+
+        background: Rectangle {
+            radius: 12
+            color: "#1E1E1F"
+            border.width: 1
+            border.color: "#4D4D4D"
+        }
+
+        ColumnLayout {
+            anchors.fill: parent
+            anchors.margins: 10
+            spacing: 8
+
+            Label {
+                Layout.fillWidth: true
+                text: "Кастомизация " + dieEditorDieKey
+                color: textPrimary
+                font.pixelSize: 14
+                font.weight: Font.DemiBold
+            }
+
+            Rectangle {
+                Layout.fillWidth: true
+                Layout.preferredHeight: 120
+                radius: 10
+                color: "#121214"
+                border.width: 1
+                border.color: "#353535"
+                clip: true
+
+                Item {
+                    id: previewStage
+                    anchors.fill: parent
+
+                    WebEngineView {
+                        id: previewWeb
+                        anchors.fill: parent
+                        visible: dieStylePopup.visible && dieEditorDieKey === "d6"
+                        enabled: visible
+                        backgroundColor: "#121214"
+                        url: Qt.resolvedUrl("../web/dice_preview_d6.html")
+                        onLoadingChanged: function(req) {
+                            if (req.status === WebEngineView.LoadFailedStatus) {
+                                previewWebReady = false
+                                return
+                            }
+                            if (req.status === WebEngineView.LoadSucceededStatus) {
+                                previewWebReady = true
+                                diceWindow.pushD6PreviewStyle()
+                                previewWeb.runJavaScript("window.startD6PreviewRoll && window.startD6PreviewRoll();")
+                            }
+                        }
+                        onVisibleChanged: {
+                            if (visible) {
+                                diceWindow.pushD6PreviewStyle()
+                                previewWeb.runJavaScript("window.startD6PreviewRoll && window.startD6PreviewRoll();")
+                            }
+                        }
+                        onJavaScriptConsoleMessage: function(level, message, lineNumber, sourceID) {
+                            console.log("[dice-preview-web]", String(message), String(sourceID) + ":" + String(lineNumber))
+                        }
+                    }
+
+                    Timer {
+                        id: previewRollTimer
+                        interval: 3200
+                        repeat: true
+                        running: dieStylePopup.visible && dieEditorDieKey === "d6" && previewWebReady
+                        onTriggered: previewWeb.runJavaScript("window.startD6PreviewRoll && window.startD6PreviewRoll();")
+                    }
+
+                    Item {
+                        visible: dieEditorDieKey !== "d6"
+                        anchors.fill: parent
+                        property real animY: -20
+                        property real animRot: -100
+                        property real animScale: 0.75
+
+                        DieGlyph {
+                            id: previewDie
+                            anchors.centerIn: parent
+                            dieType: dieEditorDieKey
+                            label: dieEditorDieKey
+                            implicitWidth: 56 * (Number(dieEditorWorking.scalePercent || 100) / 100.0)
+                            implicitHeight: implicitWidth
+                            fillColor: materialFaceColor(dieEditorWorking.color, dieEditorWorking.material)
+                            lineColor: materialLineColor(dieEditorWorking.color, dieEditorWorking.material)
+                            labelFontFamily: fontFamilyFor(dieEditorWorking.fontName)
+                            labelFontWeight: fontWeightFor(dieEditorWorking.fontName)
+                            labelPixelSize: Number(dieEditorWorking.fontSize || 12)
+                            textColor: dieEditorWorking.fontColor
+                            lineWidth: materialStrokeWidth(dieEditorWorking.material)
+                            y: parent.animY
+                            rotation: parent.animRot
+                            scale: parent.animScale
+                        }
+
+                        Rectangle {
+                            id: previewShadow
+                            anchors.horizontalCenter: previewDie.horizontalCenter
+                            y: previewDie.y + previewDie.height * 0.86
+                            width: previewDie.width * 1.28
+                            height: Math.max(8, previewDie.width * 0.18)
+                            radius: height / 2
+                            color: "#000000"
+                            opacity: materialShadowOpacity(dieEditorWorking.material)
+                        }
+
+                        Rectangle {
+                            anchors.centerIn: previewDie
+                            width: previewDie.width * 0.72
+                            height: previewDie.height * 0.28
+                            radius: width * 0.2
+                            color: "#FFFFFF"
+                            opacity: materialGlossOpacity(dieEditorWorking.material)
+                        }
+
+                        SequentialAnimation on animY {
+                            loops: Animation.Infinite
+                            running: dieStylePopup.visible && dieEditorDieKey !== "d6"
+                            NumberAnimation { from: -22; to: 8; duration: 520; easing.type: Easing.OutBounce }
+                            PauseAnimation { duration: 260 }
+                        }
+                        SequentialAnimation on animRot {
+                            loops: Animation.Infinite
+                            running: dieStylePopup.visible && dieEditorDieKey !== "d6"
+                            NumberAnimation { from: -110; to: 16; duration: 820; easing.type: Easing.OutCubic }
+                            PauseAnimation { duration: 180 }
+                        }
+                        SequentialAnimation on animScale {
+                            loops: Animation.Infinite
+                            running: dieStylePopup.visible && dieEditorDieKey !== "d6"
+                            NumberAnimation { from: 0.72; to: 1.03; duration: 430; easing.type: Easing.OutCubic }
+                            PauseAnimation { duration: 230 }
+                            NumberAnimation { from: 1.03; to: 1.0; duration: 180; easing.type: Easing.OutCubic }
+                        }
+                    }
+                }
+            }
+
+            Label { text: "Размер (50%..150%)"; color: textSecondary; font.pixelSize: 11 }
+            Slider {
+                Layout.fillWidth: true
+                from: 50
+                to: 150
+                stepSize: 1
+                value: Number(dieEditorWorking.scalePercent || 100)
+                onMoved: updateEditorField("scalePercent", Math.round(value))
+                onValueChanged: if (pressed) updateEditorField("scalePercent", Math.round(value))
+            }
+
+            RowLayout {
+                Layout.fillWidth: true
+                spacing: 8
+                Label { text: "Цвет кубика"; color: textSecondary; font.pixelSize: 11 }
+                Rectangle {
+                    implicitWidth: 40
+                    implicitHeight: 20
+                    radius: 6
+                    color: dieEditorWorking.color
+                    border.width: 1
+                    border.color: "#666666"
+                }
+                AppButton {
+                    text: "🎨"
+                    implicitWidth: 32
+                    implicitHeight: 24
+                    onClicked: dieFaceColorDialog.open()
+                }
+                Item { Layout.fillWidth: true }
+            }
+
+
+            RowLayout {
+                Layout.fillWidth: true
+                spacing: 8
+                Label { text: "Цвет шрифта"; color: textSecondary; font.pixelSize: 11 }
+                Rectangle {
+                    implicitWidth: 40
+                    implicitHeight: 20
+                    radius: 6
+                    color: dieEditorWorking.fontColor
+                    border.width: 1
+                    border.color: "#666666"
+                }
+                AppButton {
+                    text: "🎨"
+                    implicitWidth: 32
+                    implicitHeight: 24
+                    onClicked: dieFontColorDialog.open()
+                }
+                Item { Layout.fillWidth: true }
+            }
+            Label { text: "Материал"; color: textSecondary; font.pixelSize: 11 }
+            ComboBox {
+                Layout.fillWidth: true
+                model: ["Classic", "Matte", "Metal", "Stone", "Glass"]
+                currentIndex: Math.max(0, model.indexOf(dieEditorWorking.material))
+                onActivated: function(index) { updateEditorField("material", model[index]) }
+            }
+
+            RowLayout {
+                Layout.fillWidth: true
+                spacing: 8
+                Label { text: "Шрифт"; color: textSecondary; font.pixelSize: 11 }
+                ComboBox {
+                    Layout.fillWidth: true
+                    model: ["DemiBold", "Bold", "Black", "Monospace", "Serif", "Handwritten"]
+                    currentIndex: Math.max(0, model.indexOf(dieEditorWorking.fontName))
+                    onActivated: function(index) { updateEditorField("fontName", model[index]) }
+                }
+                Label { text: "Размер"; color: textSecondary; font.pixelSize: 11 }
+                CountStepper {
+                    id: fontSizeStepper
+                    from: 8
+                    to: 26
+                    value: 12
+                    Component.onCompleted: value = Number(dieEditorWorking.fontSize || 12)
+                    onValueChanged: {
+                        var current = Number(dieEditorWorking.fontSize || 12)
+                        if (current !== value) {
+                            updateEditorField("fontSize", value)
+                        }
+                    }
+                    Connections {
+                        target: diceWindow
+                        function onDieEditorWorkingChanged() {
+                            var next = Number(dieEditorWorking.fontSize || 12)
+                            if (fontSizeStepper.value !== next) {
+                                fontSizeStepper.value = next
+                            }
+                        }
+                    }
+                }
+            }
+
+            Item { Layout.fillHeight: true }
+
+            RowLayout {
+                Layout.fillWidth: true
+                spacing: 8
+                AppButton { Layout.fillWidth: true; text: "Отмена"; onClicked: dieStylePopup.close() }
+                AppButton { Layout.fillWidth: true; text: "Сохранить"; accent: true; onClicked: saveDieEditor() }
+            }
+        }
+    }
+
+    ColorDialog {
+        id: dieFaceColorDialog
+        title: "Выбор цвета кубика"
+        selectedColor: dieEditorWorking.color
+        onAccepted: updateEditorField("color", selectedColor)
+    }
+
+    ColorDialog {
+        id: dieFontColorDialog
+        title: "Выбор цвета шрифта"
+        selectedColor: dieEditorWorking.fontColor
+        onAccepted: updateEditorField("fontColor", selectedColor)
+    }
 }
+

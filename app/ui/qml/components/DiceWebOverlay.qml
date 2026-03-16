@@ -1,4 +1,4 @@
-﻿import QtQuick
+import QtQuick
 import QtWebEngine
 
 Item {
@@ -8,12 +8,17 @@ Item {
     property bool active: false
     property bool pageReady: false
     property bool pendingRoll: false
+    property int pendingRequestId: 0
+
+    signal d6ResultReady(int requestId, int value)
 
     function runD6Script() {
-        web.runJavaScript("window.startD6Roll && window.startD6Roll();")
+        var req = Number(pendingRequestId || 0)
+        web.runJavaScript("window.startD6Roll && window.startD6Roll(" + String(req) + ");")
     }
 
-    function triggerD6() {
+    function triggerD6(requestId) {
+        pendingRequestId = Number(requestId || 0)
         active = true
         web.visible = true
         web.opacity = 1.0
@@ -35,6 +40,24 @@ Item {
         pendingRoll = false
     }
 
+    function tryParseResultMessage(message) {
+        var text = String(message || "")
+        if (text.indexOf("[dice-result]") !== 0) {
+            return
+        }
+        var reqMatch = /request=(\d+)/.exec(text)
+        var valueMatch = /value=(\d+)/.exec(text)
+        if (!reqMatch || !valueMatch) {
+            return
+        }
+        var reqId = Number(reqMatch[1])
+        var value = Number(valueMatch[1])
+        if (reqId <= 0 || value <= 0) {
+            return
+        }
+        d6ResultReady(reqId, value)
+    }
+
     WebEngineView {
         id: web
         anchors.fill: parent
@@ -51,6 +74,7 @@ Item {
         }
 
         onJavaScriptConsoleMessage: function(level, message, lineNumber, sourceID) {
+            root.tryParseResultMessage(message)
             console.log("[dice-web-js]", String(message), String(sourceID) + ":" + String(lineNumber))
         }
         onLoadingChanged: function(req) {
@@ -76,5 +100,3 @@ Item {
         onTriggered: root.clear()
     }
 }
-
-

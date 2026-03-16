@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from PySide6.QtCore import QObject, Signal, Slot
+from PySide6.QtCore import QObject, Signal, Slot, QTimer
 
 from app.core.event_bus import EventBus
 from app.services.dice_service import DiceService
@@ -11,12 +11,18 @@ from app.services.dice_service import DiceService
 class DiceController(QObject):
     rollCompleted = Signal("QVariantMap")
 
+    def _debug(self, message: str) -> None:
+        print(f"[dice-controller-debug] {message}")
+
     def __init__(self, dice_service: DiceService, event_bus: EventBus) -> None:
         super().__init__()
         self._dice_service = dice_service
         self._event_bus = event_bus
         self._map_window_open = False
         self._request_seq = 0
+        self._pending_physics_standard_d6: dict[int, dict[str, Any]] = {}
+        self._recent_standard_d6_requests: dict[int, dict[str, Any]] = {}
+        self._physics_fallback_timers: dict[int, QTimer] = {}
 
         self._event_bus.subscribe("dice.roll_requested", self._on_roll_requested)
         self._event_bus.subscribe("dice.roll_completed", self._on_roll_completed)
@@ -32,6 +38,81 @@ class DiceController(QObject):
     def _next_request_id(self) -> int:
         self._request_seq += 1
         return self._request_seq
+
+    def _cancel_physics_fallback_timer(self, request_id: int) -> None:
+        timer = self._physics_fallback_timers.pop(int(request_id), None)
+        if timer is not None:
+            timer.stop()
+            timer.deleteLater()
+
+    def _start_physics_fallback_timer(self, request_id: int, req_payload: dict[str, Any]) -> None:
+        req_id = int(request_id)
+        if req_id <= 0:
+            return
+        self._cancel_physics_fallback_timer(req_id)
+
+        timer = QTimer(self)
+        timer.setSingleShot(True)
+
+        def _on_timeout() -> None:
+            pending = self._pending_physics_standard_d6.pop(req_id, None)
+            self._physics_fallback_timers.pop(req_id, None)
+            if pending is None:
+                timer.deleteLater()
+                return
+
+            self._recent_standard_d6_requests.pop(req_id, None)
+            fallback = self._dice_service.roll_standard(0, 1, 0, 0, 0, int(pending.get("bonus", 0)))
+            self._debug(
+                f"physics-timeout fallback request_id={req_id} total={fallback.get('total')} raw={fallback.get('raw_total')}"
+            )
+            self._event_bus.publish(
+                "dice.roll_completed",
+                {
+                    "request_id": req_id,
+                    "kind": "standard",
+                    "mode": "physics_fallback_random",
+                    "requested_mode": "physics",
+                    "result": fallback,
+                },
+            )
+            timer.deleteLater()
+
+        timer.timeout.connect(_on_timeout)
+        self._physics_fallback_timers[req_id] = timer
+        timer.start(3600)
+
+    @Slot(int, int)
+    def submit_physics_d6_result(self, request_id: int, value: int) -> None:
+        req_id = int(request_id)
+        if req_id <= 0:
+            self._debug(f"submit_physics_d6_result ignored invalid request_id={request_id}")
+            return
+
+        self._cancel_physics_fallback_timer(req_id)
+        pending = self._pending_physics_standard_d6.pop(req_id, None)
+        recent = self._recent_standard_d6_requests.pop(req_id, None)
+        source_payload = pending or recent
+        if not source_payload:
+            self._debug(f"submit_physics_d6_result request_id={req_id} has no source payload")
+            return
+
+        clamped_value = max(1, min(6, int(value)))
+        self._debug(
+            f"submit_physics_d6_result request_id={req_id} value={value} clamped={clamped_value} "
+            f"bonus={int(source_payload.get('bonus', 0))}"
+        )
+        result = self._build_standard_single_d6_result(clamped_value, source_payload)
+        self._event_bus.publish(
+            "dice.roll_completed",
+            {
+                "request_id": req_id,
+                "kind": "standard",
+                "mode": "physics",
+                "requested_mode": "physics",
+                "result": result,
+            },
+        )
 
     @Slot(int, str, int)
     def request_roll_d20(self, count: int, mode: str, bonus: int) -> None:
@@ -196,12 +277,53 @@ class DiceController(QObject):
             return dice
         return dice
 
+    def _is_physics_standard_single_d6(
+        self,
+        kind: str,
+        req_payload: dict[str, Any],
+        visual_dice: list[int],
+    ) -> bool:
+        if kind != "standard":
+            return False
+        if visual_dice != [6]:
+            return False
+        return (
+            int(req_payload.get("d4", 0)) == 0
+            and int(req_payload.get("d6", 0)) == 1
+            and int(req_payload.get("d8", 0)) == 0
+            and int(req_payload.get("d10", 0)) == 0
+            and int(req_payload.get("d12", 0)) == 0
+        )
+
+    def _build_standard_single_d6_result(self, value: int, req_payload: dict[str, Any]) -> dict[str, Any]:
+        bonus = max(-20, min(20, int(req_payload.get("bonus", 0))))
+        total = int(value) + bonus
+
+        formula = "d6"
+        if bonus > 0:
+            formula += f" + {bonus}"
+        elif bonus < 0:
+            formula += f" - {abs(bonus)}"
+
+        return {
+            "active": True,
+            "kind": "standard",
+            "formula": formula,
+            "total": total,
+            "bonus": bonus,
+            "rolls": [{"sides": 6, "value": int(value)}],
+            "raw_total": int(value),
+        }
+
     def _on_roll_requested(self, event_name: str, payload: dict[str, Any]) -> None:
         kind = str(payload.get("kind", "")).strip()
         req_payload = payload.get("payload") or {}
         request_id = int(payload.get("request_id") or 0)
 
         requested_mode = self._dice_service.resolve_mode(self._map_window_open)
+        self._debug(
+            f"roll_requested kind={kind} request_id={request_id} requested_mode={requested_mode} payload={req_payload}"
+        )
         completed_mode = requested_mode
 
         visual_dice = self._build_visual_dice_list(kind, req_payload)
@@ -216,8 +338,25 @@ class DiceController(QObject):
                 },
             )
 
-        # Physics mode is planned next; current stage uses deterministic fallback to RNG.
+        is_standard_single_d6 = self._is_physics_standard_single_d6(kind, req_payload, visual_dice)
+        self._debug(
+            f"visual request_id={request_id} kind={kind} dice={visual_dice} single_d6={is_standard_single_d6}"
+        )
+        if is_standard_single_d6 and request_id > 0:
+            self._recent_standard_d6_requests[request_id] = dict(req_payload)
+            if len(self._recent_standard_d6_requests) > 256:
+                oldest_request_id = min(self._recent_standard_d6_requests.keys())
+                self._recent_standard_d6_requests.pop(oldest_request_id, None)
+
+        if is_standard_single_d6 and request_id > 0:
+            # Always await physics for single d6; if physics is unavailable, fallback timer publishes exactly one random result.
+            self._pending_physics_standard_d6[request_id] = dict(req_payload)
+            self._start_physics_fallback_timer(request_id, req_payload)
+            self._debug(f"pending physics single d6 request_id={request_id} (requested_mode={requested_mode})")
+            return
+
         if requested_mode == "physics":
+            # Other physics paths still use deterministic fallback to RNG.
             completed_mode = "physics_fallback_random"
 
         result: dict[str, Any]
@@ -253,15 +392,24 @@ class DiceController(QObject):
         else:
             return
 
+        self._debug(
+            f"publish roll_completed request_id={request_id} kind={kind} mode={completed_mode} "
+            f"total={result.get('total') if isinstance(result, dict) else '-'}"
+        )
         self._event_bus.publish(
             "dice.roll_completed",
             {
                 "request_id": request_id,
                 "kind": kind,
                 "mode": completed_mode,
+                "requested_mode": requested_mode,
                 "result": result,
             },
         )
 
     def _on_roll_completed(self, event_name: str, payload: dict[str, Any]) -> None:
+        self._debug(
+            f"on_roll_completed event request_id={payload.get('request_id')} kind={payload.get('kind')} "
+            f"mode={payload.get('mode')}"
+        )
         self.rollCompleted.emit(payload)
