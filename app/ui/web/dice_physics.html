@@ -107,23 +107,108 @@
       let rollSeq = 0;
       const activeRollStates = new Map();
 
+      const COLLISION_RESTITUTION = 0.14;
+      const COLLISION_FRICTION = 0.06;
+      const COLLISION_MAX_IMPULSE = 0.32;
+      const COLLISION_MAX_SPEED = 0.45;
+      const COLLISION_PUSH_FACTOR = 0.34;
+      const COLLISION_PUSH_BIAS = 0.00;
+      const COLLISION_CONTACT_DAMP = 0.985;
+      const COLLISION_SLOP = 1.4;
+      const COLLISION_MIN_NORMAL_SPEED = 0.02;
+      const COLLISION_MAX_PUSH = 2.0;
+      const COLLISION_REST_PENETRATION = 0.9;
+      const COLLISION_REST_NORMAL_SPEED = 0.015;
+      const COLLISION_GROUND_Z_GAP = 18;
+      const COLLISION_GROUND_Z_MAX = 24;
+
       function apparentScale(state) {
         const zNorm = clamp(state.z / 260, 0, 1);
         return 0.78 + (1 - zNorm) * 0.22;
       }
 
       function collisionRadius(state) {
-        return 24 * apparentScale(state);
+        return 36 * apparentScale(state);
+      }
+
+      function obbFromState(state) {
+        const ang = Number(state.rz || 0) * Math.PI / 180;
+        const ux = Math.cos(ang);
+        const uy = Math.sin(ang);
+        const vx = -uy;
+        const vy = ux;
+        const half = 25.5 * apparentScale(state);
+        return {
+          cx: Number(state.px || 0),
+          cy: Number(state.py || 0),
+          halfX: half,
+          halfY: half,
+          ux,
+          uy,
+          vx,
+          vy
+        };
+      }
+
+      function projectObbOnAxis(obb, ax, ay) {
+        const c = obb.cx * ax + obb.cy * ay;
+        const r =
+          obb.halfX * Math.abs(obb.ux * ax + obb.uy * ay)
+          + obb.halfY * Math.abs(obb.vx * ax + obb.vy * ay);
+        return { min: c - r, max: c + r };
+      }
+
+      function satObbOverlap(a, b) {
+        const axes = [
+          [a.ux, a.uy],
+          [a.vx, a.vy],
+          [b.ux, b.uy],
+          [b.vx, b.vy]
+        ];
+
+        let bestOverlap = 1e9;
+        let bestAx = 0;
+        let bestAy = 0;
+
+        for (let i = 0; i < axes.length; i += 1) {
+          let ax = axes[i][0];
+          let ay = axes[i][1];
+          const mag = Math.hypot(ax, ay);
+          if (mag < 1e-6) continue;
+          ax /= mag;
+          ay /= mag;
+
+          const pa = projectObbOnAxis(a, ax, ay);
+          const pb = projectObbOnAxis(b, ax, ay);
+          const overlap = Math.min(pa.max, pb.max) - Math.max(pa.min, pb.min);
+          if (overlap <= 0) {
+            return { collides: false, overlap: 0, nx: 0, ny: 0 };
+          }
+          if (overlap < bestOverlap) {
+            bestOverlap = overlap;
+            bestAx = ax;
+            bestAy = ay;
+          }
+        }
+
+        const dirX = b.cx - a.cx;
+        const dirY = b.cy - a.cy;
+        if (dirX * bestAx + dirY * bestAy < 0) {
+          bestAx = -bestAx;
+          bestAy = -bestAy;
+        }
+
+        return { collides: true, overlap: bestOverlap, nx: bestAx, ny: bestAy };
       }
 
       function pickSpawnX(centerX, w, py) {
-        const minX = centerX - w * 0.11;
-        const maxX = centerX + w * 0.11;
+        const minX = centerX - w * 0.10;
+        const maxX = centerX + w * 0.10;
 
         let bestX = centerX;
         let bestScore = -1e9;
         for (let tries = 0; tries < 12; tries += 1) {
-          const candidate = clamp(centerX + random(-w * 0.10, w * 0.10), minX, maxX);
+          const candidate = clamp(centerX + random(-w * 0.09, w * 0.09), minX, maxX);
           let minSep = 1e9;
           for (const other of activeRollStates.values()) {
             if (!other || other.phase === 'fade') {
@@ -140,7 +225,7 @@
             bestScore = minSep;
             bestX = candidate;
           }
-          if (minSep > 56) {
+          if (minSep > 64) {
             return candidate;
           }
         }
@@ -157,9 +242,16 @@
           if (!other || other === state || other.phase === 'fade') {
             continue;
           }
+          if (Number(state.rollId || 0) >= Number(other.rollId || 0)) {
+            continue;
+          }
+
+          if (Number(state.z || 0) > COLLISION_GROUND_Z_MAX || Number(other.z || 0) > COLLISION_GROUND_Z_MAX) {
+            continue;
+          }
 
           const zGap = Math.abs(Number(state.z || 0) - Number(other.z || 0));
-          if (zGap > 96) {
+          if (zGap > COLLISION_GROUND_Z_GAP) {
             continue;
           }
 
@@ -171,37 +263,41 @@
             continue;
           }
 
-          let dist = Math.sqrt(distSq);
-          let nx = 0;
-          let ny = 0;
-          if (dist < 1e-5) {
-            const angle = random(0, Math.PI * 2);
-            nx = Math.cos(angle);
-            ny = Math.sin(angle);
-            dist = 0;
-          } else {
-            nx = dx / dist;
-            ny = dy / dist;
+          const obbA = obbFromState(state);
+          const obbB = obbFromState(other);
+          const sat = satObbOverlap(obbA, obbB);
+          if (!sat.collides || sat.overlap <= COLLISION_SLOP) {
+            continue;
           }
 
-          const overlap = minDist - dist;
-          const push = overlap * 0.52 + 0.05;
-          state.px += nx * push;
-          state.py += ny * push;
-          other.px -= nx * push;
-          other.py -= ny * push;
+          const nx = sat.nx;
+          const ny = sat.ny;
+          const penetration = sat.overlap - COLLISION_SLOP;
+          if (penetration <= 0) {
+            continue;
+          }
+
+          const rvx = state.vx - other.vx;
+          const rvy = state.vy - other.vy;
+          const relNormal = rvx * nx + rvy * ny;
+          if (penetration < COLLISION_REST_PENETRATION && Math.abs(relNormal) < COLLISION_REST_NORMAL_SPEED) {
+            continue;
+          }
+
+          const push = Math.min(COLLISION_MAX_PUSH, penetration * COLLISION_PUSH_FACTOR + COLLISION_PUSH_BIAS);
+          state.px -= nx * push * 0.5;
+          state.py -= ny * push * 0.5;
+          other.px += nx * push * 0.5;
+          other.py += ny * push * 0.5;
 
           state.px = clamp(state.px, bounds.minX, bounds.maxX);
           state.py = clamp(state.py, bounds.minY, bounds.maxY);
           other.px = clamp(other.px, bounds.minX, bounds.maxX);
           other.py = clamp(other.py, bounds.minY, bounds.maxY);
 
-          const rvx = state.vx - other.vx;
-          const rvy = state.vy - other.vy;
-          const relNormal = rvx * nx + rvy * ny;
-          if (relNormal < 0) {
-            const restitution = 0.22;
-            const impulse = -(1 + restitution) * relNormal * 0.5;
+          if (relNormal < -COLLISION_MIN_NORMAL_SPEED) {
+            let impulse = -(1 + COLLISION_RESTITUTION) * relNormal * 0.5;
+            impulse = clamp(impulse, 0, COLLISION_MAX_IMPULSE);
             state.vx += nx * impulse;
             state.vy += ny * impulse;
             other.vx -= nx * impulse;
@@ -211,11 +307,15 @@
           const tx = -ny;
           const ty = nx;
           const relTan = rvx * tx + rvy * ty;
-          const friction = 0.08;
-          state.vx -= tx * relTan * friction * 0.5;
-          state.vy -= ty * relTan * friction * 0.5;
-          other.vx += tx * relTan * friction * 0.5;
-          other.vy += ty * relTan * friction * 0.5;
+          state.vx -= tx * relTan * COLLISION_FRICTION * 0.5;
+          state.vy -= ty * relTan * COLLISION_FRICTION * 0.5;
+          other.vx += tx * relTan * COLLISION_FRICTION * 0.5;
+          other.vy += ty * relTan * COLLISION_FRICTION * 0.5;
+
+          state.vx = clamp(state.vx * COLLISION_CONTACT_DAMP, -COLLISION_MAX_SPEED, COLLISION_MAX_SPEED);
+          state.vy = clamp(state.vy * COLLISION_CONTACT_DAMP, -COLLISION_MAX_SPEED, COLLISION_MAX_SPEED);
+          other.vx = clamp(other.vx * COLLISION_CONTACT_DAMP, -COLLISION_MAX_SPEED, COLLISION_MAX_SPEED);
+          other.vy = clamp(other.vy * COLLISION_CONTACT_DAMP, -COLLISION_MAX_SPEED, COLLISION_MAX_SPEED);
         }
       }
 
@@ -404,17 +504,17 @@
 
         const rollId = ++rollSeq;
 
-        const throwPower = random(0.85, 1.2);
-        const spinPower = random(1.05, 1.65);
-        const driftPower = random(0.75, 1.3);
+        const throwPower = random(0.72, 1.35);
+        const spinPower = random(0.95, 1.90);
+        const driftPower = random(0.95, 1.75);
         const spawnPy = h * random(0.10, 0.19);
         const spawnPx = pickSpawnX(centerX, w, spawnPy);
 
         const state = {
           px: spawnPx,
           py: spawnPy,
-          vx: random(-0.08, 0.08) * driftPower,
-          vy: random(1.8, 4.2) * throwPower,
+          vx: random(-3.2, 3.2) * driftPower,
+          vy: random(1.4, 5.4) * throwPower,
 
           z: random(190, 280),
           vz: random(20, 95) * throwPower,
@@ -439,10 +539,13 @@
           alignMaxRzDelta: 0,
           alignFrames: 0,
           alignElapsed: 0,
+          landingBlend: 0,
+          landingProfile: random(0, 1),
           requestId: Number(requestId || 0),
           resultFace: 0,
           resultEmitted: false,
           resultMeasureAtMs: 0,
+          rollId: rollId,
           wrap: nodes.wrap,
           dice: nodes.dice,
           shadow: nodes.shadow
@@ -469,12 +572,14 @@
         const restitution = clamp(jitter(0.2, 0.2), 0.12, 0.34);
         const dampVx = jitter(0.988, 0.01);
         const dampVy = jitter(0.996, 0.006);
-        const dampRot = jitter(0.982, 0.012);
+        const dampRot = jitter(0.986, 0.007);
         const alignStartGroundedDelay = random(0.03, 0.18);
         const alignSpeedBoost = random(1.6, 2.4);
         const alignPlopBoost = random(1.3, 2.0);
         const alignForceSnapDelay = random(0.28, 0.62);
         const resultMeasureDelayMs = 0;
+        const landingBlendInSec = random(0.07, 0.22);
+        const landingBlendOutSec = random(0.05, 0.10);
 
         let lastTs = performance.now();
 
@@ -485,7 +590,7 @@
           lastTs = ts;
 
           if (state.phase === 'rolling') {
-            state.px += state.vx * 62;
+            state.px += state.vx * 62 * dt;
             state.py += state.vy * 62 * dt;
 
             state.vz += gravity * dt;
@@ -503,9 +608,13 @@
 
             if (state.z <= 0) {
               state.z = 0;
-              if (Math.abs(state.vz) > random(55, 82) && state.bounces < (Math.random() < 0.45 ? 3 : 2)) {
-                state.vz = -Math.abs(state.vz) * restitution;
-                state.vx += random(-0.04, 0.04) * driftPower;
+              const softness = state.landingProfile;
+              const bounceThreshold = random(54, 84) * (1 - softness * 0.10);
+              const bounceRestitution = restitution * (1 - softness * 0.18);
+
+              if (Math.abs(state.vz) > bounceThreshold && state.bounces < (Math.random() < 0.45 ? 3 : 2)) {
+                state.vz = -Math.abs(state.vz) * bounceRestitution;
+                state.vx += random(-0.65, 0.65) * driftPower;
                 state.vy += random(-0.16, 0.12) * driftPower;
                 state.vrx += random(-22, 22) * spinPower;
                 state.vry += random(-24, 24) * spinPower;
@@ -515,19 +624,39 @@
                 state.vz = 0;
               }
 
-              state.vx *= 0.86;
-              state.vy *= 0.90;
-              state.vrx *= 0.75;
-              state.vry *= 0.75;
-              state.vrz *= 0.75;
+              const groundMix = clamp(state.landingBlend, 0, 1);
+              const vxTarget = (0.86 * (1 - softness)) + (0.93 * softness);
+              const vyTarget = (0.90 * (1 - softness)) + (0.95 * softness);
+              const vrxTarget = (0.75 * (1 - softness)) + (0.86 * softness);
+              const vryTarget = (0.75 * (1 - softness)) + (0.86 * softness);
+              const vrzTarget = (0.75 * (1 - softness)) + (0.84 * softness);
+
+              const vxBlendDamp = 1 - (1 - vxTarget) * groundMix;
+              const vyBlendDamp = 1 - (1 - vyTarget) * groundMix;
+              const vrxBlendDamp = 1 - (1 - vrxTarget) * groundMix;
+              const vryBlendDamp = 1 - (1 - vryTarget) * groundMix;
+              const vrzBlendDamp = 1 - (1 - vrzTarget) * groundMix;
+
+              state.vx *= vxBlendDamp;
+              state.vy *= vyBlendDamp;
+              state.vrx *= vrxBlendDamp;
+              state.vry *= vryBlendDamp;
+              state.vrz *= vrzBlendDamp;
             }
 
-            state.px = clamp(state.px, centerX - w * 0.11, centerX + w * 0.11);
+            const groundedNow = state.z === 0 && Math.abs(state.vz) < 1e-4;
+            if (groundedNow) {
+              state.landingBlend = clamp(state.landingBlend + dt / landingBlendInSec, 0, 1);
+            } else {
+              state.landingBlend = clamp(state.landingBlend - dt / landingBlendOutSec, 0, 1);
+            }
+
+            state.px = clamp(state.px, centerX - w * 0.15, centerX + w * 0.15);
             state.py = clamp(state.py, h * 0.22, h * 0.62);
 
             resolveDiceCollisions(state, {
-              minX: centerX - w * 0.11,
-              maxX: centerX + w * 0.11,
+              minX: centerX - w * 0.15,
+              maxX: centerX + w * 0.15,
               minY: h * 0.22,
               maxY: h * 0.62
             });
@@ -665,6 +794,12 @@
   </script>
 </body>
 </html>
+
+
+
+
+
+
 
 
 
