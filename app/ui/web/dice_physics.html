@@ -105,6 +105,119 @@
       const shadowTemplate = document.getElementById('shadow-template');
 
       let rollSeq = 0;
+      const activeRollStates = new Map();
+
+      function apparentScale(state) {
+        const zNorm = clamp(state.z / 260, 0, 1);
+        return 0.78 + (1 - zNorm) * 0.22;
+      }
+
+      function collisionRadius(state) {
+        return 24 * apparentScale(state);
+      }
+
+      function pickSpawnX(centerX, w, py) {
+        const minX = centerX - w * 0.11;
+        const maxX = centerX + w * 0.11;
+
+        let bestX = centerX;
+        let bestScore = -1e9;
+        for (let tries = 0; tries < 12; tries += 1) {
+          const candidate = clamp(centerX + random(-w * 0.10, w * 0.10), minX, maxX);
+          let minSep = 1e9;
+          for (const other of activeRollStates.values()) {
+            if (!other || other.phase === 'fade') {
+              continue;
+            }
+            const dy = Math.abs(candidate - other.px);
+            const pyDist = Math.abs(py - other.py);
+            if (pyDist > 90) {
+              continue;
+            }
+            minSep = Math.min(minSep, dy);
+          }
+          if (minSep > bestScore) {
+            bestScore = minSep;
+            bestX = candidate;
+          }
+          if (minSep > 56) {
+            return candidate;
+          }
+        }
+
+        return bestX;
+      }
+
+      function resolveDiceCollisions(state, bounds) {
+        if (!state || state.phase === 'fade') {
+          return;
+        }
+
+        for (const other of activeRollStates.values()) {
+          if (!other || other === state || other.phase === 'fade') {
+            continue;
+          }
+
+          const zGap = Math.abs(Number(state.z || 0) - Number(other.z || 0));
+          if (zGap > 96) {
+            continue;
+          }
+
+          const dx = state.px - other.px;
+          const dy = state.py - other.py;
+          const minDist = collisionRadius(state) + collisionRadius(other);
+          const distSq = dx * dx + dy * dy;
+          if (distSq >= minDist * minDist) {
+            continue;
+          }
+
+          let dist = Math.sqrt(distSq);
+          let nx = 0;
+          let ny = 0;
+          if (dist < 1e-5) {
+            const angle = random(0, Math.PI * 2);
+            nx = Math.cos(angle);
+            ny = Math.sin(angle);
+            dist = 0;
+          } else {
+            nx = dx / dist;
+            ny = dy / dist;
+          }
+
+          const overlap = minDist - dist;
+          const push = overlap * 0.52 + 0.05;
+          state.px += nx * push;
+          state.py += ny * push;
+          other.px -= nx * push;
+          other.py -= ny * push;
+
+          state.px = clamp(state.px, bounds.minX, bounds.maxX);
+          state.py = clamp(state.py, bounds.minY, bounds.maxY);
+          other.px = clamp(other.px, bounds.minX, bounds.maxX);
+          other.py = clamp(other.py, bounds.minY, bounds.maxY);
+
+          const rvx = state.vx - other.vx;
+          const rvy = state.vy - other.vy;
+          const relNormal = rvx * nx + rvy * ny;
+          if (relNormal < 0) {
+            const restitution = 0.22;
+            const impulse = -(1 + restitution) * relNormal * 0.5;
+            state.vx += nx * impulse;
+            state.vy += ny * impulse;
+            other.vx -= nx * impulse;
+            other.vy -= ny * impulse;
+          }
+
+          const tx = -ny;
+          const ty = nx;
+          const relTan = rvx * tx + rvy * ty;
+          const friction = 0.08;
+          state.vx -= tx * relTan * friction * 0.5;
+          state.vy -= ty * relTan * friction * 0.5;
+          other.vx += tx * relTan * friction * 0.5;
+          other.vy += ty * relTan * friction * 0.5;
+        }
+      }
 
       function createRollNodes() {
         if (!scene || !wrapTemplate || !shadowTemplate) {
@@ -294,10 +407,12 @@
         const throwPower = random(0.85, 1.2);
         const spinPower = random(1.05, 1.65);
         const driftPower = random(0.75, 1.3);
+        const spawnPy = h * random(0.10, 0.19);
+        const spawnPx = pickSpawnX(centerX, w, spawnPy);
 
         const state = {
-          px: centerX + random(-w * 0.03, w * 0.03),
-          py: h * random(0.10, 0.19),
+          px: spawnPx,
+          py: spawnPy,
           vx: random(-0.08, 0.08) * driftPower,
           vy: random(1.8, 4.2) * throwPower,
 
@@ -333,12 +448,15 @@
           shadow: nodes.shadow
         };
 
+        activeRollStates.set(rollId, state);
+
         let raf = 0;
         function stopRoll() {
           if (raf) {
             cancelAnimationFrame(raf);
             raf = 0;
           }
+          activeRollStates.delete(rollId);
           if (state.wrap && state.wrap.parentNode) {
             state.wrap.parentNode.removeChild(state.wrap);
           }
@@ -406,6 +524,13 @@
 
             state.px = clamp(state.px, centerX - w * 0.11, centerX + w * 0.11);
             state.py = clamp(state.py, h * 0.22, h * 0.62);
+
+            resolveDiceCollisions(state, {
+              minX: centerX - w * 0.11,
+              maxX: centerX + w * 0.11,
+              minY: h * 0.22,
+              maxY: h * 0.62
+            });
 
             const planarSpeed = Math.abs(state.vx) + Math.abs(state.vy);
             const spin = Math.abs(state.vrx) + Math.abs(state.vry) + Math.abs(state.vrz);
