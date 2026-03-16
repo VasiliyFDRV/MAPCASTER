@@ -1,4 +1,4 @@
-<!doctype html>
+﻿<!doctype html>
 <html lang="ru">
 <head>
   <meta charset="UTF-8" />
@@ -48,18 +48,44 @@
       position: absolute;
       width: 50px;
       height: 50px;
-      border-radius: 7px;
-      border: 2px solid #8f9cb5;
+      border-radius: 2px;
+      border: 1.6px solid #8a97b1;
       box-sizing: border-box;
-      background: linear-gradient(150deg, #f9fbff 0%, #d9e1f0 85%);
-      color: #212736;
+      background: linear-gradient(145deg, #eaf1ff 0%, #c8d3e8 100%);
+      color: #202838;
       display: grid;
       place-items: center;
       font-family: Segoe UI, Arial, sans-serif;
       font-size: 18px;
       font-weight: 800;
       backface-visibility: hidden;
-      box-shadow: inset 0 2px 8px rgba(255, 255, 255, 0.4);
+      box-shadow:
+        inset 0 1px 2px rgba(255, 255, 255, 0.55),
+        inset 0 -2px 4px rgba(20, 30, 50, 0.16),
+        0 1px 2px rgba(0, 0, 0, 0.15);
+    }
+
+    .face::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(circle at 30% 28%, rgba(255, 255, 255, 0.18), transparent 46%);
+      pointer-events: none;
+    }
+
+    .core {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      width: 34px;
+      height: 34px;
+      transform: translate(-50%, -50%) translateZ(0.01px);
+      border-radius: 2px;
+      background: linear-gradient(145deg, rgba(31, 39, 56, 0.88), rgba(17, 23, 35, 0.88));
+      box-shadow:
+        inset 0 1px 2px rgba(255, 255, 255, 0.08),
+        inset 0 -2px 4px rgba(0, 0, 0, 0.35);
+      pointer-events: none;
     }
 
     .f1 { transform: rotateY(0deg) translateZ(25px); }
@@ -88,6 +114,7 @@
     <div class="shadow" id="shadow-template" style="display:none;"></div>
     <div class="dice-wrap" id="wrap-template" style="display:none;">
       <div class="dice">
+        <div class="core"></div>
         <div class="face f1">1</div>
         <div class="face f2">2</div>
         <div class="face f3">3</div>
@@ -814,6 +841,7 @@
   </script>
 </body>
 </html>
+
 
 
 
