@@ -1,4 +1,4 @@
-import QtQuick
+﻿import QtQuick
 import QtWebEngine
 
 Item {
@@ -8,25 +8,51 @@ Item {
     property bool active: false
     property bool pageReady: false
     property bool pendingRoll: false
-    property int pendingRequestId: 0
+
+    property int activeRequestId: 0
+    property int activeExpectedCount: 0
+    property var activeValues: []
 
     signal d6ResultReady(int requestId, int value)
+    signal d6BatchResultReady(int requestId, var values)
 
-    function runD6Script() {
-        var req = Number(pendingRequestId || 0)
+    function runD6Script(requestId) {
+        var req = Number(requestId || activeRequestId || 0)
         web.runJavaScript("window.startD6Roll && window.startD6Roll(" + String(req) + ");")
     }
 
+    function startBatchNow() {
+        if (activeRequestId <= 0 || activeExpectedCount <= 0) {
+            return
+        }
+        activeValues = []
+        for (var i = 0; i < activeExpectedCount; i++) {
+            runD6Script(activeRequestId)
+        }
+        hideTimer.restart()
+    }
+
     function triggerD6(requestId) {
-        pendingRequestId = Number(requestId || 0)
+        triggerD6Batch(requestId, 1)
+    }
+
+    function triggerD6Batch(requestId, count) {
+        activeRequestId = Number(requestId || 0)
+        activeExpectedCount = Math.max(1, Number(count || 1))
+        activeValues = []
+
+        if (activeRequestId <= 0) {
+            return
+        }
+
         active = true
         web.visible = true
         web.opacity = 1.0
         hideTimer.restart()
 
         if (pageReady) {
-            runD6Script()
             pendingRoll = false
+            startBatchNow()
         } else {
             pendingRoll = true
             web.reload()
@@ -38,6 +64,26 @@ Item {
         web.opacity = 0.0
         web.visible = false
         pendingRoll = false
+        activeRequestId = 0
+        activeExpectedCount = 0
+        activeValues = []
+    }
+
+    function finalizeBatch() {
+        if (activeRequestId <= 0 || activeExpectedCount <= 0) {
+            return
+        }
+        if (activeValues.length <= 0) {
+            return
+        }
+
+        var resultValues = activeValues.slice(0)
+        var reqId = activeRequestId
+        if (resultValues.length === 1) {
+            d6ResultReady(reqId, Number(resultValues[0]))
+        }
+        d6BatchResultReady(reqId, resultValues)
+        hideTimer.restart()
     }
 
     function tryParseResultMessage(message) {
@@ -45,17 +91,29 @@ Item {
         if (text.indexOf("[dice-result]") !== 0) {
             return
         }
+
         var reqMatch = /request=(\d+)/.exec(text)
         var valueMatch = /value=(\d+)/.exec(text)
         if (!reqMatch || !valueMatch) {
             return
         }
+
         var reqId = Number(reqMatch[1])
         var value = Number(valueMatch[1])
         if (reqId <= 0 || value <= 0) {
             return
         }
-        d6ResultReady(reqId, value)
+
+        if (reqId !== activeRequestId) {
+            console.log("[dice-web] ignore stale result req=", reqId, "active=", activeRequestId)
+            return
+        }
+
+        activeValues = activeValues.concat([value])
+        if (activeValues.length >= activeExpectedCount) {
+            finalizeBatch()
+            return
+        }
     }
 
     WebEngineView {
@@ -77,6 +135,7 @@ Item {
             root.tryParseResultMessage(message)
             console.log("[dice-web-js]", String(message), String(sourceID) + ":" + String(lineNumber))
         }
+
         onLoadingChanged: function(req) {
             if (req.status === WebEngineView.LoadFailedStatus) {
                 root.pageReady = false
@@ -86,8 +145,8 @@ Item {
             if (req.status === WebEngineView.LoadSucceededStatus) {
                 root.pageReady = true
                 if (root.pendingRoll) {
-                    root.runD6Script()
                     root.pendingRoll = false
+                    root.startBatchNow()
                 }
             }
         }
@@ -95,7 +154,7 @@ Item {
 
     Timer {
         id: hideTimer
-        interval: 4500
+        interval: 6000
         repeat: false
         onTriggered: root.clear()
     }

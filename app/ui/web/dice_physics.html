@@ -85,9 +85,9 @@
 </head>
 <body>
   <div class="scene" id="scene">
-    <div class="shadow" id="shadow"></div>
-    <div class="dice-wrap" id="wrap">
-      <div class="dice" id="dice">
+    <div class="shadow" id="shadow-template" style="display:none;"></div>
+    <div class="dice-wrap" id="wrap-template" style="display:none;">
+      <div class="dice">
         <div class="face f1">1</div>
         <div class="face f2">2</div>
         <div class="face f3">3</div>
@@ -100,12 +100,34 @@
 
   <script>
     (function () {
-      const wrap = document.getElementById('wrap');
-      const dice = document.getElementById('dice');
-      const shadow = document.getElementById('shadow');
+      const scene = document.getElementById('scene');
+      const wrapTemplate = document.getElementById('wrap-template');
+      const shadowTemplate = document.getElementById('shadow-template');
 
-      let raf = 0;
       let rollSeq = 0;
+
+      function createRollNodes() {
+        if (!scene || !wrapTemplate || !shadowTemplate) {
+          return null;
+        }
+
+        const shadow = shadowTemplate.cloneNode(true);
+        shadow.removeAttribute('id');
+        shadow.style.display = 'block';
+
+        const wrap = wrapTemplate.cloneNode(true);
+        wrap.removeAttribute('id');
+        wrap.style.display = 'block';
+
+        const dice = wrap.querySelector('.dice');
+        if (!dice) {
+          return null;
+        }
+
+        scene.appendChild(shadow);
+        scene.appendChild(wrap);
+        return { wrap, dice, shadow };
+      }
 
       function random(min, max) {
         return Math.random() * (max - min) + min;
@@ -133,13 +155,6 @@
 
       function angularDistance(a, b) {
         return Math.abs(normalizeAngle(a - b));
-      }
-
-      function stopAnimation() {
-        if (raf) {
-          cancelAnimationFrame(raf);
-          raf = 0;
-        }
       }
 
       function rotateVec(v, rx, ry, rz) {
@@ -253,19 +268,22 @@
         const cy = state.py - state.z * 0.55;
         const scale = 0.78 + (1 - zNorm) * 0.22;
 
-        wrap.style.opacity = String(clamp(state.alpha, 0, 1));
-        wrap.style.transform = `translate(${cx}px, ${cy}px) translate(-50%, -50%) scale(${scale})`;
-        dice.style.transform =
+        state.wrap.style.opacity = String(clamp(state.alpha, 0, 1));
+        state.wrap.style.transform = `translate(${cx}px, ${cy}px) translate(-50%, -50%) scale(${scale})`;
+        state.dice.style.transform =
           `translate(-50%, -50%) rotateZ(${state.rz}deg) rotateY(${state.ry}deg) rotateX(${state.rx}deg)`;
 
         const shadowScale = 0.78 + (1 - zNorm) * 0.26;
         const shadowOpacity = clamp((1 - zNorm) * 0.38, 0, 0.36) * state.alpha;
-        shadow.style.opacity = String(shadowOpacity);
-        shadow.style.transform = `translate(${state.px}px, ${state.py + 28}px) translate(-50%, -50%) scale(${shadowScale})`;
+        state.shadow.style.opacity = String(shadowOpacity);
+        state.shadow.style.transform = `translate(${state.px}px, ${state.py + 28}px) translate(-50%, -50%) scale(${shadowScale})`;
       }
 
       window.startD6Roll = function startD6Roll(requestId) {
-        stopAnimation();
+        const nodes = createRollNodes();
+        if (!nodes) {
+          return;
+        }
 
         const w = window.innerWidth;
         const h = window.innerHeight;
@@ -309,8 +327,25 @@
           requestId: Number(requestId || 0),
           resultFace: 0,
           resultEmitted: false,
-          resultMeasureAtMs: 0
+          resultMeasureAtMs: 0,
+          wrap: nodes.wrap,
+          dice: nodes.dice,
+          shadow: nodes.shadow
         };
+
+        let raf = 0;
+        function stopRoll() {
+          if (raf) {
+            cancelAnimationFrame(raf);
+            raf = 0;
+          }
+          if (state.wrap && state.wrap.parentNode) {
+            state.wrap.parentNode.removeChild(state.wrap);
+          }
+          if (state.shadow && state.shadow.parentNode) {
+            state.shadow.parentNode.removeChild(state.shadow);
+          }
+        }
 
         const gravity = jitter(1850, 0.11);
         const restitution = clamp(jitter(0.2, 0.2), 0.12, 0.34);
@@ -321,6 +356,7 @@
         const alignSpeedBoost = random(1.6, 2.4);
         const alignPlopBoost = random(1.3, 2.0);
         const alignForceSnapDelay = random(0.28, 0.62);
+        const resultMeasureDelayMs = 0;
 
         let lastTs = performance.now();
 
@@ -430,7 +466,7 @@
                 state.vrz = 0;
                 state.alignReady = true;
                 if (!state.resultEmitted && state.requestId > 0 && state.resultMeasureAtMs <= 0) {
-                  state.resultMeasureAtMs = ts + 250;
+                  state.resultMeasureAtMs = ts + resultMeasureDelayMs;
                 }
                 console.log(`[dice-debug] roll=${rollId} align-end reason=${forceSnap ? "force" : "normal"} ad=${alignDistance.toFixed(3)} rz=${state.rz.toFixed(2)} rzMaxDelta=${state.alignMaxRzDelta.toFixed(2)} frames=${state.alignFrames}`);
               } else {
@@ -459,7 +495,7 @@
             if (state.settledFor > 0.34) {
               console.log(`[dice-debug] roll=${rollId} hold-enter rz=${state.rz.toFixed(2)} rzMaxDelta=${state.alignMaxRzDelta.toFixed(2)} alignReady=${state.alignReady}`);
               if (!state.resultEmitted && state.requestId > 0 && state.resultMeasureAtMs <= 0) {
-                state.resultMeasureAtMs = ts + 250;
+                state.resultMeasureAtMs = ts + resultMeasureDelayMs;
               }
               state.vx = 0;
               state.vy = 0;
@@ -481,7 +517,7 @@
             state.alpha = Math.max(0, state.alpha - dt * 1.1);
             if (state.alpha <= 0.02) {
               render(state);
-              stopAnimation();
+              stopRoll();
               return;
             }
           }

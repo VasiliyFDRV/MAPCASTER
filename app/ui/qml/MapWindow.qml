@@ -99,13 +99,18 @@ Window {
         if (!payload || payload.kind !== "standard") {
             return false
         }
-        if (!payload.dice || payload.dice.length !== 1) {
+        if (!payload.dice || payload.dice.length <= 0) {
             return false
         }
         if (!payload.request_id || Number(payload.request_id) <= 0) {
             return false
         }
-        return Number(payload.dice[0]) === 6
+        for (var i = 0; i < payload.dice.length; i++) {
+            if (Number(payload.dice[i]) !== 6) {
+                return false
+            }
+        }
+        return true
     }
 
 
@@ -2958,10 +2963,10 @@ Window {
 
     Connections {
         target: diceWebOverlay
-        function onD6ResultReady(requestId, value) {
-            console.log("[dice-ui-debug] map onD6ResultReady request=" + requestId + " value=" + value)
-            if (requestId > 0 && value > 0) {
-                diceController.submit_physics_d6_result(requestId, value)
+        function onD6BatchResultReady(requestId, values) {
+            console.log("[dice-ui-debug] map onD6BatchResultReady request=" + requestId + " values=" + JSON.stringify(values))
+            if (requestId > 0 && values && values.length > 0) {
+                diceController.submit_physics_d6_batch_result(requestId, values)
             }
         }
     }
@@ -2977,7 +2982,7 @@ Window {
             }
             if (mapWindow.shouldUseD6PhysicsVisual(payload)) {
                 console.log("[dice-visual] map -> 3d d6", payload.dice.length)
-                diceWebOverlay.triggerD6(Number(payload.request_id || 0))
+                diceWebOverlay.triggerD6Batch(Number(payload.request_id || 0), Number(payload.dice.length || 1))
             } else {
                 console.log("[dice-visual] map -> 2d", payload.dice.length)
                 mapDiceOverlay.trigger2D(payload.dice)
