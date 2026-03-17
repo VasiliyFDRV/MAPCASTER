@@ -1228,7 +1228,8 @@
             state.resultFace = resolveResultFace(state);
             if (state.resultFace > 0) {
               state.resultEmitted = true;
-              console.log(`[dice-result] request=${state.requestId} value=${state.resultFace}`);
+              const resultSides = Number((state.diceSpec && state.diceSpec.sides) || 6);
+              console.log(`[dice-result] request=${state.requestId} sides=${resultSides} value=${state.resultFace}`);
             }
           }
 

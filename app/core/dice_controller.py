@@ -21,6 +21,7 @@ class DiceController(QObject):
         self._map_window_open = False
         self._request_seq = 0
         self._pending_physics_standard_d6: dict[int, dict[str, Any]] = {}
+        self._pending_physics_standard_d8: dict[int, dict[str, Any]] = {}
         self._recent_standard_d6_requests: dict[int, dict[str, Any]] = {}
         self._physics_fallback_timers: dict[int, QTimer] = {}
         self._active_standard_d6_batch: dict[str, Any] | None = None
@@ -46,7 +47,7 @@ class DiceController(QObject):
             timer.stop()
             timer.deleteLater()
 
-    def _start_physics_fallback_timer(self, request_id: int, req_payload: dict[str, Any]) -> None:
+    def _start_physics_fallback_timer(self, request_id: int, req_payload: dict[str, Any], sides: int = 6) -> None:
         req_id = int(request_id)
         if req_id <= 0:
             return
@@ -56,20 +57,29 @@ class DiceController(QObject):
         timer.setSingleShot(True)
 
         def _on_timeout() -> None:
-            pending = self._pending_physics_standard_d6.pop(req_id, None)
+            if int(sides) == 8:
+                pending = self._pending_physics_standard_d8.pop(req_id, None)
+            else:
+                pending = self._pending_physics_standard_d6.pop(req_id, None)
             self._physics_fallback_timers.pop(req_id, None)
             if pending is None:
                 timer.deleteLater()
                 return
 
-            self._recent_standard_d6_requests.pop(req_id, None)
-            batch = self._active_standard_d6_batch
-            if batch and int(batch.get("request_id", 0)) == req_id:
-                self._active_standard_d6_batch = None
-            fallback_count = max(1, int(pending.get("expected_count", pending.get("d6", 1))))
-            fallback = self._dice_service.roll_standard(0, fallback_count, 0, 0, 0, int(pending.get("bonus", 0)))
+            if int(sides) == 6:
+                self._recent_standard_d6_requests.pop(req_id, None)
+                batch = self._active_standard_d6_batch
+                if batch and int(batch.get("request_id", 0)) == req_id:
+                    self._active_standard_d6_batch = None
+
+            fallback_count = max(1, int(pending.get("expected_count", pending.get(f"d{int(sides)}", 1))))
+            bonus = int(pending.get("bonus", 0))
+            if int(sides) == 8:
+                fallback = self._dice_service.roll_standard(0, 0, fallback_count, 0, 0, bonus)
+            else:
+                fallback = self._dice_service.roll_standard(0, fallback_count, 0, 0, 0, bonus)
             self._debug(
-                f"physics-timeout fallback request_id={req_id} total={fallback.get('total')} raw={fallback.get('raw_total')}"
+                f"physics-timeout fallback request_id={req_id} sides={int(sides)} total={fallback.get('total')} raw={fallback.get('raw_total')}"
             )
             self._event_bus.publish(
                 "dice.roll_completed",
@@ -85,7 +95,7 @@ class DiceController(QObject):
 
         timer.timeout.connect(_on_timeout)
         self._physics_fallback_timers[req_id] = timer
-        fallback_count = max(1, int(req_payload.get("d6", 1)))
+        fallback_count = max(1, int(req_payload.get(f"d{int(sides)}", 1)))
         timer.start(min(12000, 2500 + fallback_count * 1600))
 
     @Slot(int, "QVariantList")
@@ -158,6 +168,71 @@ class DiceController(QObject):
                 "result": result,
             },
         )
+    @Slot(int, int, "QVariantList")
+    def submit_physics_standard_batch_result(self, request_id: int, sides: int, values: list[Any]) -> None:
+        s = int(sides)
+        if s == 6:
+            self.submit_physics_d6_batch_result(request_id, values)
+            return
+        if s != 8:
+            self._debug(f"submit_physics_standard_batch_result unsupported sides={s}")
+            return
+
+        req_id = int(request_id)
+        if req_id <= 0:
+            self._debug(f"submit_physics_standard_batch_result ignored invalid request_id={request_id}")
+            return
+
+        parsed_values: list[int] = []
+        for item in (values or []):
+            try:
+                v = int(item)
+            except (TypeError, ValueError):
+                continue
+            if v > 0:
+                parsed_values.append(max(1, min(8, v)))
+
+        if len(parsed_values) <= 0:
+            self._debug(f"submit_physics_standard_batch_result request_id={req_id} sides=8 got empty values")
+            return
+
+        pending = self._pending_physics_standard_d8.get(req_id)
+        if not pending:
+            self._debug(f"submit_physics_standard_batch_result request_id={req_id} sides=8 has no pending batch")
+            return
+
+        expected = max(1, int(pending.get("expected_count", pending.get("d8", 1))))
+        current_values = list(pending.get("values", []))
+        current_values.extend(parsed_values)
+        if len(current_values) > expected:
+            current_values = current_values[:expected]
+
+        pending["values"] = current_values
+        pending["expected_count"] = expected
+        pending["d8"] = expected
+
+        self._debug(
+            f"submit_physics_standard_batch_result request_id={req_id} sides=8 expected={expected} landed={len(current_values)} values={current_values} bonus={int(pending.get('bonus', 0))}"
+        )
+
+        if len(current_values) < expected:
+            return
+
+        self._cancel_physics_fallback_timer(req_id)
+        self._pending_physics_standard_d8.pop(req_id, None)
+
+        result = self._build_standard_single_type_result(current_values, 8, int(pending.get("bonus", 0)))
+        self._event_bus.publish(
+            "dice.roll_completed",
+            {
+                "request_id": req_id,
+                "kind": "standard",
+                "mode": "physics",
+                "requested_mode": "physics",
+                "result": result,
+            },
+        )
+
     @Slot(int, int)
     def submit_physics_d6_result(self, request_id: int, value: int) -> None:
         self.submit_physics_d6_batch_result(request_id, [int(value)])
@@ -356,6 +431,26 @@ class DiceController(QObject):
             and int(req_payload.get("d12", 0)) == 0
         )
 
+    def _is_physics_standard_d8_only(
+        self,
+        kind: str,
+        req_payload: dict[str, Any],
+        visual_dice: list[int],
+    ) -> bool:
+        if kind != "standard":
+            return False
+        if len(visual_dice) <= 0:
+            return False
+        if any(int(s) != 8 for s in visual_dice):
+            return False
+        return (
+            int(req_payload.get("d4", 0)) == 0
+            and int(req_payload.get("d6", 0)) == 0
+            and int(req_payload.get("d8", 0)) > 0
+            and int(req_payload.get("d10", 0)) == 0
+            and int(req_payload.get("d12", 0)) == 0
+        )
+
     def _register_or_extend_pending_d6(self, request_id: int, add_count: int, bonus: int) -> dict[str, Any]:
         req_id = int(request_id)
         count = max(1, int(add_count))
@@ -378,34 +473,52 @@ class DiceController(QObject):
 
         self._pending_physics_standard_d6[req_id] = pending
         self._recent_standard_d6_requests[req_id] = {"d6": int(pending.get("d6", 1)), "bonus": int(pending.get("bonus", b))}
-        self._start_physics_fallback_timer(req_id, {"d6": int(pending.get("d6", 1)), "bonus": int(pending.get("bonus", b))})
+        self._start_physics_fallback_timer(req_id, {"d6": int(pending.get("d6", 1)), "bonus": int(pending.get("bonus", b))}, sides=6)
         return pending
 
-    def _build_standard_d6_only_result(self, values: list[int], req_payload: dict[str, Any]) -> dict[str, Any]:
-        clean_values = [max(1, min(6, int(v))) for v in values if int(v) > 0]
+    def _register_pending_d8(self, request_id: int, count: int, bonus: int) -> dict[str, Any]:
+        req_id = int(request_id)
+        c = max(1, int(count))
+        b = max(-20, min(20, int(bonus)))
+        pending = {
+            "d8": c,
+            "expected_count": c,
+            "values": [],
+            "bonus": b,
+        }
+        self._pending_physics_standard_d8[req_id] = pending
+        self._start_physics_fallback_timer(req_id, {"d8": c, "bonus": b}, sides=8)
+        return pending
+
+    def _build_standard_single_type_result(self, values: list[int], sides: int, bonus: int) -> dict[str, Any]:
+        s = max(2, int(sides))
+        clean_values = [max(1, min(s, int(v))) for v in values if int(v) > 0]
         if len(clean_values) <= 0:
             clean_values = [1]
 
-        bonus = max(-20, min(20, int(req_payload.get("bonus", 0))))
+        b = max(-20, min(20, int(bonus)))
         raw_total = sum(clean_values)
-        total = raw_total + bonus
+        total = raw_total + b
 
         count = len(clean_values)
-        formula = "d6" if count == 1 else f"{count}d6"
-        if bonus > 0:
-            formula += f" + {bonus}"
-        elif bonus < 0:
-            formula += f" - {abs(bonus)}"
+        formula = f"d{s}" if count == 1 else f"{count}d{s}"
+        if b > 0:
+            formula += f" + {b}"
+        elif b < 0:
+            formula += f" - {abs(b)}"
 
         return {
             "active": True,
             "kind": "standard",
             "formula": formula,
             "total": total,
-            "bonus": bonus,
-            "rolls": [{"sides": 6, "value": int(v)} for v in clean_values],
+            "bonus": b,
+            "rolls": [{"sides": s, "value": int(v)} for v in clean_values],
             "raw_total": raw_total,
         }
+
+    def _build_standard_d6_only_result(self, values: list[int], req_payload: dict[str, Any]) -> dict[str, Any]:
+        return self._build_standard_single_type_result(values, 6, int(req_payload.get("bonus", 0)))
 
     def _build_standard_single_d6_result(self, value: int, req_payload: dict[str, Any]) -> dict[str, Any]:
         return self._build_standard_d6_only_result([int(value)], req_payload)
@@ -465,6 +578,25 @@ class DiceController(QObject):
                 )
                 return
 
+            is_d8_only = d4 == 0 and d6 == 0 and d8 > 0 and d10 == 0 and d12 == 0
+            if is_d8_only:
+                d8_count = self._effective_count(d8)
+                pending = self._register_pending_d8(request_id, d8_count, bonus)
+                self._debug(
+                    f"d8 physics request_id={request_id} expected={int(pending.get('expected_count', 0))}"
+                )
+                self._event_bus.publish(
+                    "dice.visual_roll_requested",
+                    {
+                        "request_id": request_id,
+                        "kind": "standard",
+                        "dice": [8] * d8_count,
+                        "requested_mode": "physics",
+                        "append": False,
+                    },
+                )
+                return
+
         visual_dice = self._build_visual_dice_list(kind, req_payload)
         if len(visual_dice) > 0:
             self._event_bus.publish(
@@ -479,6 +611,7 @@ class DiceController(QObject):
             )
 
         is_standard_d6_only = self._is_physics_standard_d6_only(kind, req_payload, visual_dice)
+        is_standard_d8_only = self._is_physics_standard_d8_only(kind, req_payload, visual_dice)
         self._debug(
             f"visual request_id={request_id} kind={kind} dice={visual_dice} d6_only={is_standard_d6_only}"
         )
@@ -495,8 +628,19 @@ class DiceController(QObject):
                 "values": [],
                 "bonus": int(req_payload.get("bonus", 0)),
             }
-            self._start_physics_fallback_timer(request_id, req_payload)
+            self._start_physics_fallback_timer(request_id, req_payload, sides=6)
             self._debug(f"pending physics d6-only request_id={request_id} (requested_mode={requested_mode})")
+            return
+
+        if is_standard_d8_only and request_id > 0:
+            self._pending_physics_standard_d8[request_id] = {
+                "d8": max(1, int(req_payload.get("d8", 1))),
+                "expected_count": max(1, int(req_payload.get("d8", 1))),
+                "values": [],
+                "bonus": int(req_payload.get("bonus", 0)),
+            }
+            self._start_physics_fallback_timer(request_id, req_payload, sides=8)
+            self._debug(f"pending physics d8-only request_id={request_id} (requested_mode={requested_mode})")
             return
 
         if requested_mode == "physics":

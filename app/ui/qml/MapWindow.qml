@@ -2986,6 +2986,12 @@ Window {
                 diceController.submit_physics_d6_batch_result(requestId, values)
             }
         }
+        function onStandardBatchResultReady(requestId, sides, values) {
+            console.log("[dice-ui-debug] map onStandardBatchResultReady request=" + requestId + " sides=" + sides + " values=" + JSON.stringify(values))
+            if (requestId > 0 && sides > 0 && values && values.length > 0) {
+                diceController.submit_physics_standard_batch_result(requestId, sides, values)
+            }
+        }
     }
 
     Connections {
@@ -3007,7 +3013,7 @@ Window {
                 diceWebOverlay.triggerD6Batch(Number(payload.request_id || 0), Number(payload.dice.length || 1), Boolean(payload.append))
             } else if (mapWindow.shouldUseD8PhysicsVisual(payload)) {
                 console.log("[dice-visual] map -> 3d d8", payload.dice.length)
-                diceWebOverlay.triggerD8(Number(payload.dice.length || 1))
+                diceWebOverlay.triggerD8(Number(payload.request_id || 0), Number(payload.dice.length || 1))
             } else {
                 console.log("[dice-visual] map -> 2d", payload.dice.length)
                 mapDiceOverlay.trigger2D(payload.dice)

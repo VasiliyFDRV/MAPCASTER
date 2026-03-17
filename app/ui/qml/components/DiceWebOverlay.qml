@@ -12,18 +12,20 @@ Item {
     property int activeRequestId: 0
     property int activeExpectedCount: 0
     property var activeValues: []
-    property int pendingD8Count: 0
+    property int activeSides: 6
 
     signal d6ResultReady(int requestId, int value)
     signal d6BatchResultReady(int requestId, var values)
+    signal standardBatchResultReady(int requestId, int sides, var values)
 
     function runD6Script(requestId) {
         var req = Number(requestId || activeRequestId || 0)
         web.runJavaScript("window.startRoll && window.startRoll(" + String(req) + ", 'd6', 1);")
     }
 
-    function runD8Script() {
-        web.runJavaScript("window.startRoll && window.startRoll(0, 'd8', 1);")
+    function runD8Script(requestId) {
+        var req = Number(requestId || activeRequestId || 0)
+        web.runJavaScript("window.startRoll && window.startRoll(" + String(req) + ", 'd8', 1);")
     }
 
     function clearWebDiceNow() {
@@ -37,9 +39,12 @@ Item {
             return
         }
         activeValues = []
-        pendingD8Count = 0
         for (var i = 0; i < activeExpectedCount; i++) {
-            runD6Script(activeRequestId)
+            if (activeSides === 8) {
+                runD8Script(activeRequestId)
+            } else {
+                runD6Script(activeRequestId)
+            }
         }
         hideTimer.restart()
     }
@@ -48,20 +53,32 @@ Item {
         triggerD6Batch(requestId, 1, false)
     }
 
-    function triggerD8(count) {
+    function triggerD8(requestId, count) {
+        var req = Number(requestId || 0)
         var rolls = Math.max(1, Number(count || 1))
+        if (req <= 0) {
+            return
+        }
+
+        clearWebDiceNow()
+        activeRequestId = req
+        activeExpectedCount = rolls
+        activeValues = []
+        activeSides = 8
+
         active = true
         web.visible = true
         web.opacity = 1.0
         hideTimer.restart()
 
-        if (!pageReady) {
-            pendingD8Count = pendingD8Count + rolls
+        if (pageReady) {
+            pendingRoll = false
+            for (var i = 0; i < rolls; i++) {
+                runD8Script(activeRequestId)
+            }
+        } else {
+            pendingRoll = true
             web.reload()
-            return
-        }
-        for (var i = 0; i < rolls; i++) {
-            runD8Script()
         }
     }
 
@@ -80,6 +97,7 @@ Item {
             activeRequestId = req
             activeExpectedCount = addCount
             activeValues = []
+            activeSides = 6
         } else {
             activeExpectedCount = activeExpectedCount + addCount
         }
@@ -109,7 +127,6 @@ Item {
         activeRequestId = 0
         activeExpectedCount = 0
         activeValues = []
-        pendingD8Count = 0
     }
 
     function finalizeBatch() {
@@ -122,10 +139,13 @@ Item {
 
         var resultValues = activeValues.slice(0)
         var reqId = activeRequestId
-        if (resultValues.length === 1) {
+        if (activeSides === 6 && resultValues.length === 1) {
             d6ResultReady(reqId, Number(resultValues[0]))
         }
-        d6BatchResultReady(reqId, resultValues)
+        if (activeSides === 6) {
+            d6BatchResultReady(reqId, resultValues)
+        }
+        standardBatchResultReady(reqId, Number(activeSides || 6), resultValues)
         hideTimer.restart()
     }
 
@@ -136,18 +156,20 @@ Item {
         }
 
         var reqMatch = /request=(\d+)/.exec(text)
+        var sidesMatch = /sides=(\d+)/.exec(text)
         var valueMatch = /value=(\d+)/.exec(text)
         if (!reqMatch || !valueMatch) {
             return
         }
 
         var reqId = Number(reqMatch[1])
+        var sides = sidesMatch ? Number(sidesMatch[1]) : Number(activeSides || 6)
         var value = Number(valueMatch[1])
-        if (reqId <= 0 || value <= 0) {
+        if (reqId <= 0 || value <= 0 || sides <= 0) {
             return
         }
 
-        if (reqId !== activeRequestId) {
+        if (reqId !== activeRequestId || sides !== Number(activeSides || 6)) {
             console.log("[dice-web] ignore stale result req=", reqId, "active=", activeRequestId)
             return
         }
@@ -190,13 +212,6 @@ Item {
                 if (root.pendingRoll) {
                     root.pendingRoll = false
                     root.startBatchNow()
-                }
-                if (root.pendingD8Count > 0) {
-                    var d8Count = Number(root.pendingD8Count)
-                    root.pendingD8Count = 0
-                    for (var i = 0; i < d8Count; i++) {
-                        root.runD8Script()
-                    }
                 }
             }
         }
