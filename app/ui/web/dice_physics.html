@@ -794,6 +794,22 @@
         return { face: targetFace, target: best, up: bestUp };
       }
 
+
+      const ALIGN_TARGET_RESOLVERS = {
+        cube: function resolveCubeTarget(state) {
+          return faceUpTargetFromPose(state.rx, state.ry);
+        },
+        poly: function resolvePolyTarget(state) {
+          return d8FaceUpTargetFromPose(state.rx, state.ry, state.rz);
+        },
+      };
+
+      function resolveAlignTarget(state) {
+        const mode = String((state && state.alignMode) || 'cube');
+        const resolver = ALIGN_TARGET_RESOLVERS[mode] || ALIGN_TARGET_RESOLVERS.cube;
+        return resolver(state);
+      }
+
       function render(state) {
         const zNorm = clamp(state.z / 260, 0, 1);
         const cx = state.px;
@@ -1050,7 +1066,7 @@
 
             if (alignEnabled && grounded && state.groundedFor >= alignStartGroundedDelay && planarSpeed < alignStartPlanarThreshold && alignSpin < alignStartSpinThreshold && !state.alignReady) {
               if (!state.alignTarget) {
-                const facePick = state.alignMode === 'poly' ? d8FaceUpTargetFromPose(state.rx, state.ry, state.rz) : faceUpTargetFromPose(state.rx, state.ry);
+                const facePick = resolveAlignTarget(state);
                 state.alignTarget = facePick.target;
                 state.resultFace = Number(facePick.face || 0);
                 state.alignReady = false;
