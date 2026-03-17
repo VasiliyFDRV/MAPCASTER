@@ -810,6 +810,21 @@
         return resolver(state);
       }
 
+      const RESULT_RESOLVERS = {
+        cube: function resolveCubeResultFace(state) {
+          return Number(screenFacingFaceId(state.rx, state.ry) || 0);
+        },
+        poly: function resolvePolyResultFace(state) {
+          return Number(topFaceD8FromEuler(state.rx, state.ry, state.rz) || 0);
+        },
+      };
+
+      function resolveResultFace(state) {
+        const mode = String((state && state.alignMode) || 'cube');
+        const resolver = RESULT_RESOLVERS[mode] || RESULT_RESOLVERS.cube;
+        return Number(resolver(state) || 0);
+      }
+
       function isPolyAlign(state) {
         return String((state && state.alignMode) || 'cube') === 'poly';
       }
@@ -1201,7 +1216,7 @@
           }
 
           if (!state.resultEmitted && state.requestId > 0 && state.resultMeasureAtMs > 0 && ts >= state.resultMeasureAtMs) {
-            state.resultFace = Number(screenFacingFaceId(state.rx, state.ry) || 0);
+            state.resultFace = resolveResultFace(state);
             if (state.resultFace > 0) {
               state.resultEmitted = true;
               console.log(`[dice-result] request=${state.requestId} value=${state.resultFace}`);
