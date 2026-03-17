@@ -19,11 +19,11 @@ Item {
 
     function runD6Script(requestId) {
         var req = Number(requestId || activeRequestId || 0)
-        web.runJavaScript("window.startD6Roll && window.startD6Roll(" + String(req) + ");")
+        web.runJavaScript("window.startRoll && window.startRoll(" + String(req) + ", 'd6', 1);")
     }
 
     function runD8Script() {
-        web.runJavaScript("window.startD6Roll && window.startD6Roll(0, 'd8');")
+        web.runJavaScript("window.startRoll && window.startRoll(0, 'd8', 1);")
     }
 
     function clearWebDiceNow() {

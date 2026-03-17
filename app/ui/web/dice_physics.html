@@ -885,8 +885,17 @@
           }
         }
       };
+      window.startRoll = function startRoll(requestId, kind, count) {
+        const reqId = Number(requestId || 0);
+        const modelKind = String(kind || "d6");
+        const rollCount = Math.max(1, Number(count || 1));
+        for (let i = 0; i < rollCount; i += 1) {
+          window.startD6Roll(reqId, modelKind);
+        }
+      };
+
       window.startD8Roll = function startD8Roll() {
-        window.startD6Roll(0, "d8");
+        window.startRoll(0, "d8", 1);
       };
 
       window.startD6Roll = function startD6Roll(requestId, kind) {
