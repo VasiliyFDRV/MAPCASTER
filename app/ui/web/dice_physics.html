@@ -523,6 +523,19 @@
           coreSelector: '.core',
           faceNormals: FACE_NORMALS,
           sides: 6,
+          alignMode: 'cube',
+          alignProfile: {
+            startGroundedDelayRange: [0.03, 0.18],
+            startPlanarThreshold: 1.05,
+            startSpinThreshold: 180,
+            speedBoostRange: [1.6, 2.4],
+            plopBoostRange: [1.3, 2.0],
+            forceSnapDelayRange: [0.28, 0.62],
+            tMax: 2.2,
+            ryFactor: 0.92,
+            rzLerpFactor: 0.0,
+            forceSnapDistance: 12.0,
+          },
         },
         d8: {
           key: 'd8',
@@ -531,6 +544,19 @@
           coreSelector: '.d8-core',
           faceNormals: D8_FACE_NORMALS,
           sides: 8,
+          alignMode: 'poly',
+          alignProfile: {
+            startGroundedDelayRange: [0.02, 0.12],
+            startPlanarThreshold: 2.1,
+            startSpinThreshold: 420,
+            speedBoostRange: [1.9, 2.8],
+            plopBoostRange: [1.45, 2.15],
+            forceSnapDelayRange: [0.22, 0.40],
+            tMax: 2.6,
+            ryFactor: 0.96,
+            rzLerpFactor: 0.78,
+            forceSnapDistance: 14.0,
+          },
         },
       };
 
@@ -565,6 +591,23 @@
 
       function getLightingProfile(state) {
         return LIGHTING_PROFILE;
+      }
+
+      function buildAlignConfig(spec) {
+        const profile = (spec && spec.alignProfile) || DICE_SPECS.d6.alignProfile;
+        return {
+          mode: (spec && spec.alignMode) || 'cube',
+          startGroundedDelay: random(profile.startGroundedDelayRange[0], profile.startGroundedDelayRange[1]),
+          startPlanarThreshold: Number(profile.startPlanarThreshold),
+          startSpinThreshold: Number(profile.startSpinThreshold),
+          speedBoost: random(profile.speedBoostRange[0], profile.speedBoostRange[1]),
+          plopBoost: random(profile.plopBoostRange[0], profile.plopBoostRange[1]),
+          forceSnapDelay: random(profile.forceSnapDelayRange[0], profile.forceSnapDelayRange[1]),
+          tMax: Number(profile.tMax),
+          ryFactor: Number(profile.ryFactor),
+          rzLerpFactor: Number(profile.rzLerpFactor),
+          forceSnapDistance: Number(profile.forceSnapDistance),
+        };
       }
 
       function normalizeVec3(x, y, z) {
@@ -849,7 +892,9 @@
           faceEls: nodes.faceEls || [],
           coreEl: nodes.coreEl || null,
           modelKind: modelKind,
-          diceSpec: nodes.spec || getDiceSpec(modelKind)
+          diceSpec: nodes.spec || getDiceSpec(modelKind),
+          alignConfig: null,
+          alignMode: 'cube'
         };
 
         state.baseVrx = Math.abs(state.vrx);
@@ -879,12 +924,15 @@
         const dampVx = jitter(0.988, 0.01);
         const dampVy = jitter(0.996, 0.006);
         const dampRot = jitter(0.986, 0.007);
-        const alignStartGroundedDelay = state.modelKind === 'd8' ? random(0.02, 0.12) : random(0.03, 0.18);
-        const alignStartPlanarThreshold = state.modelKind === 'd8' ? 2.1 : 1.05;
-        const alignStartSpinThreshold = state.modelKind === 'd8' ? 420 : 180;
-        const alignSpeedBoost = state.modelKind === 'd8' ? random(1.9, 2.8) : random(1.6, 2.4);
-        const alignPlopBoost = state.modelKind === 'd8' ? random(1.45, 2.15) : random(1.3, 2.0);
-        const alignForceSnapDelay = state.modelKind === 'd8' ? random(0.22, 0.40) : random(0.28, 0.62);
+        const alignConfig = buildAlignConfig(state.diceSpec);
+        state.alignConfig = alignConfig;
+        state.alignMode = alignConfig.mode;
+        const alignStartGroundedDelay = alignConfig.startGroundedDelay;
+        const alignStartPlanarThreshold = alignConfig.startPlanarThreshold;
+        const alignStartSpinThreshold = alignConfig.startSpinThreshold;
+        const alignSpeedBoost = alignConfig.speedBoost;
+        const alignPlopBoost = alignConfig.plopBoost;
+        const alignForceSnapDelay = alignConfig.forceSnapDelay;
         const resultMeasureDelayMs = 0;
         const alignEnabled = true;
         const landingBlendInSec = random(0.07, 0.22);
@@ -1002,13 +1050,13 @@
 
             if (alignEnabled && grounded && state.groundedFor >= alignStartGroundedDelay && planarSpeed < alignStartPlanarThreshold && alignSpin < alignStartSpinThreshold && !state.alignReady) {
               if (!state.alignTarget) {
-                const facePick = state.modelKind === 'd8' ? d8FaceUpTargetFromPose(state.rx, state.ry, state.rz) : faceUpTargetFromPose(state.rx, state.ry);
+                const facePick = state.alignMode === 'poly' ? d8FaceUpTargetFromPose(state.rx, state.ry, state.rz) : faceUpTargetFromPose(state.rx, state.ry);
                 state.alignTarget = facePick.target;
                 state.resultFace = Number(facePick.face || 0);
                 state.alignReady = false;
                 state.alignStarted = true;
                 state.alignStartRz = state.rz;
-                if (state.modelKind !== 'd8') {
+                if (state.alignMode !== 'poly') {
                   state.vrz = 0;
                 }
                 state.alignMaxRzDelta = 0;
@@ -1029,7 +1077,7 @@
               }
               let alignDistance = angularDistance(state.rx, target.rx)
                 + angularDistance(state.ry, target.ry);
-              if (state.modelKind === 'd8') {
+              if (state.alignMode === 'poly') {
                 const rzTarget = Number(target.rz === undefined ? state.rz : target.rz);
                 alignDistance += angularDistance(state.rz, rzTarget) * 0.85;
               }
@@ -1041,25 +1089,25 @@
               const baseAssist = (0.014 + closeness * 0.11) * settleGate * alignSpeedBoost;
               const assist = baseAssist + plopBoost;
 
-              const tMax = state.modelKind === 'd8' ? 2.6 : 2.2;
-              const ryFactor = state.modelKind === 'd8' ? 0.96 : 0.92;
+              const tMax = alignConfig.tMax;
+              const ryFactor = alignConfig.ryFactor;
               const t = clamp(assist * dt * 60, 0, tMax);
               state.rx = lerpAngle(state.rx, target.rx, t);
               state.ry = lerpAngle(state.ry, target.ry, t * ryFactor);
-              if (state.modelKind === 'd8') {
+              if (state.alignMode === 'poly') {
                 const rzTarget = Number(target.rz === undefined ? state.rz : target.rz);
-                state.rz = lerpAngle(state.rz, rzTarget, t * 0.78);
+                state.rz = lerpAngle(state.rz, rzTarget, t * alignConfig.rzLerpFactor);
               } else {
                 state.rz = state.alignStartRz;
               }
 
               // Kill shaking once close to stable face-up orientation.
-              const forceSnapDistance = state.modelKind === 'd8' ? 14.0 : 12.0;
+              const forceSnapDistance = alignConfig.forceSnapDistance;
               const forceSnap = state.groundedFor > alignForceSnapDelay && alignDistance < forceSnapDistance;
               if (alignDistance < 3.2 || forceSnap) {
                 state.rx = target.rx;
                 state.ry = target.ry;
-                state.rz = state.modelKind === 'd8'
+                state.rz = state.alignMode === 'poly'
                   ? Number(target.rz === undefined ? state.rz : target.rz)
                   : state.alignStartRz;
                 
