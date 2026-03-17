@@ -494,6 +494,38 @@
         return { x: x3, y: y3, z: z3 };
       }
 
+
+      // Local face transform order in CSS classes is `rotateY(...) rotateX(...) rotateZ(...)`.
+      // Effective order is Z -> X -> Y (right-most first).
+      function rotateVecFaceYXRZ(v, rx, ry, rz) {
+        const x0 = v.x;
+        const y0 = v.y;
+        const z0 = v.z;
+
+        const az = rz * Math.PI / 180;
+        const cz = Math.cos(az);
+        const sz = Math.sin(az);
+        const x1 = x0 * cz - y0 * sz;
+        const y1 = x0 * sz + y0 * cz;
+        const z1 = z0;
+
+        const ax = rx * Math.PI / 180;
+        const cx = Math.cos(ax);
+        const sx = Math.sin(ax);
+        const x2 = x1;
+        const y2 = y1 * cx - z1 * sx;
+        const z2 = y1 * sx + z1 * cx;
+
+        const ay = ry * Math.PI / 180;
+        const cy = Math.cos(ay);
+        const sy = Math.sin(ay);
+        const x3 = x2 * cy + z2 * sy;
+        const y3 = y2;
+        const z3 = -x2 * sy + z2 * cy;
+
+        return { x: x3, y: y3, z: z3 };
+      }
+
       const FACE_NORMALS = [
         { x: 0, y: 0, z: 1 },
         { x: 1, y: 0, z: 0 },
@@ -503,16 +535,24 @@
         { x: 0, y: 1, z: 0 }
       ];
 
-      const D8_FACE_NORMALS = [
-        { x: 1, y: 1, z: 1 },
-        { x: -1, y: 1, z: 1 },
-        { x: -1, y: -1, z: 1 },
-        { x: 1, y: -1, z: 1 },
-        { x: 1, y: 1, z: -1 },
-        { x: -1, y: 1, z: -1 },
-        { x: -1, y: -1, z: -1 },
-        { x: 1, y: -1, z: -1 }
+      const D8_FACE_TRANSFORMS = [
+        { id: 1, ry: 45, rx: -35.264, rz: 180 },
+        { id: 2, ry: 135, rx: -35.264, rz: 180 },
+        { id: 3, ry: 225, rx: -35.264, rz: 180 },
+        { id: 4, ry: 315, rx: -35.264, rz: 180 },
+        { id: 5, ry: 45, rx: 35.264, rz: 0 },
+        { id: 6, ry: 135, rx: 35.264, rz: 0 },
+        { id: 7, ry: 225, rx: 35.264, rz: 0 },
+        { id: 8, ry: 315, rx: 35.264, rz: 0 },
       ];
+
+      const D8_FACE_NORMALS = D8_FACE_TRANSFORMS
+        .map((t) => {
+          // Face classes use transform order: rotateY(...) rotateX(...) rotateZ(...)
+          // (effective order Z -> X -> Y), so normals must be derived the same way.
+          const n = rotateVecFaceYXRZ({ x: 0, y: 0, z: 1 }, t.rx, t.ry, t.rz);
+          return normalizeVec3(n.x, n.y, n.z);
+        });
 
 
       const DICE_SPECS = {
@@ -521,6 +561,14 @@
           template: wrapTemplate,
           faceSelector: '.face',
           coreSelector: '.core',
+          faceTransforms: [
+            { id: 1, rx: 0, ry: 0, rz: 0 },
+            { id: 2, rx: 0, ry: 90, rz: 0 },
+            { id: 3, rx: 0, ry: 180, rz: 0 },
+            { id: 4, rx: 0, ry: -90, rz: 0 },
+            { id: 5, rx: 90, ry: 0, rz: 0 },
+            { id: 6, rx: -90, ry: 0, rz: 0 },
+          ],
           faceNormals: FACE_NORMALS,
           sides: 6,
           alignMode: 'cube',
@@ -542,6 +590,7 @@
           template: wrapD8Template,
           faceSelector: '.d8-face',
           coreSelector: '.d8-core',
+          faceTransforms: D8_FACE_TRANSFORMS.map((t) => ({ id: t.id, rx: t.rx, ry: t.ry, rz: t.rz })),
           faceNormals: D8_FACE_NORMALS,
           sides: 8,
           alignMode: 'poly',
@@ -552,7 +601,7 @@
             speedBoostRange: [1.9, 2.8],
             plopBoostRange: [1.45, 2.15],
             forceSnapDelayRange: [0.22, 0.40],
-            tMax: 2.6,
+            tMax: 1.4,
             ryFactor: 0.96,
             rzLerpFactor: 0.78,
             forceSnapDistance: 14.0,
@@ -563,6 +612,75 @@
       function getDiceSpec(kind) {
         const key = String(kind || 'd6');
         return DICE_SPECS[key] || DICE_SPECS.d6;
+      }
+
+      Object.keys(DICE_SPECS).forEach((k) => ensureSpecDerivedData(DICE_SPECS[k]));
+
+      function buildFaceNormalsFromTransforms(faceTransforms) {
+        const base = { x: 0, y: 0, z: 1 };
+        return (faceTransforms || []).map((t) => {
+          const n = rotateVecFaceYXRZ(base, Number(t.rx || 0), Number(t.ry || 0), Number(t.rz || 0));
+          return normalizeVec3(n.x, n.y, n.z);
+        });
+      }
+
+      function ensureSpecDerivedData(spec) {
+        if (!spec) {
+          return;
+        }
+        if ((!spec.faceNormals || spec.faceNormals.length <= 0) && spec.faceTransforms && spec.faceTransforms.length > 0) {
+          spec.faceNormals = buildFaceNormalsFromTransforms(spec.faceTransforms);
+        }
+      }
+
+      function topFaceFromSpecEuler(spec, rx, ry, rz) {
+        if (!spec || !spec.faceTransforms || spec.faceTransforms.length <= 0) {
+          return 0;
+        }
+        let bestId = Number(spec.faceTransforms[0].id || 1);
+        let bestDepth = -1e9;
+        for (let i = 0; i < spec.faceTransforms.length; i += 1) {
+          const ft = spec.faceTransforms[i];
+          const nLocal = rotateVecFaceYXRZ({ x: 0, y: 0, z: 1 }, Number(ft.rx || 0), Number(ft.ry || 0), Number(ft.rz || 0));
+          const nWorld = rotateVec(nLocal, rx, ry, rz);
+          if (nWorld.z > bestDepth) {
+            bestDepth = nWorld.z;
+            bestId = Number(ft.id || (i + 1));
+          }
+        }
+        return bestId;
+      }
+
+
+      function buildOppositeFaceMap(spec) {
+        const normals = (spec && spec.faceNormals) || [];
+        const map = {};
+        for (let i = 0; i < normals.length; i += 1) {
+          let bestJ = i;
+          let bestDot = Number.POSITIVE_INFINITY;
+          for (let j = 0; j < normals.length; j += 1) {
+            if (j === i) continue;
+            const a = normals[i];
+            const b = normals[j];
+            const dot = a.x * b.x + a.y * b.y + a.z * b.z;
+            if (dot < bestDot) {
+              bestDot = dot;
+              bestJ = j;
+            }
+          }
+          map[i + 1] = bestJ + 1;
+        }
+        return map;
+      }
+
+      function oppositeFaceId(spec, faceId) {
+        if (!spec) {
+          return Number(faceId || 1);
+        }
+        if (!spec._oppositeFaceMap) {
+          spec._oppositeFaceMap = buildOppositeFaceMap(spec);
+        }
+        return Number(spec._oppositeFaceMap[Number(faceId || 1)] || faceId || 1);
       }
 
       const LIGHTING_PROFILE = {
@@ -616,7 +734,7 @@
       }
 
       function applyLighting(state) {
-        if (!state || !state.faceEls || state.faceEls.length !== 6) {
+        if (!state || !state.faceEls || state.faceEls.length <= 0) {
           return;
         }
 
@@ -738,60 +856,70 @@
 
 
       function topFaceD8FromEuler(rx, ry, rz) {
-        let bestId = 1;
-        let bestDepth = -1e9;
-        for (let i = 0; i < getDiceSpec('d8').faceNormals.length; i += 1) {
-          const w = rotateVec(getDiceSpec('d8').faceNormals[i], rx, ry, rz);
-          if (w.z > bestDepth) {
-            bestDepth = w.z;
-            bestId = i + 1;
-          }
-        }
-        return bestId;
+        return topFaceFromSpecEuler(getDiceSpec('d8'), rx, ry, rz);
       }
 
       function d8FaceUpTargetFromPose(rx, ry, rz) {
-        const targetFace = topFaceD8FromEuler(rx, ry, rz);
-        const targetNormal = getDiceSpec('d8').faceNormals[targetFace - 1];
-        let best = { rx: rx, ry: ry, rz: rz };
-        let bestUp = -2;
-        let bestSmooth = Number.POSITIVE_INFINITY;
+        const spec = getDiceSpec('d8');
+        const targetFace = topFaceFromSpecEuler(spec, rx, ry, rz);
+        const bottomFace = oppositeFaceId(spec, targetFace);
+        const targetNormal = spec.faceNormals[targetFace - 1];
+        const bottomNormal = spec.faceNormals[bottomFace - 1];
 
-        // Coarse pass: maximize upward component first, smoothness second.
+        let best = { rx: rx, ry: ry, rz: rz };
+        let bestScore = -1e9;
+
+        // Coarse pass: enforce target top face and stable bottom-face support.
         for (let ax = -180; ax <= 180; ax += 15) {
           for (let ay = -180; ay <= 180; ay += 15) {
             for (let az = -180; az <= 180; az += 15) {
-              const w = rotateVec(targetNormal, ax, ay, az);
-              const wn = normalizeVec3(w.x, w.y, w.z);
-              const up = clamp(wn.z, -1, 1);
-              const smooth = angularDistance(rx, ax) + angularDistance(ry, ay) + angularDistance(rz, az) * 0.45;
-              if (up > bestUp + 1e-6 || (Math.abs(up - bestUp) <= 1e-6 && smooth < bestSmooth)) {
-                bestUp = up;
-                bestSmooth = smooth;
+              const candidateFace = topFaceFromSpecEuler(spec, ax, ay, az);
+              if (candidateFace !== targetFace) {
+                continue;
+              }
+              const wTop = rotateVec(targetNormal, ax, ay, az);
+              const wBottom = rotateVec(bottomNormal, ax, ay, az);
+              const topUp = clamp(normalizeVec3(wTop.x, wTop.y, wTop.z).z, -1, 1);
+              const bottomDown = clamp(-normalizeVec3(wBottom.x, wBottom.y, wBottom.z).z, -1, 1);
+
+              // Must strongly prefer face-on-table, not vertex/edge support.
+              const support = Math.min(topUp, bottomDown);
+              const smooth = angularDistance(rx, ax) + angularDistance(ry, ay) + angularDistance(rz, az) * 0.35;
+              const score = support * 3000 + (topUp + bottomDown) * 500 - smooth;
+
+              if (score > bestScore) {
+                bestScore = score;
                 best = { rx: ax, ry: ay, rz: az };
               }
             }
           }
         }
 
-        // Fine pass around the best coarse pose.
-        for (let ax = best.rx - 14; ax <= best.rx + 14; ax += 2) {
-          for (let ay = best.ry - 14; ay <= best.ry + 14; ay += 2) {
-            for (let az = best.rz - 14; az <= best.rz + 14; az += 2) {
-              const w = rotateVec(targetNormal, ax, ay, az);
-              const wn = normalizeVec3(w.x, w.y, w.z);
-              const up = clamp(wn.z, -1, 1);
-              const smooth = angularDistance(rx, ax) + angularDistance(ry, ay) + angularDistance(rz, az) * 0.45;
-              if (up > bestUp + 1e-7 || (Math.abs(up - bestUp) <= 1e-7 && smooth < bestSmooth)) {
-                bestUp = up;
-                bestSmooth = smooth;
+        // Fine pass around best coarse pose.
+        for (let ax = best.rx - 16; ax <= best.rx + 16; ax += 2) {
+          for (let ay = best.ry - 16; ay <= best.ry + 16; ay += 2) {
+            for (let az = best.rz - 16; az <= best.rz + 16; az += 2) {
+              const candidateFace = topFaceFromSpecEuler(spec, ax, ay, az);
+              if (candidateFace !== targetFace) {
+                continue;
+              }
+              const wTop = rotateVec(targetNormal, ax, ay, az);
+              const wBottom = rotateVec(bottomNormal, ax, ay, az);
+              const topUp = clamp(normalizeVec3(wTop.x, wTop.y, wTop.z).z, -1, 1);
+              const bottomDown = clamp(-normalizeVec3(wBottom.x, wBottom.y, wBottom.z).z, -1, 1);
+              const support = Math.min(topUp, bottomDown);
+              const smooth = angularDistance(rx, ax) + angularDistance(ry, ay) + angularDistance(rz, az) * 0.35;
+              const score = support * 4500 + (topUp + bottomDown) * 700 - smooth;
+
+              if (score > bestScore) {
+                bestScore = score;
                 best = { rx: ax, ry: ay, rz: az };
               }
             }
           }
         }
 
-        return { face: targetFace, target: best, up: bestUp };
+        return { face: targetFace, target: best, score: bestScore, bottomFace: bottomFace };
       }
 
 
@@ -812,7 +940,7 @@
 
       const RESULT_RESOLVERS = {
         cube: function resolveCubeResultFace(state) {
-          return Number(screenFacingFaceId(state.rx, state.ry) || 0);
+          return Number(topFaceFromSpecEuler(getDiceSpec('d6'), state.rx, state.ry, state.rz) || 0);
         },
         poly: function resolvePolyResultFace(state) {
           return Number(topFaceD8FromEuler(state.rx, state.ry, state.rz) || 0);
@@ -842,10 +970,13 @@
       }
 
       function applyAlignOrientationStep(state, target, t, alignConfig) {
-        state.rx = lerpAngle(state.rx, target.rx, t);
-        state.ry = lerpAngle(state.ry, target.ry, t * alignConfig.ryFactor);
+        // Prevent overshoot on poly dice (d8): t > 1 can cause unrealistic half/full-turn snaps.
+        const step = isPolyAlign(state) ? Math.min(Number(t || 0), 0.82) : Number(t || 0);
+        state.rx = lerpAngle(state.rx, target.rx, step);
+        state.ry = lerpAngle(state.ry, target.ry, step * alignConfig.ryFactor);
         if (isPolyAlign(state)) {
-          state.rz = lerpAngle(state.rz, getAlignTargetRz(state, target), t * alignConfig.rzLerpFactor);
+          const rzStep = Math.min(step * alignConfig.rzLerpFactor, 0.72);
+          state.rz = lerpAngle(state.rz, getAlignTargetRz(state, target), rzStep);
         } else {
           state.rz = state.alignStartRz;
         }
@@ -1136,8 +1267,9 @@
                 state.alignElapsed = 0;
                 console.log("[dice-debug] roll=" + rollId + " align-start rx=" + state.rx.toFixed(2) + " ry=" + state.ry.toFixed(2) + " rz=" + state.rz.toFixed(2) + " tx=" + state.alignTarget.rx.toFixed(2) + " ty=" + state.alignTarget.ry.toFixed(2));
                 if (state.modelKind === 'd8') {
-                  const targetUp = Number(facePick.up === undefined ? -1 : facePick.up);
-                  console.log(`[dice-d8-align] roll=${rollId} start face=${state.resultFace} rx=${state.rx.toFixed(2)} ry=${state.ry.toFixed(2)} rz=${state.rz.toFixed(2)} tx=${state.alignTarget.rx.toFixed(2)} ty=${state.alignTarget.ry.toFixed(2)} tz=${Number(state.alignTarget.rz || 0).toFixed(2)} up=${targetUp.toFixed(4)}`);
+                  const targetScore = Number(facePick.score === undefined ? -1 : facePick.score);
+                  const bottomFace = Number(facePick.bottomFace === undefined ? -1 : facePick.bottomFace);
+                  console.log(`[dice-d8-align] roll=${rollId} start face=${state.resultFace} bottom=${bottomFace} rx=${state.rx.toFixed(2)} ry=${state.ry.toFixed(2)} rz=${state.rz.toFixed(2)} tx=${state.alignTarget.rx.toFixed(2)} ty=${state.alignTarget.ry.toFixed(2)} tz=${Number(state.alignTarget.rz || 0).toFixed(2)} score=${targetScore.toFixed(2)}`);
                 }
               }
 
@@ -1179,7 +1311,7 @@
                   const n = d8Normals[Math.max(0, Math.min(d8Normals.length - 1, Number(state.resultFace || 1) - 1))];
                   const nw = rotateVec(n, state.rx, state.ry, state.rz);
                   const upNow = normalizeVec3(nw.x, nw.y, nw.z).z;
-                  console.log(`[dice-d8-align] roll=${rollId} end reason=${forceSnap ? "force" : "normal"} face=${state.resultFace} ad=${alignDistance.toFixed(3)} frames=${state.alignFrames} upNow=${upNow.toFixed(4)}`);
+                  console.log(`[dice-d8-align] roll=${rollId} end reason=${forceSnap ? "force" : "normal"} face=${state.resultFace} ad=${alignDistance.toFixed(3)} frames=${state.alignFrames} upNow=${upNow.toFixed(4)} rz=${state.rz.toFixed(2)}`);
                 }
               } else {
                 state.vrx *= 0.66;
@@ -1243,6 +1375,7 @@
   </script>
 </body>
 </html>
+
 
 
 

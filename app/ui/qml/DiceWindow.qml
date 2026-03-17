@@ -91,12 +91,11 @@ Window {
         return (d20Count > 0) || canRollStandard()
     }
 
-    function isPhysicsD6OnlyRequest(d4, d6, d8, d10, d12) {
+    function isPhysicsStandardRequest(d4, d6, d8, d10, d12) {
         return d4 === 0
-            && d6 > 0
-            && d8 === 0
             && d10 === 0
             && d12 === 0
+            && (d6 + d8) > 0
     }
 
     function setD20Mode(newMode) {
@@ -118,7 +117,7 @@ Window {
             return
         }
         clearResults()
-        waitingStandardPhysicsResult = isPhysicsD6OnlyRequest(d4Count, d6Count, d8Count, d10Count, d12Count)
+        waitingStandardPhysicsResult = isPhysicsStandardRequest(d4Count, d6Count, d8Count, d10Count, d12Count)
             && diceController.is_map_window_open()
         console.log("[dice-ui-debug] rollStandardOnly waiting=" + waitingStandardPhysicsResult
             + " d4=" + d4Count + " d6=" + d6Count + " d8=" + d8Count + " d10=" + d10Count + " d12=" + d12Count
@@ -143,7 +142,7 @@ Window {
         else if (sides === 12) d12 = c
 
         clearResults()
-        waitingStandardPhysicsResult = isPhysicsD6OnlyRequest(d4, d6, d8, d10, d12)
+        waitingStandardPhysicsResult = isPhysicsStandardRequest(d4, d6, d8, d10, d12)
             && diceController.is_map_window_open()
         console.log("[dice-ui-debug] rollSingleStandardDie sides=" + sides + " configured=" + configuredCount
             + " effective=" + c + " waiting=" + waitingStandardPhysicsResult
@@ -165,7 +164,7 @@ Window {
         }
         clearResults()
         waitingStandardPhysicsResult = d20Count === 0
-            && isPhysicsD6OnlyRequest(d4Count, d6Count, d8Count, d10Count, d12Count)
+            && isPhysicsStandardRequest(d4Count, d6Count, d8Count, d10Count, d12Count)
             && diceController.is_map_window_open()
         console.log("[dice-ui-debug] rollAll waiting=" + waitingStandardPhysicsResult
             + " d20=" + d20Count + " mode=" + d20Mode + " d20Bonus=" + d20Bonus
@@ -1451,6 +1450,7 @@ Window {
         onAccepted: updateEditorField("fontColor", selectedColor)
     }
 }
+
 
 
 
