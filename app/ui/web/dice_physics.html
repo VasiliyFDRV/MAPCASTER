@@ -810,6 +810,38 @@
         return resolver(state);
       }
 
+      function isPolyAlign(state) {
+        return String((state && state.alignMode) || 'cube') === 'poly';
+      }
+
+      function getAlignTargetRz(state, target) {
+        return Number(target && target.rz !== undefined ? target.rz : state.rz);
+      }
+
+      function computeAlignDistance(state, target) {
+        let dist = angularDistance(state.rx, target.rx) + angularDistance(state.ry, target.ry);
+        if (isPolyAlign(state)) {
+          dist += angularDistance(state.rz, getAlignTargetRz(state, target)) * 0.85;
+        }
+        return dist;
+      }
+
+      function applyAlignOrientationStep(state, target, t, alignConfig) {
+        state.rx = lerpAngle(state.rx, target.rx, t);
+        state.ry = lerpAngle(state.ry, target.ry, t * alignConfig.ryFactor);
+        if (isPolyAlign(state)) {
+          state.rz = lerpAngle(state.rz, getAlignTargetRz(state, target), t * alignConfig.rzLerpFactor);
+        } else {
+          state.rz = state.alignStartRz;
+        }
+      }
+
+      function applyAlignSnap(state, target) {
+        state.rx = target.rx;
+        state.ry = target.ry;
+        state.rz = isPolyAlign(state) ? getAlignTargetRz(state, target) : state.alignStartRz;
+      }
+
       function render(state) {
         const zNorm = clamp(state.z / 260, 0, 1);
         const cx = state.px;
@@ -1072,7 +1104,7 @@
                 state.alignReady = false;
                 state.alignStarted = true;
                 state.alignStartRz = state.rz;
-                if (state.alignMode !== 'poly') {
+                if (!isPolyAlign(state)) {
                   state.vrz = 0;
                 }
                 state.alignMaxRzDelta = 0;
@@ -1091,12 +1123,7 @@
               if (rzDelta > state.alignMaxRzDelta) {
                 state.alignMaxRzDelta = rzDelta;
               }
-              let alignDistance = angularDistance(state.rx, target.rx)
-                + angularDistance(state.ry, target.ry);
-              if (state.alignMode === 'poly') {
-                const rzTarget = Number(target.rz === undefined ? state.rz : target.rz);
-                alignDistance += angularDistance(state.rz, rzTarget) * 0.85;
-              }
+              const alignDistance = computeAlignDistance(state, target);
               const closeness = clamp(1 - alignDistance / 180, 0, 1);
               const settleGate = clamp((1.18 - planarSpeed) / 1.18, 0, 1) * clamp((210 - alignSpin) / 210, 0, 1);
 
@@ -1106,26 +1133,14 @@
               const assist = baseAssist + plopBoost;
 
               const tMax = alignConfig.tMax;
-              const ryFactor = alignConfig.ryFactor;
               const t = clamp(assist * dt * 60, 0, tMax);
-              state.rx = lerpAngle(state.rx, target.rx, t);
-              state.ry = lerpAngle(state.ry, target.ry, t * ryFactor);
-              if (state.alignMode === 'poly') {
-                const rzTarget = Number(target.rz === undefined ? state.rz : target.rz);
-                state.rz = lerpAngle(state.rz, rzTarget, t * alignConfig.rzLerpFactor);
-              } else {
-                state.rz = state.alignStartRz;
-              }
+              applyAlignOrientationStep(state, target, t, alignConfig);
 
               // Kill shaking once close to stable face-up orientation.
               const forceSnapDistance = alignConfig.forceSnapDistance;
               const forceSnap = state.groundedFor > alignForceSnapDelay && alignDistance < forceSnapDistance;
               if (alignDistance < 3.2 || forceSnap) {
-                state.rx = target.rx;
-                state.ry = target.ry;
-                state.rz = state.alignMode === 'poly'
-                  ? Number(target.rz === undefined ? state.rz : target.rz)
-                  : state.alignStartRz;
+                applyAlignSnap(state, target);
                 
                 state.vrx = 0;
                 state.vry = 0;
