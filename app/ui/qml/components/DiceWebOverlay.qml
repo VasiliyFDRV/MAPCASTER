@@ -12,6 +12,7 @@ Item {
     property int activeRequestId: 0
     property int activeExpectedCount: 0
     property var activeValues: []
+    property int pendingD8Count: 0
 
     signal d6ResultReady(int requestId, int value)
     signal d6BatchResultReady(int requestId, var values)
@@ -19,6 +20,10 @@ Item {
     function runD6Script(requestId) {
         var req = Number(requestId || activeRequestId || 0)
         web.runJavaScript("window.startD6Roll && window.startD6Roll(" + String(req) + ");")
+    }
+
+    function runD8Script() {
+        web.runJavaScript("window.startD6Roll && window.startD6Roll(0, 'd8');")
     }
 
     function clearWebDiceNow() {
@@ -32,6 +37,7 @@ Item {
             return
         }
         activeValues = []
+        pendingD8Count = 0
         for (var i = 0; i < activeExpectedCount; i++) {
             runD6Script(activeRequestId)
         }
@@ -40,6 +46,23 @@ Item {
 
     function triggerD6(requestId) {
         triggerD6Batch(requestId, 1, false)
+    }
+
+    function triggerD8(count) {
+        var rolls = Math.max(1, Number(count || 1))
+        active = true
+        web.visible = true
+        web.opacity = 1.0
+        hideTimer.restart()
+
+        if (!pageReady) {
+            pendingD8Count = pendingD8Count + rolls
+            web.reload()
+            return
+        }
+        for (var i = 0; i < rolls; i++) {
+            runD8Script()
+        }
     }
 
     function triggerD6Batch(requestId, count, appendMode) {
@@ -86,6 +109,7 @@ Item {
         activeRequestId = 0
         activeExpectedCount = 0
         activeValues = []
+        pendingD8Count = 0
     }
 
     function finalizeBatch() {
@@ -166,6 +190,13 @@ Item {
                 if (root.pendingRoll) {
                     root.pendingRoll = false
                     root.startBatchNow()
+                }
+                if (root.pendingD8Count > 0) {
+                    var d8Count = Number(root.pendingD8Count)
+                    root.pendingD8Count = 0
+                    for (var i = 0; i < d8Count; i++) {
+                        root.runD8Script()
+                    }
                 }
             }
         }

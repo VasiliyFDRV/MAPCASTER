@@ -84,6 +84,51 @@
     .f5 { transform: rotateX(90deg) translateZ(25px); }
     .f6 { transform: rotateX(-90deg) translateZ(25px); }
 
+
+    .d8 {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      width: 68px;
+      height: 68px;
+      transform: translate(-50%, -50%);
+      transform-style: preserve-3d;
+    }
+
+    .d8-face {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      width: 48px;
+      height: 41.57px;
+      margin-left: -24px;
+      margin-top: -27.71px;
+      clip-path: polygon(50% 0%, 0% 100%, 100% 100%);
+      background: #c9c9c9;
+      color: #232323;
+      font-family: Segoe UI, Arial, sans-serif;
+      font-size: 12px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      backface-visibility: hidden;
+      transform-origin: 50% 66.666%;
+    }
+
+    .d8-core {
+      display: none;
+    }
+
+    .d8-face.t1 { transform: rotateY(45deg) rotateX(-35.264deg) rotateZ(180deg) translateZ(19.6px); }
+    .d8-face.t2 { transform: rotateY(135deg) rotateX(-35.264deg) rotateZ(180deg) translateZ(19.6px); }
+    .d8-face.t3 { transform: rotateY(225deg) rotateX(-35.264deg) rotateZ(180deg) translateZ(19.6px); }
+    .d8-face.t4 { transform: rotateY(315deg) rotateX(-35.264deg) rotateZ(180deg) translateZ(19.6px); }
+    .d8-face.b1 { transform: rotateY(45deg) rotateX(35.264deg) translateZ(19.6px); }
+    .d8-face.b2 { transform: rotateY(135deg) rotateX(35.264deg) translateZ(19.6px); }
+    .d8-face.b3 { transform: rotateY(225deg) rotateX(35.264deg) translateZ(19.6px); }
+    .d8-face.b4 { transform: rotateY(315deg) rotateX(35.264deg) translateZ(19.6px); }
+
     .shadow {
       position: absolute;
       width: 68px;
@@ -112,12 +157,28 @@
         <div class="face f6">6</div>
       </div>
     </div>
+    <div class="dice-wrap" id="wrap-d8-template" style="display:none;">
+      <div class="dice">
+        <div class="d8">
+          <div class="d8-core"></div>
+          <div class="d8-face t1">1</div>
+          <div class="d8-face t2">2</div>
+          <div class="d8-face t3">3</div>
+          <div class="d8-face t4">4</div>
+          <div class="d8-face b1">5</div>
+          <div class="d8-face b2">6</div>
+          <div class="d8-face b3">7</div>
+          <div class="d8-face b4">8</div>
+        </div>
+      </div>
+    </div>
   </div>
 
   <script>
     (function () {
       const scene = document.getElementById('scene');
       const wrapTemplate = document.getElementById('wrap-template');
+      const wrapD8Template = document.getElementById('wrap-d8-template');
       const shadowTemplate = document.getElementById('shadow-template');
 
       let rollSeq = 0;
@@ -335,7 +396,7 @@
         }
       }
 
-      function createRollNodes() {
+      function createRollNodes(kind) {
         if (!scene || !wrapTemplate || !shadowTemplate) {
           return null;
         }
@@ -344,7 +405,8 @@
         shadow.removeAttribute('id');
         shadow.style.display = 'block';
 
-        const wrap = wrapTemplate.cloneNode(true);
+        const sourceWrap = kind === "d8" && wrapD8Template ? wrapD8Template : wrapTemplate;
+        const wrap = sourceWrap.cloneNode(true);
         wrap.removeAttribute('id');
         wrap.style.display = 'block';
 
@@ -353,8 +415,8 @@
           return null;
         }
 
-        const faceEls = Array.from(dice.querySelectorAll('.face'));
-        const coreEl = dice.querySelector('.core');
+        const faceEls = Array.from(dice.querySelectorAll(kind === 'd8' ? '.d8-face' : '.face'));
+        const coreEl = dice.querySelector(kind === 'd8' ? '.d8-core' : '.core');
 
         scene.appendChild(shadow);
         scene.appendChild(wrap);
@@ -433,6 +495,17 @@
         { x: 0, y: 1, z: 0 }
       ];
 
+      const D8_FACE_NORMALS = [
+        { x: 1, y: 1, z: 1 },
+        { x: -1, y: 1, z: 1 },
+        { x: -1, y: -1, z: 1 },
+        { x: 1, y: -1, z: 1 },
+        { x: 1, y: 1, z: -1 },
+        { x: -1, y: 1, z: -1 },
+        { x: -1, y: -1, z: -1 },
+        { x: 1, y: -1, z: -1 }
+      ];
+
       function normalizeVec3(x, y, z) {
         const m = Math.hypot(x, y, z) || 1;
         return { x: x / m, y: y / m, z: z / m };
@@ -450,9 +523,10 @@
         const l = normalizeVec3(lightX - state.px, lightY - state.py, lightZ - state.z);
         const v = { x: 0, y: 0, z: 1 };
 
+        const normals = state.faceEls.length === 8 ? D8_FACE_NORMALS : FACE_NORMALS;
         for (let i = 0; i < state.faceEls.length; i += 1) {
           const face = state.faceEls[i];
-          const nLocal = FACE_NORMALS[i];
+          const nLocal = normals[i % normals.length];
           const nWorld = rotateVec(nLocal, state.rx, state.ry, state.rz);
           const n = normalizeVec3(nWorld.x, nWorld.y, nWorld.z);
 
@@ -580,8 +654,13 @@
           }
         }
       };
-      window.startD6Roll = function startD6Roll(requestId) {
-        const nodes = createRollNodes();
+      window.startD8Roll = function startD8Roll() {
+        window.startD6Roll(0, "d8");
+      };
+
+      window.startD6Roll = function startD6Roll(requestId, kind) {
+        const modelKind = String(kind || "d6");
+        const nodes = createRollNodes(modelKind);
         if (!nodes) {
           return;
         }
@@ -891,6 +970,7 @@
   </script>
 </body>
 </html>
+
 
 
 

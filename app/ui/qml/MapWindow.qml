@@ -113,6 +113,21 @@ Window {
         return true
     }
 
+    function shouldUseD8PhysicsVisual(payload) {
+        if (!payload || payload.kind !== "standard") {
+            return false
+        }
+        if (!payload.dice || payload.dice.length <= 0) {
+            return false
+        }
+        for (var i = 0; i < payload.dice.length; i++) {
+            if (Number(payload.dice[i]) !== 8) {
+                return false
+            }
+        }
+        return true
+    }
+
 
     function useCustomCursor(toolName) {
         return toolName === "cursor"
@@ -2990,6 +3005,9 @@ Window {
             if (mapWindow.shouldUseD6PhysicsVisual(payload)) {
                 console.log("[dice-visual] map -> 3d d6", payload.dice.length)
                 diceWebOverlay.triggerD6Batch(Number(payload.request_id || 0), Number(payload.dice.length || 1), Boolean(payload.append))
+            } else if (mapWindow.shouldUseD8PhysicsVisual(payload)) {
+                console.log("[dice-visual] map -> 3d d8", payload.dice.length)
+                diceWebOverlay.triggerD8(Number(payload.dice.length || 1))
             } else {
                 console.log("[dice-visual] map -> 2d", payload.dice.length)
                 mapDiceOverlay.trigger2D(payload.dice)
