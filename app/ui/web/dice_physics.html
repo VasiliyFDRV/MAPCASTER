@@ -400,7 +400,13 @@
       }
 
       function createRollNodes(kind) {
-        if (!scene || !wrapTemplate || !shadowTemplate) {
+        if (!scene || !shadowTemplate) {
+          return null;
+        }
+
+        const spec = getDiceSpec(kind);
+        const sourceTemplate = spec && spec.template ? spec.template : wrapTemplate;
+        if (!sourceTemplate) {
           return null;
         }
 
@@ -408,8 +414,7 @@
         shadow.removeAttribute('id');
         shadow.style.display = 'block';
 
-        const sourceWrap = kind === "d8" && wrapD8Template ? wrapD8Template : wrapTemplate;
-        const wrap = sourceWrap.cloneNode(true);
+        const wrap = sourceTemplate.cloneNode(true);
         wrap.removeAttribute('id');
         wrap.style.display = 'block';
 
@@ -418,12 +423,12 @@
           return null;
         }
 
-        const faceEls = Array.from(dice.querySelectorAll(kind === 'd8' ? '.d8-face' : '.face'));
-        const coreEl = dice.querySelector(kind === 'd8' ? '.d8-core' : '.core');
+        const faceEls = Array.from(dice.querySelectorAll(spec.faceSelector));
+        const coreEl = dice.querySelector(spec.coreSelector);
 
         scene.appendChild(shadow);
         scene.appendChild(wrap);
-        return { wrap, dice, shadow, faceEls, coreEl };
+        return { wrap, dice, shadow, faceEls, coreEl, spec };
       }
 
       function random(min, max) {
@@ -509,6 +514,31 @@
         { x: 1, y: -1, z: -1 }
       ];
 
+
+      const DICE_SPECS = {
+        d6: {
+          key: 'd6',
+          template: wrapTemplate,
+          faceSelector: '.face',
+          coreSelector: '.core',
+          faceNormals: FACE_NORMALS,
+          sides: 6,
+        },
+        d8: {
+          key: 'd8',
+          template: wrapD8Template,
+          faceSelector: '.d8-face',
+          coreSelector: '.d8-core',
+          faceNormals: D8_FACE_NORMALS,
+          sides: 8,
+        },
+      };
+
+      function getDiceSpec(kind) {
+        const key = String(kind || 'd6');
+        return DICE_SPECS[key] || DICE_SPECS.d6;
+      }
+
       function normalizeVec3(x, y, z) {
         const m = Math.hypot(x, y, z) || 1;
         return { x: x / m, y: y / m, z: z / m };
@@ -526,7 +556,7 @@
         const l = normalizeVec3(lightX - state.px, lightY - state.py, lightZ - state.z);
         const v = { x: 0, y: 0, z: 1 };
 
-        const normals = state.faceEls.length === 8 ? D8_FACE_NORMALS : FACE_NORMALS;
+        const normals = (state.diceSpec && state.diceSpec.faceNormals) || FACE_NORMALS;
         for (let i = 0; i < state.faceEls.length; i += 1) {
           const face = state.faceEls[i];
           const nLocal = normals[i % normals.length];
@@ -633,8 +663,8 @@
       function topFaceD8FromEuler(rx, ry, rz) {
         let bestId = 1;
         let bestDepth = -1e9;
-        for (let i = 0; i < D8_FACE_NORMALS.length; i += 1) {
-          const w = rotateVec(D8_FACE_NORMALS[i], rx, ry, rz);
+        for (let i = 0; i < getDiceSpec('d8').faceNormals.length; i += 1) {
+          const w = rotateVec(getDiceSpec('d8').faceNormals[i], rx, ry, rz);
           if (w.z > bestDepth) {
             bestDepth = w.z;
             bestId = i + 1;
@@ -645,7 +675,7 @@
 
       function d8FaceUpTargetFromPose(rx, ry, rz) {
         const targetFace = topFaceD8FromEuler(rx, ry, rz);
-        const targetNormal = D8_FACE_NORMALS[targetFace - 1];
+        const targetNormal = getDiceSpec('d8').faceNormals[targetFace - 1];
         let best = { rx: rx, ry: ry, rz: rz };
         let bestUp = -2;
         let bestSmooth = Number.POSITIVE_INFINITY;
@@ -784,7 +814,8 @@
           shadow: nodes.shadow,
           faceEls: nodes.faceEls || [],
           coreEl: nodes.coreEl || null,
-          modelKind: modelKind
+          modelKind: modelKind,
+          diceSpec: nodes.spec || getDiceSpec(modelKind)
         };
 
         state.baseVrx = Math.abs(state.vrx);
@@ -1007,7 +1038,8 @@
                 }
                 console.log(`[dice-debug] roll=${rollId} align-end reason=${forceSnap ? "force" : "normal"} ad=${alignDistance.toFixed(3)} rz=${state.rz.toFixed(2)} rzMaxDelta=${state.alignMaxRzDelta.toFixed(2)} frames=${state.alignFrames}`);
                 if (state.modelKind === 'd8') {
-                  const n = D8_FACE_NORMALS[Math.max(0, Math.min(D8_FACE_NORMALS.length - 1, Number(state.resultFace || 1) - 1))];
+                  const d8Normals = getDiceSpec('d8').faceNormals;
+                  const n = d8Normals[Math.max(0, Math.min(d8Normals.length - 1, Number(state.resultFace || 1) - 1))];
                   const nw = rotateVec(n, state.rx, state.ry, state.rz);
                   const upNow = normalizeVec3(nw.x, nw.y, nw.z).z;
                   console.log(`[dice-d8-align] roll=${rollId} end reason=${forceSnap ? "force" : "normal"} face=${state.resultFace} ad=${alignDistance.toFixed(3)} frames=${state.alignFrames} upNow=${upNow.toFixed(4)}`);
