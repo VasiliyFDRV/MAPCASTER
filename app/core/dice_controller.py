@@ -21,7 +21,9 @@ class DiceController(QObject):
         self._map_window_open = False
         self._request_seq = 0
         self._pending_physics_standard: dict[int, dict[str, Any]] = {}
+        self._pending_physics_d100: dict[int, dict[str, Any]] = {}
         self._physics_fallback_timers: dict[int, QTimer] = {}
+        self._physics_d100_fallback_timers: dict[int, QTimer] = {}
         self._active_standard_physics_batch: dict[str, Any] | None = None
 
         self._event_bus.subscribe("dice.roll_requested", self._on_roll_requested)
@@ -66,12 +68,15 @@ class DiceController(QObject):
                 self._active_standard_physics_batch = None
 
             expected_by_sides = pending.get("expected_by_sides") or {}
+            d4_count = max(0, int(expected_by_sides.get(4, 0)))
             d6_count = max(0, int(expected_by_sides.get(6, 0)))
             d8_count = max(0, int(expected_by_sides.get(8, 0)))
+            d10_count = max(0, int(expected_by_sides.get(10, 0)))
+            d12_count = max(0, int(expected_by_sides.get(12, 0)))
             bonus = int(pending.get("bonus", 0))
-            fallback = self._dice_service.roll_standard(0, d6_count, d8_count, 0, 0, bonus)
+            fallback = self._dice_service.roll_standard(d4_count, d6_count, d8_count, d10_count, d12_count, bonus)
             self._debug(
-                f"physics-timeout fallback request_id={req_id} d6={d6_count} d8={d8_count} total={fallback.get('total')} raw={fallback.get('raw_total')}"
+                f"physics-timeout fallback request_id={req_id} d4={d4_count} d6={d6_count} d8={d8_count} d10={d10_count} d12={d12_count} total={fallback.get('total')} raw={fallback.get('raw_total')}"
             )
             self._event_bus.publish(
                 "dice.roll_completed",
@@ -89,6 +94,67 @@ class DiceController(QObject):
         self._physics_fallback_timers[req_id] = timer
         timer.start(min(14000, 2600 + max(1, int(expected_total)) * 1400))
 
+    def _cancel_d100_fallback_timer(self, request_id: int) -> None:
+        timer = self._physics_d100_fallback_timers.pop(int(request_id), None)
+        if timer is not None:
+            timer.stop()
+            timer.deleteLater()
+
+    def _start_physics_d100_fallback_timer(self, request_id: int) -> None:
+        req_id = int(request_id)
+        if req_id <= 0:
+            return
+        self._cancel_d100_fallback_timer(req_id)
+
+        timer = QTimer(self)
+        timer.setSingleShot(True)
+
+        def _on_timeout() -> None:
+            pending = self._pending_physics_d100.pop(req_id, None)
+            self._physics_d100_fallback_timers.pop(req_id, None)
+            if pending is None:
+                timer.deleteLater()
+                return
+
+            fallback = self._dice_service.roll_d100()
+            self._debug(
+                f"physics-timeout fallback d100 request_id={req_id} total={fallback.get('total')}"
+            )
+            self._event_bus.publish(
+                "dice.roll_completed",
+                {
+                    "request_id": req_id,
+                    "kind": "d100",
+                    "mode": "physics_fallback_random",
+                    "requested_mode": "physics",
+                    "result": fallback,
+                },
+            )
+            timer.deleteLater()
+
+        timer.timeout.connect(_on_timeout)
+        self._physics_d100_fallback_timers[req_id] = timer
+        timer.start(9000)
+
+    def _cancel_all_pending_standard_physics(self, reason: str) -> None:
+        pending_ids = list(self._pending_physics_standard.keys())
+        if len(pending_ids) <= 0 and self._active_standard_physics_batch is None:
+            return
+        for req_id in pending_ids:
+            self._cancel_physics_fallback_timer(int(req_id))
+        self._pending_physics_standard.clear()
+        self._active_standard_physics_batch = None
+        self._debug(f"cancel pending standard physics reason={reason} requests={pending_ids}")
+
+    def _cancel_all_pending_d100_physics(self, reason: str) -> None:
+        pending_ids = list(self._pending_physics_d100.keys())
+        if len(pending_ids) <= 0:
+            return
+        for req_id in pending_ids:
+            self._cancel_d100_fallback_timer(int(req_id))
+        self._pending_physics_d100.clear()
+        self._debug(f"cancel pending d100 physics reason={reason} requests={pending_ids}")
+
     def _is_supported_standard_physics_request(
         self,
         kind: str,
@@ -97,19 +163,23 @@ class DiceController(QObject):
     ) -> bool:
         if kind != "standard" or len(visual_dice) <= 0:
             return False
-        if int(req_payload.get("d4", 0)) > 0 or int(req_payload.get("d10", 0)) > 0 or int(req_payload.get("d12", 0)) > 0:
-            return False
-        return all(int(sides) in {6, 8} for sides in visual_dice)
+        return all(int(sides) in {4, 6, 8} for sides in visual_dice)
 
     def _register_or_extend_standard_physics_batch(
         self,
         request_id: int,
+        d4_count: int,
         d6_count: int,
         d8_count: int,
+        d10_count: int,
+        d12_count: int,
         bonus: int,
     ) -> tuple[int, bool, dict[str, Any]]:
+        c4 = max(0, int(d4_count))
         c6 = max(0, int(d6_count))
         c8 = max(0, int(d8_count))
+        c10 = max(0, int(d10_count))
+        c12 = max(0, int(d12_count))
         b = max(-20, min(20, int(bonus)))
         batch = self._active_standard_physics_batch
 
@@ -119,19 +189,22 @@ class DiceController(QObject):
             and int(batch.get("bonus", b)) == b
         ):
             master_request_id = int(batch.get("request_id", request_id))
-            batch["expected_total"] = int(batch.get("expected_total", 0)) + c6 + c8
+            batch["expected_total"] = int(batch.get("expected_total", 0)) + c4 + c6 + c8 + c10 + c12
             expected_by_sides = dict(batch.get("expected_by_sides") or {})
+            expected_by_sides[4] = int(expected_by_sides.get(4, 0)) + c4
             expected_by_sides[6] = int(expected_by_sides.get(6, 0)) + c6
             expected_by_sides[8] = int(expected_by_sides.get(8, 0)) + c8
+            expected_by_sides[10] = int(expected_by_sides.get(10, 0)) + c10
+            expected_by_sides[12] = int(expected_by_sides.get(12, 0)) + c12
             batch["expected_by_sides"] = expected_by_sides
             append = True
         else:
             master_request_id = int(request_id)
             batch = {
                 "request_id": master_request_id,
-                "expected_total": c6 + c8,
+                "expected_total": c4 + c6 + c8 + c10 + c12,
                 "landed_total": 0,
-                "expected_by_sides": {6: c6, 8: c8},
+                "expected_by_sides": {4: c4, 6: c6, 8: c8, 10: c10, 12: c12},
                 "bonus": b,
             }
             self._active_standard_physics_batch = batch
@@ -140,23 +213,31 @@ class DiceController(QObject):
         pending = self._pending_physics_standard.get(master_request_id)
         if pending is None:
             pending = {
-                "expected_by_sides": {6: 0, 8: 0},
-                "values_by_sides": {6: [], 8: []},
+                "expected_by_sides": {4: 0, 6: 0, 8: 0, 10: 0, 12: 0},
+                "values_by_sides": {4: [], 6: [], 8: [], 10: [], 12: []},
                 "expected_total": 0,
                 "bonus": b,
             }
         expected_by_sides = dict(pending.get("expected_by_sides") or {})
+        expected_by_sides[4] = int(expected_by_sides.get(4, 0)) + c4
         expected_by_sides[6] = int(expected_by_sides.get(6, 0)) + c6
         expected_by_sides[8] = int(expected_by_sides.get(8, 0)) + c8
+        expected_by_sides[10] = int(expected_by_sides.get(10, 0)) + c10
+        expected_by_sides[12] = int(expected_by_sides.get(12, 0)) + c12
         pending["expected_by_sides"] = expected_by_sides
-        pending["expected_total"] = int(expected_by_sides.get(6, 0)) + int(expected_by_sides.get(8, 0))
+        pending["expected_total"] = (
+            int(expected_by_sides.get(4, 0))
+            + int(expected_by_sides.get(6, 0))
+            + int(expected_by_sides.get(8, 0))
+            + int(expected_by_sides.get(10, 0))
+            + int(expected_by_sides.get(12, 0))
+        )
         pending["bonus"] = b
-        pending.setdefault("values_by_sides", {6: [], 8: []})
+        pending.setdefault("values_by_sides", {4: [], 6: [], 8: [], 10: [], 12: []})
 
         self._pending_physics_standard[master_request_id] = pending
         self._start_physics_fallback_timer(master_request_id, int(pending.get("expected_total", 1)))
         return master_request_id, append, pending
-
     def _build_standard_mixed_result(self, values_by_sides: dict[int, list[int]], bonus: int) -> dict[str, Any]:
         b = max(-20, min(20, int(bonus)))
         rolls: list[dict[str, int]] = []
@@ -201,7 +282,7 @@ class DiceController(QObject):
         expected_by_sides = pending.get("expected_by_sides") or {}
         values_by_sides = pending.get("values_by_sides") or {}
         expected_total = int(pending.get("expected_total", 0))
-        landed_total = len(values_by_sides.get(6) or []) + len(values_by_sides.get(8) or [])
+        landed_total = len(values_by_sides.get(4) or []) + len(values_by_sides.get(6) or []) + len(values_by_sides.get(8) or []) + len(values_by_sides.get(10) or []) + len(values_by_sides.get(12) or [])
 
         batch = self._active_standard_physics_batch
         if batch and int(batch.get("request_id", 0)) == req_id:
@@ -209,8 +290,11 @@ class DiceController(QObject):
 
         self._debug(
             f"physics-batch progress request_id={req_id} landed={landed_total}/{expected_total} "
+            f"d4={len(values_by_sides.get(4) or [])}/{int(expected_by_sides.get(4, 0))} "
             f"d6={len(values_by_sides.get(6) or [])}/{int(expected_by_sides.get(6, 0))} "
-            f"d8={len(values_by_sides.get(8) or [])}/{int(expected_by_sides.get(8, 0))}"
+            f"d8={len(values_by_sides.get(8) or [])}/{int(expected_by_sides.get(8, 0))} "
+            f"d10={len(values_by_sides.get(10) or [])}/{int(expected_by_sides.get(10, 0))} "
+            f"d12={len(values_by_sides.get(12) or [])}/{int(expected_by_sides.get(12, 0))}"
         )
 
         if landed_total < expected_total:
@@ -223,8 +307,11 @@ class DiceController(QObject):
 
         result = self._build_standard_mixed_result(
             {
+                4: [int(v) for v in (values_by_sides.get(4) or [])],
                 6: [int(v) for v in (values_by_sides.get(6) or [])],
                 8: [int(v) for v in (values_by_sides.get(8) or [])],
+                10: [int(v) for v in (values_by_sides.get(10) or [])],
+                12: [int(v) for v in (values_by_sides.get(12) or [])],
             },
             int(pending.get("bonus", 0)),
         )
@@ -250,12 +337,12 @@ class DiceController(QObject):
         if req_id <= 0:
             self._debug(f"submit_physics_standard_batch_result ignored invalid request_id={request_id}")
             return
-        if s not in {6, 8}:
+        if s not in {4, 6, 8, 10, 12}:
             self._debug(f"submit_physics_standard_batch_result unsupported sides={s}")
             return
 
         parsed_values: list[int] = []
-        max_side = 8 if s == 8 else 6
+        max_side = 12 if s == 12 else (10 if s == 10 else (8 if s == 8 else (6 if s == 6 else 4)))
         for item in (values or []):
             try:
                 value = int(item)
@@ -292,6 +379,51 @@ class DiceController(QObject):
     @Slot(int, int)
     def submit_physics_d6_result(self, request_id: int, value: int) -> None:
         self.submit_physics_standard_batch_result(request_id, 6, [int(value)])
+
+    @Slot(int, int, int)
+    def submit_physics_d100_result(self, request_id: int, tens_value: int, ones_value: int) -> None:
+        req_id = int(request_id)
+        if req_id <= 0:
+            self._debug(f"submit_physics_d100_result ignored invalid request_id={request_id}")
+            return
+
+        pending = self._pending_physics_d100.get(req_id)
+        if not pending:
+            self._debug(f"submit_physics_d100_result request_id={req_id} has no pending d100")
+            return
+
+        tens = max(0, min(90, int(tens_value)))
+        ones = max(0, min(9, int(ones_value)))
+        if tens % 10 != 0:
+            tens = int(round(tens / 10.0) * 10)
+            tens = max(0, min(90, tens))
+
+        self._cancel_d100_fallback_timer(req_id)
+        self._pending_physics_d100.pop(req_id, None)
+
+        total = 100 if (tens == 0 and ones == 0) else (tens + ones)
+        result = {
+            "active": True,
+            "kind": "d100",
+            "formula": "d100",
+            "total": int(total),
+            "roll": int(total),
+            "tens": int(tens),
+            "ones": int(ones),
+        }
+        self._debug(
+            f"submit_physics_d100_result request_id={req_id} tens={tens} ones={ones} total={total}"
+        )
+        self._event_bus.publish(
+            "dice.roll_completed",
+            {
+                "request_id": req_id,
+                "kind": "d100",
+                "mode": "physics",
+                "requested_mode": "physics",
+                "result": result,
+            },
+        )
 
     @Slot(int, str, int)
     def request_roll_d20(self, count: int, mode: str, bonus: int) -> None:
@@ -353,6 +485,9 @@ class DiceController(QObject):
                 f"clear visuals ignored request_id={int(batch.get('request_id', 0))} "
                 f"landed={int(batch.get('landed_total', 0))}/{int(batch.get('expected_total', 0))}"
             )
+            return False
+        if len(self._pending_physics_d100) > 0:
+            self._debug("clear visuals ignored while d100 physics roll is pending")
             return False
         self._event_bus.publish("dice.visual.clear_requested", {"source": "ui_interaction"})
         return True
@@ -478,31 +613,62 @@ class DiceController(QObject):
         )
         completed_mode = requested_mode
 
+        # d100 and other throw types are mutually exclusive while physics result is pending.
+        if kind == "d100":
+            self._cancel_all_pending_standard_physics("new_d100_request")
+        else:
+            self._cancel_all_pending_d100_physics(f"new_{kind or 'unknown'}_request")
+
         visual_dice = self._build_visual_dice_list(kind, req_payload)
 
+        if kind == "d100" and request_id > 0:
+            self._pending_physics_d100[request_id] = {"request_id": request_id}
+            self._start_physics_d100_fallback_timer(request_id)
+            self._debug(f"d100 physics request_id={request_id} awaiting tens+ones")
+            self._event_bus.publish(
+                "dice.visual_roll_requested",
+                {
+                    "request_id": request_id,
+                    "kind": "d100",
+                    "dice": [10, 10],
+                    "requested_mode": requested_mode,
+                    "append": False,
+                },
+            )
+            return
+
         if kind == "standard" and request_id > 0:
+            d4_count = max(0, int(req_payload.get("d4", 0)))
             d6_count = max(0, int(req_payload.get("d6", 0)))
             d8_count = max(0, int(req_payload.get("d8", 0)))
+            d10_count = max(0, int(req_payload.get("d10", 0)))
+            d12_count = max(0, int(req_payload.get("d12", 0)))
             bonus = int(req_payload.get("bonus", 0))
-            if self._is_supported_standard_physics_request(kind, req_payload, visual_dice) and (d6_count + d8_count) > 0:
+            if self._is_supported_standard_physics_request(kind, req_payload, visual_dice) and (d4_count + d6_count + d8_count + d10_count + d12_count) > 0:
                 master_request_id, append, pending = self._register_or_extend_standard_physics_batch(
                     request_id,
+                    d4_count,
                     d6_count,
                     d8_count,
+                    d10_count,
+                    d12_count,
                     bonus,
                 )
                 self._debug(
                     f"standard physics batch request_id={master_request_id} append={append} "
                     f"expected_total={int(pending.get('expected_total', 0))} "
+                    f"d4={int((pending.get('expected_by_sides') or {}).get(4, 0))} "
                     f"d6={int((pending.get('expected_by_sides') or {}).get(6, 0))} "
-                    f"d8={int((pending.get('expected_by_sides') or {}).get(8, 0))}"
+                    f"d8={int((pending.get('expected_by_sides') or {}).get(8, 0))} "
+                    f"d10={int((pending.get('expected_by_sides') or {}).get(10, 0))} "
+                    f"d12={int((pending.get('expected_by_sides') or {}).get(12, 0))}"
                 )
                 self._event_bus.publish(
                     "dice.visual_roll_requested",
                     {
                         "request_id": master_request_id,
                         "kind": "standard",
-                        "dice": [6] * d6_count + [8] * d8_count,
+                        "dice": [4] * d4_count + [6] * d6_count + [8] * d8_count + [10] * d10_count + [12] * d12_count,
                         "requested_mode": requested_mode,
                         "append": append,
                     },
@@ -521,7 +687,7 @@ class DiceController(QObject):
                 },
             )
 
-        if requested_mode == "physics" and kind != "standard":
+        if requested_mode == "physics" and kind not in {"standard", "d100"}:
             completed_mode = "physics_fallback_random"
 
         result: dict[str, Any]
@@ -578,4 +744,27 @@ class DiceController(QObject):
             f"mode={payload.get('mode')}"
         )
         self.rollCompleted.emit(payload)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
