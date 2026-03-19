@@ -111,7 +111,9 @@
       font-family: Segoe UI, Arial, sans-serif;
       font-size: 14px;
       font-weight: 700;
-      display: block;
+      display: flex;
+      align-items: center;
+      justify-content: center;
       line-height: 1;
       padding-top: 8px;
       box-sizing: border-box;
@@ -220,6 +222,7 @@
       box-sizing: border-box;
       backface-visibility: hidden;
       transform-origin: 50% 50%;
+      border: 0.45px solid #c9c9c9;
     }
 
     .d10-label {
@@ -579,7 +582,12 @@
             if (fClip.length > 0) {
               faceEls[i].style.clipPath = fClip;
             }
-            faceEls[i].style.transform = 'rotateY(' + String(ry) + 'deg) rotateX(' + String(rx) + 'deg) rotateZ(' + String(rz) + 'deg) translateX(' + String(fx.toFixed(4)) + 'px) translateY(' + String(fy.toFixed(4)) + 'px) translateZ(' + String(tz) + 'px)';
+            const baseTransform = 'rotateY(' + String(ry) + 'deg) rotateX(' + String(rx) + 'deg) rotateZ(' + String(rz) + 'deg) translateX(' + String(fx.toFixed(4)) + 'px) translateY(' + String(fy.toFixed(4)) + 'px) translateZ(' + String(tz) + 'px)';
+            if (String(spec.key || '') === 'd10') {
+              faceEls[i].style.transform = baseTransform + ' scale(1.009)';
+            } else {
+              faceEls[i].style.transform = baseTransform;
+            }
             if (String(spec.key || '') !== 'd4') {
               const v = String(Number(ft.id || (i + 1)));
               if (String(spec.key || '') === 'd10') {
@@ -835,7 +843,7 @@
         return normalizeVec3(Number(v.x || 0), Number(v.y || 0), Number(v.z || 0));
       }
 
-      function buildFaceTransformFromVertices(faceId, vertices, hintVertexIndex) {
+      function buildFaceTransformFromVertices(faceId, vertices, hintVertexIndex, inflatePx) {
         const c = centroidVec3(vertices);
         const e1 = subVec3(vertices[1], vertices[0]);
         const e2 = subVec3(vertices[2], vertices[1]);
@@ -863,14 +871,20 @@
         const tz = dotVec3(c, ez);
 
         const localPts = [];
+        const inflate = Number(inflatePx || 0);
         let minX = Number.POSITIVE_INFINITY;
         let maxX = Number.NEGATIVE_INFINITY;
         let minY = Number.POSITIVE_INFINITY;
         let maxY = Number.NEGATIVE_INFINITY;
         for (let i = 0; i < vertices.length; i += 1) {
           const rel = subVec3(vertices[i], c);
-          const px = dotVec3(rel, ex);
-          const py = dotVec3(rel, ey);
+          let px = dotVec3(rel, ex);
+          let py = dotVec3(rel, ey);
+          if (inflate > 0) {
+            const m = Math.hypot(px, py) || 1;
+            px += (px / m) * inflate;
+            py += (py / m) * inflate;
+          }
           localPts.push({ x: px, y: py });
           minX = Math.min(minX, px);
           maxX = Math.max(maxX, px);
@@ -966,7 +980,7 @@
         const faceNormals = new Array(10);
         for (let i = 0; i < faces.length; i += 1) {
           const f = faces[i];
-          const built = buildFaceTransformFromVertices(f.id, f.vertices, 0);
+          const built = buildFaceTransformFromVertices(f.id, f.vertices, 0, 0.34);
           const idx = clamp(Number(f.id || 1) - 1, 0, 9);
           faceTransforms[idx] = built.transform;
           faceNormals[idx] = normalizeVec3Obj(built.normal);
@@ -1170,15 +1184,15 @@
           resultMode: 'poly',
           alignProfile: {
             startGroundedDelayRange: [0.02, 0.12],
-            startPlanarThreshold: 2.2,
-            startSpinThreshold: 460,
-            speedBoostRange: [1.95, 2.85],
-            plopBoostRange: [1.45, 2.15],
+            startPlanarThreshold: 2.05,
+            startSpinThreshold: 420,
+            speedBoostRange: [1.92, 2.72],
+            plopBoostRange: [1.42, 2.10],
             forceSnapDelayRange: [0.22, 0.40],
             tMax: 1.45,
             ryFactor: 0.96,
             rzLerpFactor: 0.78,
-            forceSnapDistance: 14.5,
+            forceSnapDistance: 14.8,
           },
         },
       };
@@ -1498,12 +1512,12 @@
         return topFaceFromSpecEuler(getDiceSpec('d8'), rx, ry, rz);
       }
 
-      function d8FaceUpTargetFromPose(rx, ry, rz) {
-        const spec = getDiceSpec('d8');
-        const targetFace = topFaceFromSpecEuler(spec, rx, ry, rz);
-        const bottomFace = oppositeFaceId(spec, targetFace);
-        const targetNormal = spec.faceNormals[targetFace - 1];
-        const bottomNormal = spec.faceNormals[bottomFace - 1];
+      function polyFaceUpTargetFromPose(spec, rx, ry, rz) {
+        const polySpec = spec || getDiceSpec('d8');
+        const targetFace = topFaceFromSpecEuler(polySpec, rx, ry, rz);
+        const bottomFace = oppositeFaceId(polySpec, targetFace);
+        const targetNormal = polySpec.faceNormals[targetFace - 1];
+        const bottomNormal = polySpec.faceNormals[bottomFace - 1];
 
         let best = { rx: rx, ry: ry, rz: rz };
         let bestScore = -1e9;
@@ -1512,7 +1526,7 @@
         for (let ax = -180; ax <= 180; ax += 15) {
           for (let ay = -180; ay <= 180; ay += 15) {
             for (let az = -180; az <= 180; az += 15) {
-              const candidateFace = topFaceFromSpecEuler(spec, ax, ay, az);
+              const candidateFace = topFaceFromSpecEuler(polySpec, ax, ay, az);
               if (candidateFace !== targetFace) {
                 continue;
               }
@@ -1538,7 +1552,7 @@
         for (let ax = best.rx - 16; ax <= best.rx + 16; ax += 2) {
           for (let ay = best.ry - 16; ay <= best.ry + 16; ay += 2) {
             for (let az = best.rz - 16; az <= best.rz + 16; az += 2) {
-              const candidateFace = topFaceFromSpecEuler(spec, ax, ay, az);
+              const candidateFace = topFaceFromSpecEuler(polySpec, ax, ay, az);
               if (candidateFace !== targetFace) {
                 continue;
               }
@@ -1567,7 +1581,8 @@
           return faceUpTargetFromPose(state.rx, state.ry);
         },
         poly: function resolvePolyTarget(state) {
-          return d8FaceUpTargetFromPose(state.rx, state.ry, state.rz);
+          const spec = (state && state.diceSpec) || getDiceSpec(state && state.modelKind);
+          return polyFaceUpTargetFromPose(spec, state.rx, state.ry, state.rz);
         },
         d4_vertex: function resolveD4Target(state) {
           return d4VertexUpTargetFromPose(state.rx, state.ry, state.rz);
@@ -1585,7 +1600,8 @@
           return Number(topFaceFromSpecEuler(getDiceSpec('d6'), state.rx, state.ry, state.rz) || 0);
         },
         poly: function resolvePolyResultFace(state) {
-          return Number(topFaceD8FromEuler(state.rx, state.ry, state.rz) || 0);
+          const spec = (state && state.diceSpec) || getDiceSpec(state && state.modelKind);
+          return Number(topFaceFromSpecEuler(spec, state.rx, state.ry, state.rz) || 0);
         },
         d4_vertex_up: function resolveD4ResultFace(state) {
           const top = Number(topVertexFromSpecEuler(getDiceSpec('d4'), state.rx, state.ry, state.rz) || 0);
@@ -2037,6 +2053,7 @@
   </script>
 </body>
 </html>
+
 
 
 
