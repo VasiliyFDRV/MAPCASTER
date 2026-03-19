@@ -111,9 +111,7 @@
       font-family: Segoe UI, Arial, sans-serif;
       font-size: 14px;
       font-weight: 700;
-      display: flex;
-      align-items: center;
-      justify-content: center;
+      display: block;
       line-height: 1;
       padding-top: 8px;
       box-sizing: border-box;
@@ -217,13 +215,19 @@
       font-family: Segoe UI, Arial, sans-serif;
       font-size: 14px;
       font-weight: 700;
-      display: flex;
-      align-items: center;
-      justify-content: center;
+      display: block;
       line-height: 1;
       box-sizing: border-box;
       backface-visibility: hidden;
       transform-origin: 50% 50%;
+    }
+
+    .d10-label {
+      position: absolute;
+      line-height: 1;
+      transform-origin: 50% 50%;
+      pointer-events: none;
+      white-space: nowrap;
     }
 
     .d10-core {
@@ -577,7 +581,26 @@
             }
             faceEls[i].style.transform = 'rotateY(' + String(ry) + 'deg) rotateX(' + String(rx) + 'deg) rotateZ(' + String(rz) + 'deg) translateX(' + String(fx.toFixed(4)) + 'px) translateY(' + String(fy.toFixed(4)) + 'px) translateZ(' + String(tz) + 'px)';
             if (String(spec.key || '') !== 'd4') {
-              faceEls[i].textContent = String(Number(ft.id || (i + 1)));
+              const v = String(Number(ft.id || (i + 1)));
+              if (String(spec.key || '') === 'd10') {
+                const label = document.createElement('span');
+                label.className = 'd10-label';
+                label.textContent = v;
+                let labelRotate = normalizeAngle(resolveFaceLabelRotation(spec, ft, i, rz) + 90);
+                const fid = Number(ft.id || (i + 1));
+                if (fid === 1 || fid === 4 || fid === 7 || fid === 10) {
+                  labelRotate = normalizeAngle(labelRotate + 180);
+                }
+                const cxPct = Number(ft.labelCxPct === undefined ? 50 : ft.labelCxPct);
+                const cyPct = Number(ft.labelCyPct === undefined ? 50 : ft.labelCyPct);
+                label.style.left = String(cxPct.toFixed(4)) + '%';
+                label.style.top = String(cyPct.toFixed(4)) + '%';
+                label.style.transform = 'translate(-50%, -50%) rotate(' + String(labelRotate.toFixed(3)) + 'deg)';
+                faceEls[i].textContent = '';
+                faceEls[i].appendChild(label);
+              } else {
+                faceEls[i].textContent = v;
+              }
             }
           }
         }
@@ -617,6 +640,26 @@
 
       function angularDistance(a, b) {
         return Math.abs(normalizeAngle(a - b));
+      }
+
+      function resolveFaceLabelRotation(spec, ft, faceIndex, fallbackRz) {
+        const rzFallback = Number(fallbackRz || 0);
+        if (!spec) {
+          return normalizeAngle(-rzFallback);
+        }
+        if (typeof spec.getFaceLabelRotation === 'function') {
+          const v = Number(spec.getFaceLabelRotation(Number(ft && ft.id || faceIndex + 1), Number(faceIndex || 0), ft));
+          if (Number.isFinite(v)) {
+            return normalizeAngle(v);
+          }
+        }
+        if (ft && ft.labelRotate !== undefined) {
+          const v2 = Number(ft.labelRotate);
+          if (Number.isFinite(v2)) {
+            return normalizeAngle(v2);
+          }
+        }
+        return normalizeAngle(-rzFallback);
       }
 
       function rotateVec(v, rx, ry, rz) {
@@ -844,6 +887,22 @@
         // share the same geometric placement in 3D.
         fx += boxCenterX;
         fy += boxCenterY;
+
+        // Label orientation is bound to the intended kite diagonal (60 <-> 120):
+        // for our vertex order this is always local point 0 -> 2.
+        const dx = localPts[2].x - localPts[0].x;
+        const dy = localPts[2].y - localPts[0].y;
+        let labelRotate = Math.atan2(dy, dx) * 180 / Math.PI;
+        if (Math.abs(normalizeAngle(labelRotate)) > 90) {
+          labelRotate = normalizeAngle(labelRotate + 180);
+        }
+
+        // Use polygon centroid for true visual center of number placement.
+        const cxLocal = (localPts[0].x + localPts[1].x + localPts[2].x + localPts[3].x) * 0.25;
+        const cyLocal = (localPts[0].y + localPts[1].y + localPts[2].y + localPts[3].y) * 0.25;
+        const labelCxPct = ((cxLocal - minX) / fw) * 100;
+        const labelCyPct = ((cyLocal - minY) / fh) * 100;
+
         const clipPath = 'polygon(' + localPts.map((p) => {
           const xPct = ((p.x - minX) / fw) * 100;
           const yPct = ((p.y - minY) / fh) * 100;
@@ -863,6 +922,9 @@
             fw: fw,
             fh: fh,
             clipPath: clipPath,
+            labelRotate: normalizeAngle(labelRotate),
+            labelCxPct: labelCxPct,
+            labelCyPct: labelCyPct,
           },
           normal: n,
         };
@@ -873,13 +935,13 @@
         const deg72 = Math.PI * 2 / 5;
         const deg36 = Math.PI / 5;
         const cos72 = Math.cos(deg72);
-        const cos36 = Math.cos(deg36);
 
-        // d10 as pentagonal trapezohedron with deterministic dimensions.
-        const ringRadius = sideA / Math.sqrt(2 * (1 - cos72));
-        // Enforce convex coplanar kite faces to avoid gaps/intersections.
-        const ringZ = sideA * 0.0620541401733395;
-        const poleZ = sideA * 0.587785252292472;
+        // Canonical pentagonal trapezohedron profile (non-flattened d10):
+        // solved with constraints: long edge = 44, coplanar face vertices,
+        // and top kite angle ~= 54deg (standard d10 silhouette).
+        const ringRadius = sideA * 0.7723747711751841;
+        const ringZ = sideA * 0.08968770474888001;
+        const poleZ = sideA * 0.7248547795032955;
 
         const upper = [];
         const lower = [];
@@ -904,7 +966,7 @@
         const faceNormals = new Array(10);
         for (let i = 0; i < faces.length; i += 1) {
           const f = faces[i];
-          const built = buildFaceTransformFromVertices(f.id, f.vertices, 1);
+          const built = buildFaceTransformFromVertices(f.id, f.vertices, 0);
           const idx = clamp(Number(f.id || 1) - 1, 0, 9);
           faceTransforms[idx] = built.transform;
           faceNormals[idx] = normalizeVec3Obj(built.normal);
@@ -1098,6 +1160,9 @@
             fw: t.fw,
             fh: t.fh,
             clipPath: t.clipPath,
+            labelRotate: t.labelRotate,
+            labelCxPct: t.labelCxPct,
+            labelCyPct: t.labelCyPct,
           })),
           faceNormals: D10_FACE_DATA.faceNormals,
           sides: 10,
@@ -1972,6 +2037,7 @@
   </script>
 </body>
 </html>
+
 
 
 
