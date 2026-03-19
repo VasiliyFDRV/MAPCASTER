@@ -163,7 +163,7 @@ class DiceController(QObject):
     ) -> bool:
         if kind != "standard" or len(visual_dice) <= 0:
             return False
-        return all(int(sides) in {4, 6, 8} for sides in visual_dice)
+        return all(int(sides) in {4, 6, 8, 10} for sides in visual_dice)
 
     def _register_or_extend_standard_physics_batch(
         self,
@@ -744,6 +744,7 @@ class DiceController(QObject):
             f"mode={payload.get('mode')}"
         )
         self.rollCompleted.emit(payload)
+
 
 
 

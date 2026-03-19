@@ -193,6 +193,43 @@
       transform: translate(-50%, 0) rotate(60deg);
     }
 
+    .d10 {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      width: 88px;
+      height: 88px;
+      transform: translate(-50%, -50%);
+      transform-style: preserve-3d;
+    }
+
+    .d10-face {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      width: 44px;
+      height: 50.806px;
+      margin-left: -22px;
+      margin-top: -25.403px;
+      clip-path: polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%);
+      background: #c9c9c9;
+      color: #232323;
+      font-family: Segoe UI, Arial, sans-serif;
+      font-size: 14px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      line-height: 1;
+      box-sizing: border-box;
+      backface-visibility: hidden;
+      transform-origin: 50% 50%;
+    }
+
+    .d10-core {
+      display: none;
+    }
+
     .shadow {
       position: absolute;
       width: 68px;
@@ -220,7 +257,8 @@
         <div class="face f5">5</div>
         <div class="face f6">6</div>
       </div>
-    </div>    <div class="dice-wrap" id="wrap-d8-template" style="display:none;">
+    </div>
+    <div class="dice-wrap" id="wrap-d8-template" style="display:none;">
       <div class="dice">
         <div class="d8">
           <div class="d8-core"></div>
@@ -246,6 +284,23 @@
         </div>
       </div>
     </div>
+    <div class="dice-wrap" id="wrap-d10-template" style="display:none;">
+      <div class="dice">
+        <div class="d10">
+          <div class="d10-core"></div>
+          <div class="d10-face f1">1</div>
+          <div class="d10-face f2">2</div>
+          <div class="d10-face f3">3</div>
+          <div class="d10-face f4">4</div>
+          <div class="d10-face f5">5</div>
+          <div class="d10-face f6">6</div>
+          <div class="d10-face f7">7</div>
+          <div class="d10-face f8">8</div>
+          <div class="d10-face f9">9</div>
+          <div class="d10-face f10">10</div>
+        </div>
+      </div>
+    </div>
   </div>
 
   <script>
@@ -254,6 +309,7 @@
       const wrapTemplate = document.getElementById('wrap-template');
       const wrapD8Template = document.getElementById('wrap-d8-template');
       const wrapD4Template = document.getElementById('wrap-d4-template');
+      const wrapD10Template = document.getElementById('wrap-d10-template');
       const shadowTemplate = document.getElementById('shadow-template');
 
       let rollSeq = 0;
@@ -688,6 +744,180 @@
         return { rx, ry, rz, tz: Number(tz || 20) };
       }
 
+      function vec3(x, y, z) {
+        return { x: Number(x || 0), y: Number(y || 0), z: Number(z || 0) };
+      }
+
+      function addVec3(a, b) {
+        return { x: a.x + b.x, y: a.y + b.y, z: a.z + b.z };
+      }
+
+      function subVec3(a, b) {
+        return { x: a.x - b.x, y: a.y - b.y, z: a.z - b.z };
+      }
+
+      function scaleVec3(v, s) {
+        return { x: v.x * s, y: v.y * s, z: v.z * s };
+      }
+
+      function dotVec3(a, b) {
+        return a.x * b.x + a.y * b.y + a.z * b.z;
+      }
+
+      function crossVec3(a, b) {
+        return {
+          x: a.y * b.z - a.z * b.y,
+          y: a.z * b.x - a.x * b.z,
+          z: a.x * b.y - a.y * b.x,
+        };
+      }
+
+      function centroidVec3(vertices) {
+        if (!Array.isArray(vertices) || vertices.length <= 0) {
+          return vec3(0, 0, 0);
+        }
+        let sx = 0;
+        let sy = 0;
+        let sz = 0;
+        for (let i = 0; i < vertices.length; i += 1) {
+          sx += Number(vertices[i].x || 0);
+          sy += Number(vertices[i].y || 0);
+          sz += Number(vertices[i].z || 0);
+        }
+        const inv = 1 / vertices.length;
+        return vec3(sx * inv, sy * inv, sz * inv);
+      }
+
+      function normalizeVec3Obj(v) {
+        return normalizeVec3(Number(v.x || 0), Number(v.y || 0), Number(v.z || 0));
+      }
+
+      function buildFaceTransformFromVertices(faceId, vertices, hintVertexIndex) {
+        const c = centroidVec3(vertices);
+        const e1 = subVec3(vertices[1], vertices[0]);
+        const e2 = subVec3(vertices[2], vertices[1]);
+        let n = normalizeVec3Obj(crossVec3(e1, e2));
+        if (dotVec3(n, c) < 0) {
+          n = scaleVec3(n, -1);
+        }
+
+        const hintIndex = clamp(Number(hintVertexIndex || 0), 0, vertices.length - 1);
+        let hint = subVec3(vertices[hintIndex], c);
+        const hintDot = dotVec3(hint, n);
+        hint = subVec3(hint, scaleVec3(n, hintDot));
+        const hintLen = Math.hypot(hint.x, hint.y, hint.z);
+        if (hintLen <= 1e-6) {
+          hint = vec3(0, 1, 0);
+        }
+
+        const t = faceTransformFromNormalWithHint(n, hint, 0);
+        const ex = rotateVecFaceYXRZ({ x: 1, y: 0, z: 0 }, t.rx, t.ry, t.rz);
+        const ey = rotateVecFaceYXRZ({ x: 0, y: 1, z: 0 }, t.rx, t.ry, t.rz);
+        const ez = rotateVecFaceYXRZ({ x: 0, y: 0, z: 1 }, t.rx, t.ry, t.rz);
+
+        let fx = dotVec3(c, ex);
+        let fy = dotVec3(c, ey);
+        const tz = dotVec3(c, ez);
+
+        const localPts = [];
+        let minX = Number.POSITIVE_INFINITY;
+        let maxX = Number.NEGATIVE_INFINITY;
+        let minY = Number.POSITIVE_INFINITY;
+        let maxY = Number.NEGATIVE_INFINITY;
+        for (let i = 0; i < vertices.length; i += 1) {
+          const rel = subVec3(vertices[i], c);
+          const px = dotVec3(rel, ex);
+          const py = dotVec3(rel, ey);
+          localPts.push({ x: px, y: py });
+          minX = Math.min(minX, px);
+          maxX = Math.max(maxX, px);
+          minY = Math.min(minY, py);
+          maxY = Math.max(maxY, py);
+        }
+
+        const fw = Math.max(1, maxX - minX);
+        const fh = Math.max(1, maxY - minY);
+        const boxCenterX = minX + fw * 0.5;
+        const boxCenterY = minY + fh * 0.5;
+        // clip-path coordinates are defined inside the face box.
+        // Shift transform origin by the same box-center offset so all faces
+        // share the same geometric placement in 3D.
+        fx += boxCenterX;
+        fy += boxCenterY;
+        const clipPath = 'polygon(' + localPts.map((p) => {
+          const xPct = ((p.x - minX) / fw) * 100;
+          const yPct = ((p.y - minY) / fh) * 100;
+          return xPct.toFixed(4) + '% ' + yPct.toFixed(4) + '%';
+        }).join(', ') + ')';
+
+        return {
+          id: Number(faceId || 1),
+          transform: {
+            id: Number(faceId || 1),
+            rx: t.rx,
+            ry: t.ry,
+            rz: t.rz,
+            tz: tz,
+            fx: fx,
+            fy: fy,
+            fw: fw,
+            fh: fh,
+            clipPath: clipPath,
+          },
+          normal: n,
+        };
+      }
+
+      function buildD10FaceData() {
+        const sideA = 44;
+        const deg72 = Math.PI * 2 / 5;
+        const deg36 = Math.PI / 5;
+        const cos72 = Math.cos(deg72);
+        const cos36 = Math.cos(deg36);
+
+        // d10 as pentagonal trapezohedron with deterministic dimensions.
+        const ringRadius = sideA / Math.sqrt(2 * (1 - cos72));
+        // Enforce convex coplanar kite faces to avoid gaps/intersections.
+        const ringZ = sideA * 0.0620541401733395;
+        const poleZ = sideA * 0.587785252292472;
+
+        const upper = [];
+        const lower = [];
+        for (let i = 0; i < 5; i += 1) {
+          const aTop = i * deg72;
+          const aBottom = i * deg72 + deg36;
+          upper.push(vec3(ringRadius * Math.cos(aTop), ringRadius * Math.sin(aTop), ringZ));
+          lower.push(vec3(ringRadius * Math.cos(aBottom), ringRadius * Math.sin(aBottom), -ringZ));
+        }
+
+        const top = vec3(0, 0, poleZ);
+        const bottom = vec3(0, 0, -poleZ);
+        const faces = [];
+
+        for (let i = 0; i < 5; i += 1) {
+          const ni = (i + 1) % 5;
+          faces.push({ id: i + 1, vertices: [top, upper[i], lower[i], upper[ni]] });
+          faces.push({ id: i + 6, vertices: [bottom, lower[i], upper[ni], lower[ni]] });
+        }
+
+        const faceTransforms = new Array(10);
+        const faceNormals = new Array(10);
+        for (let i = 0; i < faces.length; i += 1) {
+          const f = faces[i];
+          const built = buildFaceTransformFromVertices(f.id, f.vertices, 1);
+          const idx = clamp(Number(f.id || 1) - 1, 0, 9);
+          faceTransforms[idx] = built.transform;
+          faceNormals[idx] = normalizeVec3Obj(built.normal);
+        }
+
+        return {
+          faceTransforms: faceTransforms.filter(Boolean),
+          faceNormals: faceNormals.filter(Boolean)
+        };
+      }
+
+      const D10_FACE_DATA = buildD10FaceData();
+
       function buildD4FaceData() {
         const norm = 1 / Math.sqrt(3);
         const vertices = [
@@ -827,7 +1057,8 @@
             rzLerpFactor: 0.78,
             forceSnapDistance: 10.4,
           },
-        },        d8: {
+        },
+        d8: {
           key: 'd8',
           template: wrapD8Template,
           faceSelector: '.d8-face',
@@ -848,6 +1079,41 @@
             ryFactor: 0.96,
             rzLerpFactor: 0.78,
             forceSnapDistance: 14.0,
+          },
+        },
+        d10: {
+          key: 'd10',
+          template: wrapD10Template,
+          faceSelector: '.d10-face',
+          coreSelector: '.d10-core',
+          dynamicFaceTransforms: true,
+          faceTransforms: D10_FACE_DATA.faceTransforms.map((t) => ({
+            id: t.id,
+            rx: t.rx,
+            ry: t.ry,
+            rz: t.rz,
+            tz: t.tz,
+            fx: t.fx,
+            fy: t.fy,
+            fw: t.fw,
+            fh: t.fh,
+            clipPath: t.clipPath,
+          })),
+          faceNormals: D10_FACE_DATA.faceNormals,
+          sides: 10,
+          alignMode: 'poly',
+          resultMode: 'poly',
+          alignProfile: {
+            startGroundedDelayRange: [0.02, 0.12],
+            startPlanarThreshold: 2.2,
+            startSpinThreshold: 460,
+            speedBoostRange: [1.95, 2.85],
+            plopBoostRange: [1.45, 2.15],
+            forceSnapDelayRange: [0.22, 0.40],
+            tMax: 1.45,
+            ryFactor: 0.96,
+            rzLerpFactor: 0.78,
+            forceSnapDistance: 14.5,
           },
         },
       };
@@ -1706,6 +1972,24 @@
   </script>
 </body>
 </html>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

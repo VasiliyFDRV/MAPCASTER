@@ -11,21 +11,20 @@ Item {
 
     property int activeRequestId: 0
     property int activeExpectedCount: 0
-    property var activeExpectedBySides: ({6: 0, 8: 0})
-    property var activeValuesBySides: ({6: [], 8: []})
+    property var standardSides: [4, 6, 8, 10, 12]
+    property var activeExpectedBySides: ({4: 0, 6: 0, 8: 0, 10: 0, 12: 0})
+    property var activeValuesBySides: ({4: [], 6: [], 8: [], 10: [], 12: []})
 
     signal d6ResultReady(int requestId, int value)
     signal d6BatchResultReady(int requestId, var values)
     signal standardBatchResultReady(int requestId, int sides, var values)
+    signal d100ResultReady(int requestId, int tensValue, int onesValue)
 
-    function runD6Script(requestId) {
+    function runStandardScript(requestId, sides) {
         var req = Number(requestId || activeRequestId || 0)
-        web.runJavaScript("window.startRoll && window.startRoll(" + String(req) + ", 'd6', 1);")
-    }
-
-    function runD8Script(requestId) {
-        var req = Number(requestId || activeRequestId || 0)
-        web.runJavaScript("window.startRoll && window.startRoll(" + String(req) + ", 'd8', 1);")
+        var s = Number(sides || 6)
+        var kind = "d" + String(s)
+        web.runJavaScript("window.startRoll && window.startRoll(" + String(req) + ", '" + kind + "', 1);")
     }
 
     function clearWebDiceNow() {
@@ -34,28 +33,45 @@ Item {
         }
     }
 
+    function buildCountMap(d4Count, d6Count, d8Count, d10Count, d12Count) {
+        return ({
+            4: Math.max(0, Number(d4Count || 0)),
+            6: Math.max(0, Number(d6Count || 0)),
+            8: Math.max(0, Number(d8Count || 0)),
+            10: Math.max(0, Number(d10Count || 0)),
+            12: Math.max(0, Number(d12Count || 0))
+        })
+    }
+
+    function sideCountTotal(counts) {
+        var total = 0
+        for (var i = 0; i < standardSides.length; i++) {
+            var s = Number(standardSides[i])
+            total += Number(counts[s] || 0)
+        }
+        return Number(total)
+    }
+
     function startBatchNow() {
         if (activeRequestId <= 0 || activeExpectedCount <= 0) {
             return
         }
 
-        var c6 = Number(activeExpectedBySides[6] || 0)
-        var c8 = Number(activeExpectedBySides[8] || 0)
-        for (var i = 0; i < c6; i++) {
-            runD6Script(activeRequestId)
-        }
-        for (var j = 0; j < c8; j++) {
-            runD8Script(activeRequestId)
+        for (var i = 0; i < standardSides.length; i++) {
+            var s = Number(standardSides[i])
+            var cnt = Number(activeExpectedBySides[s] || 0)
+            for (var j = 0; j < cnt; j++) {
+                runStandardScript(activeRequestId, s)
+            }
         }
         hideTimer.restart()
     }
 
-    function triggerStandardBatch(requestId, d6Count, d8Count, appendMode) {
+    function triggerStandardBatch(requestId, d4Count, d6Count, d8Count, d10Count, d12Count, appendMode) {
         var append = Boolean(appendMode)
         var req = Number(requestId || 0)
-        var addD6 = Math.max(0, Number(d6Count || 0))
-        var addD8 = Math.max(0, Number(d8Count || 0))
-        var addTotal = addD6 + addD8
+        var addBySides = buildCountMap(d4Count, d6Count, d8Count, d10Count, d12Count)
+        var addTotal = sideCountTotal(addBySides)
         if (req <= 0 || addTotal <= 0) {
             return
         }
@@ -65,14 +81,16 @@ Item {
             clearWebDiceNow()
             activeRequestId = req
             activeExpectedCount = addTotal
-            activeExpectedBySides = ({6: addD6, 8: addD8})
-            activeValuesBySides = ({6: [], 8: []})
+            activeExpectedBySides = addBySides
+            activeValuesBySides = ({4: [], 6: [], 8: [], 10: [], 12: []})
         } else {
+            var mergedExpected = ({4: 0, 6: 0, 8: 0, 10: 0, 12: 0})
+            for (var i = 0; i < standardSides.length; i++) {
+                var s = Number(standardSides[i])
+                mergedExpected[s] = Number(activeExpectedBySides[s] || 0) + Number(addBySides[s] || 0)
+            }
+            activeExpectedBySides = mergedExpected
             activeExpectedCount = Number(activeExpectedCount || 0) + addTotal
-            activeExpectedBySides = ({
-                6: Number(activeExpectedBySides[6] || 0) + addD6,
-                8: Number(activeExpectedBySides[8] || 0) + addD8
-            })
         }
 
         active = true
@@ -82,11 +100,12 @@ Item {
 
         if (pageReady) {
             pendingRoll = false
-            for (var i = 0; i < addD6; i++) {
-                runD6Script(activeRequestId)
-            }
-            for (var j = 0; j < addD8; j++) {
-                runD8Script(activeRequestId)
+            for (var i2 = 0; i2 < standardSides.length; i2++) {
+                var s2 = Number(standardSides[i2])
+                var cnt2 = Number(addBySides[s2] || 0)
+                for (var j2 = 0; j2 < cnt2; j2++) {
+                    runStandardScript(activeRequestId, s2)
+                }
             }
         } else {
             pendingRoll = true
@@ -95,15 +114,19 @@ Item {
     }
 
     function triggerD6(requestId) {
-        triggerStandardBatch(requestId, 1, 0, false)
+        triggerStandardBatch(requestId, 0, 1, 0, 0, 0, false)
     }
 
     function triggerD8(requestId, count, appendMode) {
-        triggerStandardBatch(requestId, 0, Math.max(1, Number(count || 1)), appendMode)
+        triggerStandardBatch(requestId, 0, 0, Math.max(1, Number(count || 1)), 0, 0, appendMode)
     }
 
     function triggerD6Batch(requestId, count, appendMode) {
-        triggerStandardBatch(requestId, Math.max(1, Number(count || 1)), 0, appendMode)
+        triggerStandardBatch(requestId, 0, Math.max(1, Number(count || 1)), 0, 0, 0, appendMode)
+    }
+
+    function triggerD100(requestId) {
+        console.log("[dice-web] d100 trigger is disabled in this build", requestId)
     }
 
     function clear() {
@@ -114,8 +137,8 @@ Item {
         pendingRoll = false
         activeRequestId = 0
         activeExpectedCount = 0
-        activeExpectedBySides = ({6: 0, 8: 0})
-        activeValuesBySides = ({6: [], 8: []})
+        activeExpectedBySides = ({4: 0, 6: 0, 8: 0, 10: 0, 12: 0})
+        activeValuesBySides = ({4: [], 6: [], 8: [], 10: [], 12: []})
     }
 
     function finalizeBatch() {
@@ -125,21 +148,24 @@ Item {
 
         var reqId = activeRequestId
         var values6 = (activeValuesBySides[6] || []).slice(0)
-        var values8 = (activeValuesBySides[8] || []).slice(0)
-
         if (values6.length > 0 && values6.length === 1) {
             d6ResultReady(reqId, Number(values6[0]))
         }
         if (values6.length > 0) {
             d6BatchResultReady(reqId, values6)
-            standardBatchResultReady(reqId, 6, values6)
         }
-        if (values8.length > 0) {
-            standardBatchResultReady(reqId, 8, values8)
+
+        for (var i = 0; i < standardSides.length; i++) {
+            var s = Number(standardSides[i])
+            var values = (activeValuesBySides[s] || []).slice(0)
+            if (values.length > 0) {
+                standardBatchResultReady(reqId, s, values)
+            }
         }
+
         hideTimer.restart()
         activeExpectedCount = 0
-        activeExpectedBySides = ({6: 0, 8: 0})
+        activeExpectedBySides = ({4: 0, 6: 0, 8: 0, 10: 0, 12: 0})
     }
 
     function tryParseResultMessage(message) {
@@ -158,7 +184,12 @@ Item {
         var reqId = Number(reqMatch[1])
         var sides = sidesMatch ? Number(sidesMatch[1]) : 6
         var value = Number(valueMatch[1])
-        if (reqId <= 0 || value <= 0 || (sides !== 6 && sides !== 8)) {
+        if (reqId <= 0 || value <= 0) {
+            return
+        }
+
+        var isStandardSide = standardSides.indexOf(sides) >= 0
+        if (!isStandardSide) {
             return
         }
 
@@ -173,8 +204,11 @@ Item {
         }
 
         var bySides = ({
+            4: (activeValuesBySides[4] || []).slice(0),
             6: (activeValuesBySides[6] || []).slice(0),
-            8: (activeValuesBySides[8] || []).slice(0)
+            8: (activeValuesBySides[8] || []).slice(0),
+            10: (activeValuesBySides[10] || []).slice(0),
+            12: (activeValuesBySides[12] || []).slice(0)
         })
         bySides[sides] = bySides[sides].concat([value])
         if (bySides[sides].length > expected) {
@@ -182,7 +216,10 @@ Item {
         }
         activeValuesBySides = bySides
 
-        var landedTotal = Number((activeValuesBySides[6] || []).length) + Number((activeValuesBySides[8] || []).length)
+        var landedTotal = 0
+        for (var i = 0; i < standardSides.length; i++) {
+            landedTotal += Number((activeValuesBySides[Number(standardSides[i])] || []).length)
+        }
         if (landedTotal >= Number(activeExpectedCount || 0)) {
             finalizeBatch()
             return
