@@ -222,7 +222,7 @@
       box-sizing: border-box;
       backface-visibility: hidden;
       transform-origin: 50% 50%;
-      border: 0.45px solid #c9c9c9;
+      border: none;
     }
 
     .d10-label {
@@ -1003,7 +1003,7 @@
         for (let i = 0; i < faces.length; i += 1) {
           const f = faces[i];
           const fv = f.vertices || [];
-          const built = buildFaceTransformFromVertices(f.id, fv, 0, 0.08, null);
+          const built = buildFaceTransformFromVertices(f.id, fv, 0, 0.00, null);
           const idx = clamp(Number(f.id || 1) - 1, 0, 9);
           faceTransforms[idx] = built.transform;
           faceNormals[idx] = normalizeVec3Obj(built.normal);
@@ -2076,6 +2076,10 @@
   </script>
 </body>
 </html>
+
+
+
+
 
 
 
