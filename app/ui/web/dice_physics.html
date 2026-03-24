@@ -583,20 +583,16 @@
               faceEls[i].style.clipPath = fClip;
             }
             const baseTransform = 'rotateY(' + String(ry) + 'deg) rotateX(' + String(rx) + 'deg) rotateZ(' + String(rz) + 'deg) translateX(' + String(fx.toFixed(4)) + 'px) translateY(' + String(fy.toFixed(4)) + 'px) translateZ(' + String(tz) + 'px)';
-            if (String(spec.key || '') === 'd10') {
-              faceEls[i].style.transform = baseTransform + ' scale(1.009)';
-            } else {
-              faceEls[i].style.transform = baseTransform;
-            }
+            faceEls[i].style.transform = baseTransform;
             if (String(spec.key || '') !== 'd4') {
               const v = String(Number(ft.id || (i + 1)));
               if (String(spec.key || '') === 'd10') {
                 const label = document.createElement('span');
                 label.className = 'd10-label';
                 label.textContent = v;
-                let labelRotate = normalizeAngle(resolveFaceLabelRotation(spec, ft, i, rz) + 90);
                 const fid = Number(ft.id || (i + 1));
-                if (fid === 1 || fid === 4 || fid === 7 || fid === 10) {
+                let labelRotate = normalizeAngle(resolveFaceLabelRotation(spec, ft, i, rz) - 90);
+                if (fid >= 1 && fid <= 5) {
                   labelRotate = normalizeAngle(labelRotate + 180);
                 }
                 const cxPct = Number(ft.labelCxPct === undefined ? 50 : ft.labelCxPct);
@@ -843,7 +839,7 @@
         return normalizeVec3(Number(v.x || 0), Number(v.y || 0), Number(v.z || 0));
       }
 
-      function buildFaceTransformFromVertices(faceId, vertices, hintVertexIndex, inflatePx) {
+      function buildFaceTransformFromVertices(faceId, vertices, hintVertexIndex, inflatePx, hintVec) {
         const c = centroidVec3(vertices);
         const e1 = subVec3(vertices[1], vertices[0]);
         const e2 = subVec3(vertices[2], vertices[1]);
@@ -853,18 +849,50 @@
         }
 
         const hintIndex = clamp(Number(hintVertexIndex || 0), 0, vertices.length - 1);
-        let hint = subVec3(vertices[hintIndex], c);
-        const hintDot = dotVec3(hint, n);
-        hint = subVec3(hint, scaleVec3(n, hintDot));
-        const hintLen = Math.hypot(hint.x, hint.y, hint.z);
+        let hintSource = (hintVec && Number.isFinite(hintVec.x) && Number.isFinite(hintVec.y) && Number.isFinite(hintVec.z))
+          ? vec3(hintVec.x, hintVec.y, hintVec.z)
+          : subVec3(vertices[2], vertices[0]);
+
+        // project hint onto face plane
+        let hint = subVec3(hintSource, scaleVec3(n, dotVec3(hintSource, n)));
+        let hintLen = Math.hypot(hint.x, hint.y, hint.z);
+        if (hintLen <= 1e-6) {
+          hintSource = subVec3(vertices[hintIndex], c);
+          hint = subVec3(hintSource, scaleVec3(n, dotVec3(hintSource, n)));
+          hintLen = Math.hypot(hint.x, hint.y, hint.z);
+        }
+        if (hintLen <= 1e-6) {
+          hintSource = Math.abs(n.z) < 0.95 ? vec3(0, 0, 1) : vec3(0, 1, 0);
+          hint = subVec3(hintSource, scaleVec3(n, dotVec3(hintSource, n)));
+          hintLen = Math.hypot(hint.x, hint.y, hint.z);
+        }
         if (hintLen <= 1e-6) {
           hint = vec3(0, 1, 0);
+          hintLen = 1;
         }
 
-        const t = faceTransformFromNormalWithHint(n, hint, 0);
-        const ex = rotateVecFaceYXRZ({ x: 1, y: 0, z: 0 }, t.rx, t.ry, t.rz);
-        const ey = rotateVecFaceYXRZ({ x: 0, y: 1, z: 0 }, t.rx, t.ry, t.rz);
-        const ez = rotateVecFaceYXRZ({ x: 0, y: 0, z: 1 }, t.rx, t.ry, t.rz);
+        // Build deterministic right-handed face basis.
+        // Y axis follows chosen diagonal direction (v0 -> v2).
+        let ey = scaleVec3(hint, 1 / hintLen);
+        let ex = normalizeVec3Obj(crossVec3(ey, n));
+        let ez = n;
+        // Re-orthonormalize to avoid drift.
+        ey = normalizeVec3Obj(crossVec3(ez, ex));
+        if (dotVec3(ey, hint) < 0) {
+          ex = scaleVec3(ex, -1);
+          ey = scaleVec3(ey, -1);
+        }
+
+        // Convert basis -> Euler for face transform order rotateY rotateX rotateZ.
+        const sx = clamp(-ez.y, -1, 1);
+        const rx = Math.asin(sx) * 180 / Math.PI;
+        const cx = Math.cos(rx * Math.PI / 180);
+        const ry = Math.atan2(ez.x, ez.z) * 180 / Math.PI;
+        let rz = 0;
+        if (Math.abs(cx) > 1e-6) {
+          rz = Math.atan2(ex.y, ey.y) * 180 / Math.PI;
+        }
+        const t = { rx: rx, ry: ry, rz: normalizeAngle(rz) };
 
         let fx = dotVec3(c, ex);
         let fy = dotVec3(c, ey);
@@ -896,14 +924,9 @@
         const fh = Math.max(1, maxY - minY);
         const boxCenterX = minX + fw * 0.5;
         const boxCenterY = minY + fh * 0.5;
-        // clip-path coordinates are defined inside the face box.
-        // Shift transform origin by the same box-center offset so all faces
-        // share the same geometric placement in 3D.
         fx += boxCenterX;
         fy += boxCenterY;
 
-        // Label orientation is bound to the intended kite diagonal (60 <-> 120):
-        // for our vertex order this is always local point 0 -> 2.
         const dx = localPts[2].x - localPts[0].x;
         const dy = localPts[2].y - localPts[0].y;
         let labelRotate = Math.atan2(dy, dx) * 180 / Math.PI;
@@ -911,7 +934,6 @@
           labelRotate = normalizeAngle(labelRotate + 180);
         }
 
-        // Use polygon centroid for true visual center of number placement.
         const cxLocal = (localPts[0].x + localPts[1].x + localPts[2].x + localPts[3].x) * 0.25;
         const cyLocal = (localPts[0].y + localPts[1].y + localPts[2].y + localPts[3].y) * 0.25;
         const labelCxPct = ((cxLocal - minX) / fw) * 100;
@@ -980,7 +1002,8 @@
         const faceNormals = new Array(10);
         for (let i = 0; i < faces.length; i += 1) {
           const f = faces[i];
-          const built = buildFaceTransformFromVertices(f.id, f.vertices, 0, 0.34);
+          const fv = f.vertices || [];
+          const built = buildFaceTransformFromVertices(f.id, fv, 0, 0.08, null);
           const idx = clamp(Number(f.id || 1) - 1, 0, 9);
           faceTransforms[idx] = built.transform;
           faceNormals[idx] = normalizeVec3Obj(built.normal);
@@ -2053,6 +2076,13 @@
   </script>
 </body>
 </html>
+
+
+
+
+
+
+
 
 
 
