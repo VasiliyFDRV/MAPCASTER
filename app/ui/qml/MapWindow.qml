@@ -143,7 +143,7 @@ Window {
         }
         for (var i = 0; i < payload.dice.length; i++) {
             var s = Number(payload.dice[i])
-            if (s !== 4 && s !== 6 && s !== 8 && s !== 10) {
+            if (s !== 4 && s !== 6 && s !== 8 && s !== 10 && s !== 12) {
                 return false
             }
         }
@@ -3135,6 +3135,7 @@ Window {
         diceController.set_map_window_open(true)
     }
 }
+
 
 
 

@@ -93,9 +93,7 @@ Window {
 
     function isPhysicsStandardRequest(d4, d6, d8, d10, d12) {
         return d4 === 0
-            && d10 === 0
-            && d12 === 0
-            && (d6 + d8) > 0
+            && (d6 + d8 + d10 + d12) > 0
     }
 
     function setD20Mode(newMode) {
@@ -1450,6 +1448,7 @@ Window {
         onAccepted: updateEditorField("fontColor", selectedColor)
     }
 }
+
 
 
 

@@ -237,6 +237,42 @@
       display: none;
     }
 
+    .d12 {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      width: 92px;
+      height: 92px;
+      transform: translate(-50%, -50%);
+      transform-style: preserve-3d;
+    }
+
+    .d12-face {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      width: 56px;
+      height: 54px;
+      margin-left: -28px;
+      margin-top: -27px;
+      clip-path: polygon(50% 0%, 97.55% 34.55%, 79.39% 90.45%, 20.61% 90.45%, 2.45% 34.55%);
+      background: #c9c9c9;
+      color: #232323;
+      font-family: Segoe UI, Arial, sans-serif;
+      font-size: 14px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      line-height: 1;
+      box-sizing: border-box;
+      backface-visibility: hidden;
+      transform-origin: 50% 50%;
+    }
+
+    .d12-core {
+      display: none;
+    }
     .shadow {
       position: absolute;
       width: 68px;
@@ -308,6 +344,25 @@
         </div>
       </div>
     </div>
+    <div class="dice-wrap" id="wrap-d12-template" style="display:none;">
+      <div class="dice">
+        <div class="d12">
+          <div class="d12-core"></div>
+          <div class="d12-face f1">1</div>
+          <div class="d12-face f2">2</div>
+          <div class="d12-face f3">3</div>
+          <div class="d12-face f4">4</div>
+          <div class="d12-face f5">5</div>
+          <div class="d12-face f6">6</div>
+          <div class="d12-face f7">7</div>
+          <div class="d12-face f8">8</div>
+          <div class="d12-face f9">9</div>
+          <div class="d12-face f10">10</div>
+          <div class="d12-face f11">11</div>
+          <div class="d12-face f12">12</div>
+        </div>
+      </div>
+    </div>
   </div>
 
   <script>
@@ -317,6 +372,7 @@
       const wrapD8Template = document.getElementById('wrap-d8-template');
       const wrapD4Template = document.getElementById('wrap-d4-template');
       const wrapD10Template = document.getElementById('wrap-d10-template');
+      const wrapD12Template = document.getElementById('wrap-d12-template');
 
       // Fixed per-face label correction for d10 (degrees).
       // Keeping this in one table avoids side effects when tuning individual faces.
@@ -1031,6 +1087,129 @@
 
       const D10_FACE_DATA = buildD10FaceData();
 
+      function buildConvexPolyFaces(vertices, expectedFaceSize) {
+        const epsSide = 1e-6;
+        const epsPlane = 1e-5;
+        const faceByKey = new Map();
+        const nVerts = vertices.length;
+
+        for (let i = 0; i < nVerts - 2; i += 1) {
+          const a = vertices[i];
+          for (let j = i + 1; j < nVerts - 1; j += 1) {
+            const b = vertices[j];
+            for (let k = j + 1; k < nVerts; k += 1) {
+              const c = vertices[k];
+              const ab = subVec3(b, a);
+              const ac = subVec3(c, a);
+              let n = crossVec3(ab, ac);
+              const nLen = Math.hypot(n.x, n.y, n.z);
+              if (nLen <= epsSide) continue;
+              n = scaleVec3(n, 1 / nLen);
+              let d = dotVec3(n, a);
+
+              let hasPos = false;
+              let hasNeg = false;
+              for (let t = 0; t < nVerts; t += 1) {
+                const s = dotVec3(n, vertices[t]) - d;
+                if (s > epsPlane) hasPos = true;
+                if (s < -epsPlane) hasNeg = true;
+                if (hasPos && hasNeg) break;
+              }
+              if (hasPos && hasNeg) continue;
+              if (hasPos) {
+                n = scaleVec3(n, -1);
+                d = -d;
+              }
+
+              const ids = [];
+              for (let t = 0; t < nVerts; t += 1) {
+                const s = dotVec3(n, vertices[t]) - d;
+                if (Math.abs(s) <= 3e-4) ids.push(t);
+              }
+              if (ids.length !== expectedFaceSize) continue;
+
+              const keyIds = ids.slice().sort((u, v) => u - v);
+              const key = keyIds.join(',');
+              if (faceByKey.has(key)) continue;
+
+              const center = centroidVec3(keyIds.map((idx) => vertices[idx]));
+              let nOut = n;
+              if (dotVec3(nOut, center) < 0) nOut = scaleVec3(nOut, -1);
+
+              let u = normalizeVec3Obj(subVec3(vertices[keyIds[0]], center));
+              if (Math.hypot(u.x, u.y, u.z) <= epsSide) u = vec3(1, 0, 0);
+              let vAxis = normalizeVec3Obj(crossVec3(nOut, u));
+              if (Math.hypot(vAxis.x, vAxis.y, vAxis.z) <= epsSide) vAxis = vec3(0, 1, 0);
+
+              const ordered = keyIds.slice().sort((ia, ib) => {
+                const ra = subVec3(vertices[ia], center);
+                const rb = subVec3(vertices[ib], center);
+                const aa = Math.atan2(dotVec3(ra, vAxis), dotVec3(ra, u));
+                const ab2 = Math.atan2(dotVec3(rb, vAxis), dotVec3(rb, u));
+                return aa - ab2;
+              });
+
+              const e01 = subVec3(vertices[ordered[1]], vertices[ordered[0]]);
+              const e12 = subVec3(vertices[ordered[2]], vertices[ordered[1]]);
+              if (dotVec3(crossVec3(e01, e12), nOut) < 0) ordered.reverse();
+
+              faceByKey.set(key, { ids: ordered, normal: nOut });
+            }
+          }
+        }
+
+        const faces = Array.from(faceByKey.values());
+        faces.sort((fa, fb) => {
+          const ca = centroidVec3(fa.ids.map((idx) => vertices[idx]));
+          const cb = centroidVec3(fb.ids.map((idx) => vertices[idx]));
+          if (Math.abs(cb.z - ca.z) > 1e-6) return cb.z - ca.z;
+          return Math.atan2(ca.y, ca.x) - Math.atan2(cb.y, cb.x);
+        });
+        return faces;
+      }
+
+      function buildD12FaceData() {
+        const phi = (1 + Math.sqrt(5)) * 0.5;
+        const invPhi = 1 / phi;
+        const s = 15.5;
+        const verts = [];
+        const add = (x, y, z) => verts.push(vec3(x * s, y * s, z * s));
+
+        for (let sx = -1; sx <= 1; sx += 2) {
+          for (let sy = -1; sy <= 1; sy += 2) {
+            for (let sz = -1; sz <= 1; sz += 2) add(sx, sy, sz);
+          }
+        }
+        for (let sy = -1; sy <= 1; sy += 2) {
+          for (let sz = -1; sz <= 1; sz += 2) add(0, sy * invPhi, sz * phi);
+        }
+        for (let sx = -1; sx <= 1; sx += 2) {
+          for (let sy = -1; sy <= 1; sy += 2) add(sx * invPhi, sy * phi, 0);
+        }
+        for (let sx = -1; sx <= 1; sx += 2) {
+          for (let sz = -1; sz <= 1; sz += 2) add(sx * phi, 0, sz * invPhi);
+        }
+
+        const faces = buildConvexPolyFaces(verts, 5);
+        const faceTransforms = [];
+        const faceNormals = [];
+        for (let i = 0; i < faces.length; i += 1) {
+          const fv = faces[i].ids.map((idx) => verts[idx]);
+          const faceCenter = centroidVec3(fv);
+          const hint = Math.abs(faceCenter.z) < 1e-6 ? vec3(0, 1, 0) : vec3(0, 0, 1);
+          const built = buildFaceTransformFromVertices(i + 1, fv, 0, 0.00, hint);
+          faceTransforms.push(built.transform);
+          faceNormals.push(normalizeVec3Obj(built.normal));
+        }
+
+        return {
+          faceTransforms: faceTransforms.filter(Boolean),
+          faceNormals: faceNormals.filter(Boolean),
+        };
+      }
+
+      const D12_FACE_DATA = buildD12FaceData();
+
       function buildD4FaceData() {
         const norm = 1 / Math.sqrt(3);
         const vertices = [
@@ -1230,6 +1409,41 @@
             ryFactor: 0.96,
             rzLerpFactor: 0.78,
             forceSnapDistance: 12.8,
+          },
+        },
+        d12: {
+          key: 'd12',
+          template: wrapD12Template,
+          faceSelector: '.d12-face',
+          coreSelector: '.d12-core',
+          dynamicFaceTransforms: true,
+          faceTransforms: D12_FACE_DATA.faceTransforms.map((t) => ({
+            id: t.id,
+            rx: t.rx,
+            ry: t.ry,
+            rz: t.rz,
+            tz: t.tz,
+            fx: t.fx,
+            fy: t.fy,
+            fw: t.fw,
+            fh: t.fh,
+            clipPath: t.clipPath,
+          })),
+          faceNormals: D12_FACE_DATA.faceNormals,
+          sides: 12,
+          alignMode: 'poly',
+          resultMode: 'poly',
+          alignProfile: {
+            startGroundedDelayRange: [0.02, 0.12],
+            startPlanarThreshold: 2.05,
+            startSpinThreshold: 430,
+            speedBoostRange: [1.95, 2.85],
+            plopBoostRange: [1.45, 2.20],
+            forceSnapDelayRange: [0.22, 0.40],
+            tMax: 1.45,
+            ryFactor: 0.96,
+            rzLerpFactor: 0.78,
+            forceSnapDistance: 13.6,
           },
         },
       };
@@ -2090,6 +2304,12 @@
   </script>
 </body>
 </html>
+
+
+
+
+
+
 
 
 
