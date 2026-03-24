@@ -317,6 +317,21 @@
       const wrapD8Template = document.getElementById('wrap-d8-template');
       const wrapD4Template = document.getElementById('wrap-d4-template');
       const wrapD10Template = document.getElementById('wrap-d10-template');
+
+      // Fixed per-face label correction for d10 (degrees).
+      // Keeping this in one table avoids side effects when tuning individual faces.
+      const D10_LABEL_ROTATE_OFFSETS = {
+        1: 0,
+        2: 180,
+        3: 180,
+        4: 180,
+        5: 0,
+        6: 180,
+        7: 180,
+        8: 0,
+        9: 0,
+        10: 180,
+      };
       const shadowTemplate = document.getElementById('shadow-template');
 
       let rollSeq = 0;
@@ -591,10 +606,9 @@
                 label.className = 'd10-label';
                 label.textContent = v;
                 const fid = Number(ft.id || (i + 1));
-                let labelRotate = normalizeAngle(resolveFaceLabelRotation(spec, ft, i, rz) - 90);
-                if (fid >= 1 && fid <= 5) {
-                  labelRotate = normalizeAngle(labelRotate + 180);
-                }
+                const baseRotate = normalizeAngle(resolveFaceLabelRotation(spec, ft, i, rz) - 90);
+                const faceOffset = Number(D10_LABEL_ROTATE_OFFSETS[fid] || 0);
+                const labelRotate = normalizeAngle(baseRotate + faceOffset);
                 const cxPct = Number(ft.labelCxPct === undefined ? 50 : ft.labelCxPct);
                 const cyPct = Number(ft.labelCyPct === undefined ? 50 : ft.labelCyPct);
                 label.style.left = String(cxPct.toFixed(4)) + '%';
@@ -1208,14 +1222,14 @@
           alignProfile: {
             startGroundedDelayRange: [0.02, 0.12],
             startPlanarThreshold: 2.05,
-            startSpinThreshold: 420,
-            speedBoostRange: [1.92, 2.72],
-            plopBoostRange: [1.42, 2.10],
+            startSpinThreshold: 470,
+            speedBoostRange: [2.05, 2.95],
+            plopBoostRange: [1.55, 2.30],
             forceSnapDelayRange: [0.22, 0.40],
             tMax: 1.45,
             ryFactor: 0.96,
             rzLerpFactor: 0.78,
-            forceSnapDistance: 14.8,
+            forceSnapDistance: 12.8,
           },
         },
       };
@@ -2076,6 +2090,13 @@
   </script>
 </body>
 </html>
+
+
+
+
+
+
+
 
 
 
