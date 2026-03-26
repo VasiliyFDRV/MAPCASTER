@@ -17,6 +17,11 @@ Item {
     property int d20ActiveRequestId: 0
     property int d20ExpectedCount: 0
     property var d20Values: []
+    property int d100ActiveRequestId: 0
+    property int d100TensValue: -1
+    property int d100OnesValue: -1
+    property bool d100TensReady: false
+    property bool d100OnesReady: false
 
     signal d6ResultReady(int requestId, int value)
     signal d6BatchResultReady(int requestId, var values)
@@ -57,6 +62,12 @@ Item {
     }
 
     function startBatchNow() {
+        if (d100ActiveRequestId > 0 && (!d100TensReady || !d100OnesReady)) {
+            web.runJavaScript("window.startRoll && window.startRoll(" + String(d100ActiveRequestId) + ", 'd10t', 1);")
+            web.runJavaScript("window.startRoll && window.startRoll(" + String(d100ActiveRequestId) + ", 'd10', 1);")
+            hideTimer.restart()
+            return
+        }
         if (d20ActiveRequestId > 0 && d20ExpectedCount > 0) {
             for (var k = 0; k < d20ExpectedCount; k++) {
                 runStandardScript(d20ActiveRequestId, 20)
@@ -84,6 +95,11 @@ Item {
         d20ActiveRequestId = 0
         d20ExpectedCount = 0
         d20Values = []
+        d100ActiveRequestId = 0
+        d100TensValue = -1
+        d100OnesValue = -1
+        d100TensReady = false
+        d100OnesReady = false
         var addBySides = buildCountMap(d4Count, d6Count, d8Count, d10Count, d12Count)
         var addTotal = sideCountTotal(addBySides)
         if (req <= 0 || addTotal <= 0) {
@@ -150,6 +166,11 @@ Item {
         activeExpectedCount = 0
         activeExpectedBySides = ({4: 0, 6: 0, 8: 0, 10: 0, 12: 0})
         activeValuesBySides = ({4: [], 6: [], 8: [], 10: [], 12: []})
+        d100ActiveRequestId = 0
+        d100TensValue = -1
+        d100OnesValue = -1
+        d100TensReady = false
+        d100OnesReady = false
         d20ActiveRequestId = req
         d20ExpectedCount = cnt
         d20Values = []
@@ -170,7 +191,38 @@ Item {
     }
 
     function triggerD100(requestId) {
-        console.log("[dice-web] d100 trigger is disabled in this build", requestId)
+        var req = Number(requestId || 0)
+        if (req <= 0) {
+            return
+        }
+
+        clearWebDiceNow()
+        activeRequestId = 0
+        activeExpectedCount = 0
+        activeExpectedBySides = ({4: 0, 6: 0, 8: 0, 10: 0, 12: 0})
+        activeValuesBySides = ({4: [], 6: [], 8: [], 10: [], 12: []})
+        d20ActiveRequestId = 0
+        d20ExpectedCount = 0
+        d20Values = []
+
+        d100ActiveRequestId = req
+        d100TensValue = -1
+        d100OnesValue = -1
+        d100TensReady = false
+        d100OnesReady = false
+
+        active = true
+        web.opacity = 1.0
+        hideTimer.restart()
+
+        if (pageReady) {
+            pendingRoll = false
+            web.runJavaScript("window.startRoll && window.startRoll(" + String(req) + ", 'd10t', 1);")
+            web.runJavaScript("window.startRoll && window.startRoll(" + String(req) + ", 'd10', 1);")
+        } else {
+            pendingRoll = true
+            web.reload()
+        }
     }
 
     function clear() {
@@ -185,6 +237,11 @@ Item {
         d20ActiveRequestId = 0
         d20ExpectedCount = 0
         d20Values = []
+        d100ActiveRequestId = 0
+        d100TensValue = -1
+        d100OnesValue = -1
+        d100TensReady = false
+        d100OnesReady = false
     }
 
     function finalizeBatch() {
@@ -230,7 +287,36 @@ Item {
         var reqId = Number(reqMatch[1])
         var sides = sidesMatch ? Number(sidesMatch[1]) : 6
         var value = Number(valueMatch[1])
-        if (reqId <= 0 || value <= 0) {
+        if (reqId <= 0) {
+            return
+        }
+        var allowZeroTens = reqId === d100ActiveRequestId && sides === 100 && value === 0
+        if (value <= 0 && !allowZeroTens) {
+            return
+        }
+
+        if (reqId === d100ActiveRequestId) {
+            if (sides === 100) {
+                d100TensValue = Math.max(0, Math.min(90, Number(value || 0)))
+                d100TensReady = true
+            } else if (sides === 10) {
+                var ones = Number(value || 0) % 10
+                if (ones < 0) ones += 10
+                d100OnesValue = Math.max(0, Math.min(9, ones))
+                d100OnesReady = true
+            } else {
+                return
+            }
+
+            if (d100TensReady && d100OnesReady) {
+                d100ResultReady(d100ActiveRequestId, d100TensValue, d100OnesValue)
+                d100ActiveRequestId = 0
+                d100TensValue = -1
+                d100OnesValue = -1
+                d100TensReady = false
+                d100OnesReady = false
+                hideTimer.restart()
+            }
             return
         }
 

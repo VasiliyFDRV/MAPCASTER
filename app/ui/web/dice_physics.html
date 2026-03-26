@@ -218,6 +218,14 @@
       white-space: nowrap;
     }
 
+    .d10t-label {
+      position: absolute;
+      line-height: 1;
+      transform-origin: 50% 50%;
+      pointer-events: none;
+      white-space: nowrap;
+    }
+
     .d10-mark {
       position: absolute;
       left: 50%;
@@ -791,6 +799,20 @@
                   mark.textContent = '.';
                   label.appendChild(mark);
                 }
+                faceEls[i].textContent = '';
+                faceEls[i].appendChild(label);
+              } else if (String(spec.key || '') === 'd10t') {
+                const label = document.createElement('span');
+                label.className = 'd10t-label';
+                const fid = Number(ft.id || (i + 1));
+                const tensText = fid === 1 ? '00' : String((fid - 1) * 10);
+                label.textContent = tensText;
+                const baseRotate = normalizeAngle(resolveFaceLabelRotation(spec, ft, i, rz) - 90);
+                const faceOffset = Number(D10_LABEL_ROTATE_OFFSETS[fid] || 0);
+                const labelRotate = normalizeAngle(baseRotate + faceOffset - 90);
+                label.style.left = '50%';
+                label.style.top = '50%';
+                label.style.transform = 'translate(-50%, -50%) rotate(' + String(labelRotate.toFixed(3)) + 'deg)';
                 faceEls[i].textContent = '';
                 faceEls[i].appendChild(label);
               } else if (String(spec.key || '') === 'd12') {
@@ -1725,6 +1747,44 @@
             forceSnapDistance: 12.8,
           },
         },
+        d10t: {
+          key: 'd10t',
+          template: wrapD10Template,
+          faceSelector: '.d10-face',
+          coreSelector: '.d10-core',
+          dynamicFaceTransforms: true,
+          faceTransforms: D10_FACE_DATA.faceTransforms.map((t) => ({
+            id: t.id,
+            rx: t.rx,
+            ry: t.ry,
+            rz: t.rz,
+            tz: t.tz,
+            fx: t.fx,
+            fy: t.fy,
+            fw: t.fw,
+            fh: t.fh,
+            clipPath: t.clipPath,
+            labelRotate: t.labelRotate,
+            labelCxPct: t.labelCxPct,
+            labelCyPct: t.labelCyPct,
+          })),
+          faceNormals: D10_FACE_DATA.faceNormals,
+          sides: 100,
+          alignMode: 'poly',
+          resultMode: 'd10_tens',
+          alignProfile: {
+            startGroundedDelayRange: [0.02, 0.12],
+            startPlanarThreshold: 2.05,
+            startSpinThreshold: 470,
+            speedBoostRange: [2.05, 2.95],
+            plopBoostRange: [1.55, 2.30],
+            forceSnapDelayRange: [0.22, 0.40],
+            tMax: 1.45,
+            ryFactor: 0.96,
+            rzLerpFactor: 0.78,
+            forceSnapDistance: 12.8,
+          },
+        },
         d12: {
           key: 'd12',
           template: wrapD12Template,
@@ -2310,6 +2370,17 @@
             return 0;
           }
           return Number((((top + 1) % 4) + 1) || 0);
+        },
+        d10_tens: function resolveD10TensResultFace(state) {
+          const spec = (state && state.diceSpec) || getDiceSpec('d10t');
+          const top = Number(topFaceFromSpecEuler(spec, state.rx, state.ry, state.rz) || 0);
+          if (top <= 0) {
+            return 0;
+          }
+          if (top === 1) {
+            return 0;
+          }
+          return Number((top - 1) * 10);
         },
         d4_trunc_up: function resolveD4TruncResultFace(state) {
           const spec = (state && state.diceSpec) || getDiceSpec('d4');

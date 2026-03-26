@@ -169,7 +169,16 @@ Window {
     }
 
     function shouldUseD100PhysicsVisual(payload) {
-        return false
+        if (!payload || payload.kind !== "d100") {
+            return false
+        }
+        if (!payload.request_id || Number(payload.request_id) <= 0) {
+            return false
+        }
+        if (!payload.dice || payload.dice.length !== 2) {
+            return false
+        }
+        return Number(payload.dice[0]) === 10 && Number(payload.dice[1]) === 10
     }
 
 
