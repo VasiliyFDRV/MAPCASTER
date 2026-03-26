@@ -308,6 +308,44 @@
     .d12-core {
       display: none;
     }
+
+    .d20 {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      width: 96px;
+      height: 96px;
+      transform: translate(-50%, -50%);
+      transform-style: preserve-3d;
+    }
+
+    .d20-face {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      width: 34px;
+      height: 29.4449px;
+      margin-left: -17px;
+      margin-top: -14.72245px;
+      clip-path: polygon(50% 0%, 0% 100%, 100% 100%);
+      background: #c9c9c9;
+      color: #232323;
+      font-family: Segoe UI, Arial, sans-serif;
+      font-size: 13px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      line-height: 1;
+      padding-top: 0;
+      box-sizing: border-box;
+      backface-visibility: hidden;
+      transform-origin: 50% 50%;
+    }
+
+    .d20-core {
+      display: none;
+    }
     .shadow {
       position: absolute;
       width: 68px;
@@ -398,6 +436,33 @@
         </div>
       </div>
     </div>
+    <div class="dice-wrap" id="wrap-d20-template" style="display:none;">
+      <div class="dice">
+        <div class="d20">
+          <div class="d20-core"></div>
+          <div class="d20-face f1">1</div>
+          <div class="d20-face f2">2</div>
+          <div class="d20-face f3">3</div>
+          <div class="d20-face f4">4</div>
+          <div class="d20-face f5">5</div>
+          <div class="d20-face f6">6</div>
+          <div class="d20-face f7">7</div>
+          <div class="d20-face f8">8</div>
+          <div class="d20-face f9">9</div>
+          <div class="d20-face f10">10</div>
+          <div class="d20-face f11">11</div>
+          <div class="d20-face f12">12</div>
+          <div class="d20-face f13">13</div>
+          <div class="d20-face f14">14</div>
+          <div class="d20-face f15">15</div>
+          <div class="d20-face f16">16</div>
+          <div class="d20-face f17">17</div>
+          <div class="d20-face f18">18</div>
+          <div class="d20-face f19">19</div>
+          <div class="d20-face f20">20</div>
+        </div>
+      </div>
+    </div>
   </div>
 
   <script>
@@ -408,6 +473,7 @@
       const wrapD4Template = document.getElementById('wrap-d4-template');
       const wrapD10Template = document.getElementById('wrap-d10-template');
       const wrapD12Template = document.getElementById('wrap-d12-template');
+      const wrapD20Template = document.getElementById('wrap-d20-template');
 
       // Fixed per-face label correction for d10 (degrees).
       // Keeping this in one table avoids side effects when tuning individual faces.
@@ -1052,15 +1118,41 @@
         fx += boxCenterX;
         fy += boxCenterY;
 
-        const dx = localPts[2].x - localPts[0].x;
-        const dy = localPts[2].y - localPts[0].y;
-        let labelRotate = Math.atan2(dy, dx) * 180 / Math.PI;
-        if (Math.abs(normalizeAngle(labelRotate)) > 90) {
-          labelRotate = normalizeAngle(labelRotate + 180);
+        // Generic label orientation/center for any polygon face size (3/4/5...).
+        let labelRotate = 0;
+        if (localPts.length >= 2) {
+          let bestI = 0;
+          let bestJ = 1;
+          let bestLen2 = -1;
+          for (let a = 0; a < localPts.length; a += 1) {
+            for (let b = a + 1; b < localPts.length; b += 1) {
+              const ddx = localPts[b].x - localPts[a].x;
+              const ddy = localPts[b].y - localPts[a].y;
+              const len2 = ddx * ddx + ddy * ddy;
+              if (len2 > bestLen2) {
+                bestLen2 = len2;
+                bestI = a;
+                bestJ = b;
+              }
+            }
+          }
+          const dx = localPts[bestJ].x - localPts[bestI].x;
+          const dy = localPts[bestJ].y - localPts[bestI].y;
+          labelRotate = Math.atan2(dy, dx) * 180 / Math.PI;
+          if (Math.abs(normalizeAngle(labelRotate)) > 90) {
+            labelRotate = normalizeAngle(labelRotate + 180);
+          }
         }
 
-        const cxLocal = (localPts[0].x + localPts[1].x + localPts[2].x + localPts[3].x) * 0.25;
-        const cyLocal = (localPts[0].y + localPts[1].y + localPts[2].y + localPts[3].y) * 0.25;
+        let cxLocal = 0;
+        let cyLocal = 0;
+        for (let i = 0; i < localPts.length; i += 1) {
+          cxLocal += localPts[i].x;
+          cyLocal += localPts[i].y;
+        }
+        const invCount = localPts.length > 0 ? (1 / localPts.length) : 0;
+        cxLocal *= invCount;
+        cyLocal *= invCount;
         const labelCxPct = ((cxLocal - minX) / fw) * 100;
         const labelCyPct = ((cyLocal - minY) / fh) * 100;
 
@@ -1302,6 +1394,61 @@
 
       const D12_FACE_DATA = buildD12FaceData();
 
+      function buildD20FaceData() {
+        const phi = (1 + Math.sqrt(5)) * 0.5;
+        const s = 14.0;
+        const verts = [];
+        const add = (x, y, z) => verts.push(vec3(x * s, y * s, z * s));
+
+        for (let y = -1; y <= 1; y += 2) {
+          for (let z = -phi; z <= phi; z += 2 * phi) add(0, y, z);
+        }
+        for (let x = -1; x <= 1; x += 2) {
+          for (let y = -phi; y <= phi; y += 2 * phi) add(x, y, 0);
+        }
+        for (let x = -phi; x <= phi; x += 2 * phi) {
+          for (let z = -1; z <= 1; z += 2) add(x, 0, z);
+        }
+
+        const faces = buildConvexPolyFaces(verts, 3);
+        const faceTransforms = [];
+        const faceNormals = [];
+        for (let i = 0; i < faces.length; i += 1) {
+          const fv = faces[i].ids.map((idx) => verts[idx]);
+          const c = centroidVec3(fv);
+          let n = normalizeVec3Obj(crossVec3(subVec3(fv[1], fv[0]), subVec3(fv[2], fv[1])));
+          if (dotVec3(n, c) < 0) n = scaleVec3(n, -1);
+
+          let up = subVec3(vec3(0, 0, 1), scaleVec3(n, dotVec3(vec3(0, 0, 1), n)));
+          if (Math.hypot(up.x, up.y, up.z) <= 1e-6) {
+            up = subVec3(vec3(0, 1, 0), scaleVec3(n, dotVec3(vec3(0, 1, 0), n)));
+          }
+          up = normalizeVec3Obj(up);
+
+          let topIdx = 0;
+          let bestUp = -1e9;
+          for (let k = 0; k < fv.length; k += 1) {
+            const rel = subVec3(fv[k], c);
+            const u = dotVec3(rel, up);
+            if (u > bestUp) {
+              bestUp = u;
+              topIdx = k;
+            }
+          }
+          const hint = normalizeVec3Obj(subVec3(fv[topIdx], c));
+          const built = buildFaceTransformFromVertices(i + 1, fv, 0, 0.00, hint);
+          faceTransforms.push(built.transform);
+          faceNormals.push(normalizeVec3Obj(built.normal));
+        }
+
+        return {
+          faceTransforms: faceTransforms.filter(Boolean),
+          faceNormals: faceNormals.filter(Boolean),
+        };
+      }
+
+      const D20_FACE_DATA = buildD20FaceData();
+
       function buildD4FaceData() {
         const norm = 1 / Math.sqrt(3);
         const vertices = [
@@ -1536,6 +1683,44 @@
             ryFactor: 0.96,
             rzLerpFactor: 0.78,
             forceSnapDistance: 13.6,
+          },
+        },
+        d20: {
+          key: 'd20',
+          template: wrapD20Template,
+          faceSelector: '.d20-face',
+          coreSelector: '.d20-core',
+          dynamicFaceTransforms: true,
+          faceTransforms: D20_FACE_DATA.faceTransforms.map((t) => ({
+            id: t.id,
+            rx: t.rx,
+            ry: t.ry,
+            rz: t.rz,
+            tz: t.tz,
+            fx: t.fx,
+            fy: t.fy,
+            fw: t.fw,
+            fh: t.fh,
+            clipPath: t.clipPath,
+            labelRotate: t.labelRotate,
+            labelCxPct: t.labelCxPct,
+            labelCyPct: t.labelCyPct,
+          })),
+          faceNormals: D20_FACE_DATA.faceNormals,
+          sides: 20,
+          alignMode: 'poly',
+          resultMode: 'poly',
+          alignProfile: {
+            startGroundedDelayRange: [0.02, 0.12],
+            startPlanarThreshold: 2.0,
+            startSpinThreshold: 440,
+            speedBoostRange: [1.95, 2.85],
+            plopBoostRange: [1.45, 2.20],
+            forceSnapDelayRange: [0.22, 0.40],
+            tMax: 1.45,
+            ryFactor: 0.96,
+            rzLerpFactor: 0.78,
+            forceSnapDistance: 12.8,
           },
         },
       };

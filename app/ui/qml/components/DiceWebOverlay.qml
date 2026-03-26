@@ -14,10 +14,14 @@ Item {
     property var standardSides: [4, 6, 8, 10, 12]
     property var activeExpectedBySides: ({4: 0, 6: 0, 8: 0, 10: 0, 12: 0})
     property var activeValuesBySides: ({4: [], 6: [], 8: [], 10: [], 12: []})
+    property int d20ActiveRequestId: 0
+    property int d20ExpectedCount: 0
+    property var d20Values: []
 
     signal d6ResultReady(int requestId, int value)
     signal d6BatchResultReady(int requestId, var values)
     signal standardBatchResultReady(int requestId, int sides, var values)
+    signal d20BatchResultReady(int requestId, var values)
     signal d100ResultReady(int requestId, int tensValue, int onesValue)
 
     function runStandardScript(requestId, sides) {
@@ -53,6 +57,13 @@ Item {
     }
 
     function startBatchNow() {
+        if (d20ActiveRequestId > 0 && d20ExpectedCount > 0) {
+            for (var k = 0; k < d20ExpectedCount; k++) {
+                runStandardScript(d20ActiveRequestId, 20)
+            }
+            hideTimer.restart()
+            return
+        }
         if (activeRequestId <= 0 || activeExpectedCount <= 0) {
             return
         }
@@ -70,6 +81,9 @@ Item {
     function triggerStandardBatch(requestId, d4Count, d6Count, d8Count, d10Count, d12Count, appendMode) {
         var append = Boolean(appendMode)
         var req = Number(requestId || 0)
+        d20ActiveRequestId = 0
+        d20ExpectedCount = 0
+        d20Values = []
         var addBySides = buildCountMap(d4Count, d6Count, d8Count, d10Count, d12Count)
         var addTotal = sideCountTotal(addBySides)
         if (req <= 0 || addTotal <= 0) {
@@ -94,7 +108,6 @@ Item {
         }
 
         active = true
-        web.visible = true
         web.opacity = 1.0
         hideTimer.restart()
 
@@ -125,6 +138,37 @@ Item {
         triggerStandardBatch(requestId, 0, Math.max(1, Number(count || 1)), 0, 0, 0, appendMode)
     }
 
+    function triggerD20Batch(requestId, count) {
+        var req = Number(requestId || 0)
+        var cnt = Math.max(0, Number(count || 0))
+        if (req <= 0 || cnt <= 0) {
+            return
+        }
+
+        clearWebDiceNow()
+        activeRequestId = 0
+        activeExpectedCount = 0
+        activeExpectedBySides = ({4: 0, 6: 0, 8: 0, 10: 0, 12: 0})
+        activeValuesBySides = ({4: [], 6: [], 8: [], 10: [], 12: []})
+        d20ActiveRequestId = req
+        d20ExpectedCount = cnt
+        d20Values = []
+
+        active = true
+        web.opacity = 1.0
+        hideTimer.restart()
+
+        if (pageReady) {
+            pendingRoll = false
+            for (var i = 0; i < cnt; i++) {
+                runStandardScript(req, 20)
+            }
+        } else {
+            pendingRoll = true
+            web.reload()
+        }
+    }
+
     function triggerD100(requestId) {
         console.log("[dice-web] d100 trigger is disabled in this build", requestId)
     }
@@ -133,12 +177,14 @@ Item {
         clearWebDiceNow()
         active = false
         web.opacity = 0.0
-        web.visible = false
         pendingRoll = false
         activeRequestId = 0
         activeExpectedCount = 0
         activeExpectedBySides = ({4: 0, 6: 0, 8: 0, 10: 0, 12: 0})
         activeValuesBySides = ({4: [], 6: [], 8: [], 10: [], 12: []})
+        d20ActiveRequestId = 0
+        d20ExpectedCount = 0
+        d20Values = []
     }
 
     function finalizeBatch() {
@@ -188,6 +234,27 @@ Item {
             return
         }
 
+        if (sides === 20) {
+            if (reqId !== d20ActiveRequestId) {
+                console.log("[dice-web] ignore stale d20 result req=", reqId, "active=", d20ActiveRequestId)
+                return
+            }
+            var d20List = (d20Values || []).slice(0)
+            d20List = d20List.concat([Math.max(1, Math.min(20, value))])
+            if (d20List.length > d20ExpectedCount) {
+                d20List = d20List.slice(0, d20ExpectedCount)
+            }
+            d20Values = d20List
+            if (d20Values.length >= d20ExpectedCount) {
+                d20BatchResultReady(d20ActiveRequestId, d20Values.slice(0))
+                d20ActiveRequestId = 0
+                d20ExpectedCount = 0
+                d20Values = []
+                hideTimer.restart()
+            }
+            return
+        }
+
         var isStandardSide = standardSides.indexOf(sides) >= 0
         if (!isStandardSide) {
             return
@@ -229,11 +296,11 @@ Item {
     WebEngineView {
         id: web
         anchors.fill: parent
-        visible: false
+        visible: true
         opacity: 0.0
         backgroundColor: "transparent"
         url: Qt.resolvedUrl("../../web/dice_physics.html")
-        enabled: false
+        enabled: true
         focus: false
         z: 1
 
@@ -262,6 +329,10 @@ Item {
         }
     }
 
+    Component.onCompleted: {
+        web.reload()
+    }
+
     Timer {
         id: hideTimer
         interval: 6000
@@ -269,3 +340,4 @@ Item {
         onTriggered: {}
     }
 }
+

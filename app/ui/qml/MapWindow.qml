@@ -150,6 +150,24 @@ Window {
         return true
     }
 
+    function shouldUseD20PhysicsVisual(payload) {
+        if (!payload || payload.kind !== "d20") {
+            return false
+        }
+        if (!payload.request_id || Number(payload.request_id) <= 0) {
+            return false
+        }
+        if (!payload.dice || payload.dice.length <= 0) {
+            return false
+        }
+        for (var i = 0; i < payload.dice.length; i++) {
+            if (Number(payload.dice[i]) !== 20) {
+                return false
+            }
+        }
+        return true
+    }
+
     function shouldUseD100PhysicsVisual(payload) {
         return false
     }
@@ -3018,6 +3036,12 @@ Window {
                 diceController.submit_physics_standard_batch_result(requestId, sides, values)
             }
         }
+        function onD20BatchResultReady(requestId, values) {
+            console.log("[dice-ui-debug] map onD20BatchResultReady request=" + requestId + " values=" + JSON.stringify(values))
+            if (requestId > 0 && values && values.length > 0) {
+                diceController.submit_physics_d20_batch_result(requestId, values)
+            }
+        }
         function onD100ResultReady(requestId, tensValue, onesValue) {
             console.log("[dice-ui-debug] map onD100ResultReady request=" + requestId + " tens=" + tensValue + " ones=" + onesValue)
             if (requestId > 0) {
@@ -3043,6 +3067,12 @@ Window {
             if (mapWindow.shouldUseD100PhysicsVisual(payload)) {
                 console.log("[dice-visual] map -> 3d d100 2xd10")
                 diceWebOverlay.triggerD100(Number(payload.request_id || 0))
+            } else if (mapWindow.shouldUseD20PhysicsVisual(payload)) {
+                console.log("[dice-visual] map -> 3d d20", "count=" + payload.dice.length)
+                diceWebOverlay.triggerD20Batch(
+                    Number(payload.request_id || 0),
+                    Number(payload.dice.length || 0)
+                )
             } else if (mapWindow.shouldUseStandardPhysicsVisual(payload)) {
                 var d4Count = 0
                 var d6Count = 0
