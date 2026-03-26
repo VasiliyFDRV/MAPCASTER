@@ -256,6 +256,17 @@
       font-variant-numeric: tabular-nums;
     }
 
+    .d20-label {
+      position: absolute;
+      line-height: 1;
+      transform-origin: 50% 50%;
+      pointer-events: none;
+      white-space: nowrap;
+      display: inline-block;
+      text-align: center;
+      font-variant-numeric: tabular-nums;
+    }
+
     .d12-mark {
       position: absolute;
       left: 50%;
@@ -336,6 +347,7 @@
       display: flex;
       align-items: center;
       justify-content: center;
+      text-align: center;
       line-height: 1;
       padding-top: 0;
       box-sizing: border-box;
@@ -791,6 +803,18 @@
                   mark.textContent = '.';
                   label.appendChild(mark);
                 }
+                faceEls[i].textContent = '';
+                faceEls[i].appendChild(label);
+              } else if (String(spec.key || '') === 'd20') {
+                const label = document.createElement('span');
+                label.className = 'd20-label';
+                label.textContent = v;
+                const labelRotate = normalizeAngle(resolveFaceLabelRotation(spec, ft, i, rz));
+                const cxPct = Number(ft && ft.labelCxPct !== undefined ? ft.labelCxPct : 50);
+                const cyPct = Number(ft && ft.labelCyPct !== undefined ? ft.labelCyPct : 50);
+                label.style.left = String(Number.isFinite(cxPct) ? cxPct : 50) + '%';
+                label.style.top = String(Number.isFinite(cyPct) ? cyPct : 50) + '%';
+                label.style.transform = 'translate(-50%, -50%) rotate(' + String(labelRotate.toFixed(3)) + 'deg)';
                 faceEls[i].textContent = '';
                 faceEls[i].appendChild(label);
               } else {
@@ -1396,7 +1420,7 @@
 
       function buildD20FaceData() {
         const phi = (1 + Math.sqrt(5)) * 0.5;
-        const s = 14.0;
+        const s = 17.8;
         const verts = [];
         const add = (x, y, z) => verts.push(vec3(x * s, y * s, z * s));
 
@@ -2581,6 +2605,7 @@
   </script>
 </body>
 </html>
+
 
 
 
