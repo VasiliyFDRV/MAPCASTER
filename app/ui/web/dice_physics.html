@@ -56,7 +56,7 @@
       display: grid;
       place-items: center;
       font-family: Segoe UI, Arial, sans-serif;
-      font-size: 14px;
+      font-size: 13px;
       font-weight: 800;
       backface-visibility: hidden;
       box-shadow: none;
@@ -137,8 +137,8 @@
       position: absolute;
       left: 50%;
       top: 50%;
-      width: 82px;
-      height: 82px;
+      width: 74px;
+      height: 74px;
       transform: translate(-50%, -50%);
       transform-style: preserve-3d;
     }
@@ -167,6 +167,8 @@
 
     .d4-label {
       position: absolute;
+      font-size: 14px;
+      font-weight: 800;
       line-height: 1;
       transform-origin: 50% 50%;
       pointer-events: none;
@@ -769,7 +771,7 @@
                   const cyPct = Number(ft && ft.labelCyPct !== undefined ? ft.labelCyPct : 50);
                   label.style.left = String(Number.isFinite(cxPct) ? cxPct : 50) + '%';
                   label.style.top = String(Number.isFinite(cyPct) ? cyPct : 50) + '%';
-                  label.style.transform = 'translate(-50%, -50%) rotate(' + String(labelRotate.toFixed(3)) + 'deg)';
+                  label.style.transform = 'translate(-50%, -50%) rotate(' + String(normalizeAngle(labelRotate + 180).toFixed(3)) + 'deg)';
                   faceEls[i].appendChild(label);
                 }
               } else if (String(spec.key || '') === 'd10') {
@@ -1479,9 +1481,9 @@
         // Truncated tetrahedron d4:
         // 4 small triangular faces (values) + 4 larger hexagonal faces.
         // Edge ratio on hex faces: long:short = x:(x/3) achieved by t = 0.2.
-        const longEdge = 44;
+        const longEdge = 38;
         const baseEdge = (5 / 3) * longEdge;
-        const truncT = 0.2;
+        const truncT = 0.35;
 
         const n = 1 / Math.sqrt(3);
         const base = [
@@ -1647,7 +1649,7 @@
           valueFaceIds: D4_FACE_DATA.valueFaceIds,
           faceValueById: D4_FACE_DATA.faceValueById,
           sides: 4,
-          alignMode: 'poly',
+          alignMode: 'd4_trunc',
           resultMode: 'd4_trunc_up',
           alignProfile: {
             startGroundedDelayRange: [0.02, 0.12],
@@ -2177,6 +2179,101 @@
       }
 
 
+      function topValueFaceFromSpecEuler(spec, rx, ry, rz) {
+        const ids = Array.isArray(spec && spec.valueFaceIds) ? spec.valueFaceIds : [];
+        const normals = Array.isArray(spec && spec.faceNormals) ? spec.faceNormals : [];
+        if (ids.length <= 0 || normals.length <= 0) {
+          return Number(topFaceFromSpecEuler(spec, rx, ry, rz) || 0);
+        }
+        let bestId = Number(ids[0]);
+        let bestZ = -1e9;
+        for (let i = 0; i < ids.length; i += 1) {
+          const fid = Number(ids[i]);
+          const nLocal = normals[fid - 1];
+          if (!nLocal) continue;
+          const nWorld = rotateVec(nLocal, rx, ry, rz);
+          if (nWorld.z > bestZ) {
+            bestZ = nWorld.z;
+            bestId = fid;
+          }
+        }
+        return bestId;
+      }
+
+      function bottomFaceFromSpecEuler(spec, rx, ry, rz) {
+        const normals = Array.isArray(spec && spec.faceNormals) ? spec.faceNormals : [];
+        if (normals.length <= 0) {
+          return 0;
+        }
+        let bestId = 1;
+        let bestZ = 1e9;
+        for (let i = 0; i < normals.length; i += 1) {
+          const nWorld = rotateVec(normals[i], rx, ry, rz);
+          if (nWorld.z < bestZ) {
+            bestZ = nWorld.z;
+            bestId = i + 1;
+          }
+        }
+        return bestId;
+      }
+
+      function d4TruncFaceUpTargetFromPose(rx, ry, rz) {
+        const spec = getDiceSpec('d4');
+        const targetFace = topValueFaceFromSpecEuler(spec, rx, ry, rz);
+        const targetNormal = (spec.faceNormals || [])[targetFace - 1] || { x: 0, y: 0, z: 1 };
+        const valueMap = spec.faceValueById || {};
+
+        let best = { rx: rx, ry: ry, rz: rz };
+        let bestScore = -1e9;
+
+        for (let ax = -180; ax <= 180; ax += 15) {
+          for (let ay = -180; ay <= 180; ay += 15) {
+            for (let az = -180; az <= 180; az += 15) {
+              const candidateTop = topValueFaceFromSpecEuler(spec, ax, ay, az);
+              if (candidateTop !== targetFace) continue;
+
+              const bottomId = bottomFaceFromSpecEuler(spec, ax, ay, az);
+              if (Number(valueMap[bottomId] || 0) > 0) continue;
+
+              const wTop = rotateVec(targetNormal, ax, ay, az);
+              const topUp = clamp(normalizeVec3(wTop.x, wTop.y, wTop.z).z, -1, 1);
+              const smooth = angularDistance(rx, ax) + angularDistance(ry, ay) + angularDistance(rz, az) * 0.35;
+              const score = topUp * 4800 - smooth;
+              if (score > bestScore) {
+                bestScore = score;
+                best = { rx: ax, ry: ay, rz: az };
+              }
+            }
+          }
+        }
+
+        for (let ax = best.rx - 16; ax <= best.rx + 16; ax += 2) {
+          for (let ay = best.ry - 16; ay <= best.ry + 16; ay += 2) {
+            for (let az = best.rz - 16; az <= best.rz + 16; az += 2) {
+              const candidateTop = topValueFaceFromSpecEuler(spec, ax, ay, az);
+              if (candidateTop !== targetFace) continue;
+
+              const bottomId = bottomFaceFromSpecEuler(spec, ax, ay, az);
+              if (Number(valueMap[bottomId] || 0) > 0) continue;
+
+              const wTop = rotateVec(targetNormal, ax, ay, az);
+              const topUp = clamp(normalizeVec3(wTop.x, wTop.y, wTop.z).z, -1, 1);
+              const smooth = angularDistance(rx, ax) + angularDistance(ry, ay) + angularDistance(rz, az) * 0.35;
+              const score = topUp * 6600 - smooth;
+              if (score > bestScore) {
+                bestScore = score;
+                best = { rx: ax, ry: ay, rz: az };
+              }
+            }
+          }
+        }
+
+        if (bestScore <= -1e8) {
+          return polyFaceUpTargetFromPose(spec, rx, ry, rz);
+        }
+        return { face: targetFace, target: best, score: bestScore };
+      }
+
       const ALIGN_TARGET_RESOLVERS = {
         cube: function resolveCubeTarget(state) {
           return faceUpTargetFromPose(state.rx, state.ry);
@@ -2187,6 +2284,9 @@
         },
         d4_vertex: function resolveD4Target(state) {
           return d4VertexUpTargetFromPose(state.rx, state.ry, state.rz);
+        },
+        d4_trunc: function resolveD4TruncTarget(state) {
+          return d4TruncFaceUpTargetFromPose(state.rx, state.ry, state.rz);
         },
       };
 
@@ -2244,7 +2344,7 @@
 
       function isPolyAlign(state) {
         const mode = String((state && state.alignMode) || 'cube');
-        return mode === 'poly' || mode === 'd4_vertex';
+        return mode === 'poly' || mode === 'd4_vertex' || mode === 'd4_trunc';
       }
 
       function getAlignTargetRz(state, target) {
@@ -2668,6 +2768,9 @@
   </script>
 </body>
 </html>
+
+
+
 
 
 
