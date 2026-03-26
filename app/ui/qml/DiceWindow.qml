@@ -1140,6 +1140,11 @@ Window {
                             label: "d100"
                             implicitWidth: 42
                             implicitHeight: 42
+                            MouseArea {
+                                anchors.fill: parent
+                                cursorShape: Qt.PointingHandCursor
+                                onClicked: rollD100Only()
+                            }
                         }
 
                         AppButton {
@@ -1448,8 +1453,4 @@ Window {
         onAccepted: updateEditorField("fontColor", selectedColor)
     }
 }
-
-
-
-
 
