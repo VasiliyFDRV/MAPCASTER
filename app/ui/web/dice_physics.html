@@ -137,8 +137,8 @@
       position: absolute;
       left: 50%;
       top: 50%;
-      width: 56px;
-      height: 56px;
+      width: 82px;
+      height: 82px;
       transform: translate(-50%, -50%);
       transform-style: preserve-3d;
     }
@@ -147,11 +147,10 @@
       position: absolute;
       left: 50%;
       top: 50%;
-      width: 60px;
-      height: 51.962px;
-      margin-left: -30px;
-      margin-top: -34.641px;
-      clip-path: polygon(50% 0%, 0% 100%, 100% 100%);
+      width: 24px;
+      height: 24px;
+      margin-left: -12px;
+      margin-top: -12px;
       background: #c9c9c9;
       color: #232323;
       font-family: Segoe UI, Arial, sans-serif;
@@ -159,38 +158,22 @@
       font-weight: 700;
       box-sizing: border-box;
       backface-visibility: hidden;
-      transform-origin: 50% 66.666%;
+      transform-origin: 50% 50%;
     }
 
     .d4-core {
       display: none;
     }
 
-    .d4-mark {
+    .d4-label {
       position: absolute;
       line-height: 1;
       transform-origin: 50% 50%;
       pointer-events: none;
-      font-size: 12px;
-      font-weight: 700;
-    }
-
-    .d4-mark.m1 {
-      left: 50%;
-      top: 7px;
-      transform: translate(-50%, 0) rotate(180deg);
-    }
-
-    .d4-mark.m2 {
-      left: 11px;
-      top: 35px;
-      transform: translate(-50%, 0) rotate(-60deg);
-    }
-
-    .d4-mark.m3 {
-      left: calc(100% - 11px);
-      top: 35px;
-      transform: translate(-50%, 0) rotate(60deg);
+      white-space: nowrap;
+      display: inline-block;
+      text-align: center;
+      font-variant-numeric: tabular-nums;
     }
 
     .d10 {
@@ -405,10 +388,14 @@
       <div class="dice">
         <div class="d4">
           <div class="d4-core"></div>
-          <div class="d4-face f1"><span class="d4-mark m1">1</span><span class="d4-mark m2">1</span><span class="d4-mark m3">1</span></div>
-          <div class="d4-face f2"><span class="d4-mark m1">2</span><span class="d4-mark m2">2</span><span class="d4-mark m3">2</span></div>
-          <div class="d4-face f3"><span class="d4-mark m1">3</span><span class="d4-mark m2">3</span><span class="d4-mark m3">3</span></div>
-          <div class="d4-face f4"><span class="d4-mark m1">4</span><span class="d4-mark m2">4</span><span class="d4-mark m3">4</span></div>
+          <div class="d4-face f1"></div>
+          <div class="d4-face f2"></div>
+          <div class="d4-face f3"></div>
+          <div class="d4-face f4"></div>
+          <div class="d4-face f5"></div>
+          <div class="d4-face f6"></div>
+          <div class="d4-face f7"></div>
+          <div class="d4-face f8"></div>
         </div>
       </div>
     </div>
@@ -768,9 +755,24 @@
             }
             const baseTransform = 'rotateY(' + String(ry) + 'deg) rotateX(' + String(rx) + 'deg) rotateZ(' + String(rz) + 'deg) translateX(' + String(fx.toFixed(4)) + 'px) translateY(' + String(fy.toFixed(4)) + 'px) translateZ(' + String(tz) + 'px)';
             faceEls[i].style.transform = baseTransform;
-            if (String(spec.key || '') !== 'd4') {
-              const v = String(Number(ft.id || (i + 1)));
-              if (String(spec.key || '') === 'd10') {
+            {
+              const faceValue = Number(ft && ft.faceValue !== undefined ? ft.faceValue : Number(ft.id || (i + 1)));
+              const v = String(faceValue);
+              if (String(spec.key || '') === 'd4') {
+                faceEls[i].textContent = '';
+                if (faceValue > 0) {
+                  const label = document.createElement('span');
+                  label.className = 'd4-label';
+                  label.textContent = v;
+                  const labelRotate = normalizeAngle(resolveFaceLabelRotation(spec, ft, i, rz));
+                  const cxPct = Number(ft && ft.labelCxPct !== undefined ? ft.labelCxPct : 50);
+                  const cyPct = Number(ft && ft.labelCyPct !== undefined ? ft.labelCyPct : 50);
+                  label.style.left = String(Number.isFinite(cxPct) ? cxPct : 50) + '%';
+                  label.style.top = String(Number.isFinite(cyPct) ? cyPct : 50) + '%';
+                  label.style.transform = 'translate(-50%, -50%) rotate(' + String(labelRotate.toFixed(3)) + 'deg)';
+                  faceEls[i].appendChild(label);
+                }
+              } else if (String(spec.key || '') === 'd10') {
                 const label = document.createElement('span');
                 label.className = 'd10-label';
                 label.textContent = v;
@@ -1474,79 +1476,120 @@
       const D20_FACE_DATA = buildD20FaceData();
 
       function buildD4FaceData() {
-        const norm = 1 / Math.sqrt(3);
-        const vertices = [
-          { id: 1, x: norm, y: norm, z: norm },
-          { id: 2, x: -norm, y: -norm, z: norm },
-          { id: 3, x: -norm, y: norm, z: -norm },
-          { id: 4, x: norm, y: -norm, z: -norm },
+        // Truncated tetrahedron d4:
+        // 4 small triangular faces (values) + 4 larger hexagonal faces.
+        // Edge ratio on hex faces: long:short = x:(x/3) achieved by t = 0.2.
+        const longEdge = 44;
+        const baseEdge = (5 / 3) * longEdge;
+        const truncT = 0.2;
+
+        const n = 1 / Math.sqrt(3);
+        const base = [
+          vec3( n,  n,  n),
+          vec3(-n, -n,  n),
+          vec3(-n,  n, -n),
+          vec3( n, -n, -n),
         ];
 
-        const byId = {};
-        for (let i = 0; i < vertices.length; i += 1) {
-          byId[vertices[i].id] = vertices[i];
+        const unitEdge = Math.hypot(base[0].x - base[1].x, base[0].y - base[1].y, base[0].z - base[1].z);
+        const scale = baseEdge / unitEdge;
+        const verts = base.map((v) => vec3(v.x * scale, v.y * scale, v.z * scale));
+
+        const neighbors = [
+          [1, 2, 3],
+          [0, 3, 2],
+          [0, 1, 3],
+          [0, 2, 1],
+        ];
+
+        const edgePoint = (i, j) => {
+          const a = verts[i];
+          const b = verts[j];
+          return vec3(
+            a.x + (b.x - a.x) * truncT,
+            a.y + (b.y - a.y) * truncT,
+            a.z + (b.z - a.z) * truncT,
+          );
+        };
+
+        const faceDefs = [];
+
+        // 4 small triangular value faces (one per truncated vertex).
+        for (let i = 0; i < 4; i += 1) {
+          const ns = neighbors[i];
+          faceDefs.push({
+            id: faceDefs.length + 1,
+            value: i + 1,
+            vertices: [edgePoint(i, ns[0]), edgePoint(i, ns[1]), edgePoint(i, ns[2])],
+          });
         }
 
-        const faceVertexIds = [
-          [2, 3, 4],
-          [1, 4, 3],
-          [1, 2, 4],
+        // 4 hex faces (former tetra faces after truncation).
+        const tetraFaces = [
+          [0, 1, 2],
+          [0, 3, 1],
+          [0, 2, 3],
           [1, 3, 2],
         ];
+        for (let f = 0; f < tetraFaces.length; f += 1) {
+          const a = tetraFaces[f][0];
+          const b = tetraFaces[f][1];
+          const c = tetraFaces[f][2];
+          faceDefs.push({
+            id: faceDefs.length + 1,
+            value: 0,
+            vertices: [
+              edgePoint(a, b),
+              edgePoint(b, a),
+              edgePoint(b, c),
+              edgePoint(c, b),
+              edgePoint(c, a),
+              edgePoint(a, c),
+            ],
+          });
+        }
 
         const faceTransforms = [];
         const faceNormals = [];
+        const valueFaceIds = [];
+        const faceValueById = {};
 
-        for (let i = 0; i < 4; i += 1) {
-          const faceId = i + 1;
-          const vIds = faceVertexIds[i];
-          const va = byId[vIds[0]];
-          const vb = byId[vIds[1]];
-          const vc = byId[vIds[2]];
-          const center = {
-            x: (va.x + vb.x + vc.x) / 3,
-            y: (va.y + vb.y + vc.y) / 3,
-            z: (va.z + vb.z + vc.z) / 3,
-          };
-          const hint = {
-            x: va.x - center.x,
-            y: va.y - center.y,
-            z: va.z - center.z,
-          };
-
-          const vOut = byId[faceId];
-          const normal = { x: -vOut.x, y: -vOut.y, z: -vOut.z };
-          const t = faceTransformFromNormalWithHint(normal, hint, 12.247);
-          faceTransforms.push({ id: faceId, rx: t.rx, ry: t.ry, rz: t.rz, tz: t.tz });
-          faceNormals.push(normalizeVec3(normal.x, normal.y, normal.z));
+        for (let i = 0; i < faceDefs.length; i += 1) {
+          const f = faceDefs[i];
+          const built = buildFaceTransformFromVertices(f.id, f.vertices, 0, 0.00, null);
+          faceTransforms.push({
+            id: f.id,
+            rx: built.transform.rx,
+            ry: built.transform.ry,
+            rz: built.transform.rz,
+            tz: built.transform.tz,
+            fx: built.transform.fx,
+            fy: built.transform.fy,
+            fw: built.transform.fw,
+            fh: built.transform.fh,
+            clipPath: built.transform.clipPath,
+            labelRotate: built.transform.labelRotate,
+            labelCxPct: built.transform.labelCxPct,
+            labelCyPct: built.transform.labelCyPct,
+            faceValue: Number(f.value || 0),
+          });
+          faceNormals.push(normalizeVec3Obj(built.normal));
+          if (Number(f.value || 0) > 0) {
+            valueFaceIds.push(f.id);
+            faceValueById[f.id] = Number(f.value);
+          }
         }
 
         return {
           faceTransforms,
           faceNormals,
-          vertexVectors: vertices.map((v) => ({ x: v.x, y: v.y, z: v.z })),
-          faceVertexIds,
-          vertexValueMap: { 1: 1, 2: 2, 3: 3, 4: 4 },
+          valueFaceIds,
+          faceValueById,
         };
       }
 
       const D4_FACE_DATA = buildD4FaceData();
 
-      function applyD4FaceVertexLabels(faceEls, faceVertexIds, vertexValueMap) {
-        if (!Array.isArray(faceEls) || faceEls.length <= 0) {
-          return;
-        }
-        for (let i = 0; i < faceEls.length; i += 1) {
-          const faceEl = faceEls[i];
-          const vIds = Array.isArray(faceVertexIds[i]) ? faceVertexIds[i] : [1, 2, 3];
-          const m1 = faceEl.querySelector('.d4-mark.m1');
-          const m2 = faceEl.querySelector('.d4-mark.m2');
-          const m3 = faceEl.querySelector('.d4-mark.m3');
-          if (m1) m1.textContent = String(vertexValueMap[vIds[0]] || vIds[0]);
-          if (m2) m2.textContent = String(vertexValueMap[vIds[1]] || vIds[1]);
-          if (m3) m3.textContent = String(vertexValueMap[vIds[2]] || vIds[2]);
-        }
-      }
       const DICE_SPECS = {
         d6: {
           key: 'd6',
@@ -1590,16 +1633,22 @@
             ry: t.ry,
             rz: t.rz,
             tz: t.tz,
-            fw: 60,
-            fh: 51.962,
+            fx: t.fx,
+            fy: t.fy,
+            fw: t.fw,
+            fh: t.fh,
+            clipPath: t.clipPath,
+            labelRotate: t.labelRotate,
+            labelCxPct: t.labelCxPct,
+            labelCyPct: t.labelCyPct,
+            faceValue: t.faceValue,
           })),
           faceNormals: D4_FACE_DATA.faceNormals,
-          vertexVectors: D4_FACE_DATA.vertexVectors,
-          faceVertexIds: D4_FACE_DATA.faceVertexIds,
-          vertexValueMap: D4_FACE_DATA.vertexValueMap,
+          valueFaceIds: D4_FACE_DATA.valueFaceIds,
+          faceValueById: D4_FACE_DATA.faceValueById,
           sides: 4,
-          alignMode: 'd4_vertex',
-          resultMode: 'd4_vertex_up',
+          alignMode: 'poly',
+          resultMode: 'd4_trunc_up',
           alignProfile: {
             startGroundedDelayRange: [0.02, 0.12],
             startPlanarThreshold: 2.1,
@@ -2160,8 +2209,30 @@
           if (top <= 0) {
             return 0;
           }
-          // Current d4 vertex indexing in geometry is shifted by +2 relative to visible labels.
           return Number((((top + 1) % 4) + 1) || 0);
+        },
+        d4_trunc_up: function resolveD4TruncResultFace(state) {
+          const spec = (state && state.diceSpec) || getDiceSpec('d4');
+          const ids = Array.isArray(spec.valueFaceIds) ? spec.valueFaceIds : [];
+          const normals = Array.isArray(spec.faceNormals) ? spec.faceNormals : [];
+          const valueMap = spec.faceValueById || {};
+          if (ids.length <= 0 || normals.length <= 0) {
+            return Number(topFaceFromSpecEuler(spec, state.rx, state.ry, state.rz) || 0);
+          }
+
+          let bestValue = 1;
+          let bestZ = -1e9;
+          for (let i = 0; i < ids.length; i += 1) {
+            const faceId = Number(ids[i]);
+            const nLocal = normals[faceId - 1];
+            if (!nLocal) continue;
+            const nWorld = rotateVec(nLocal, state.rx, state.ry, state.rz);
+            if (nWorld.z > bestZ) {
+              bestZ = nWorld.z;
+              bestValue = Number(valueMap[faceId] || 1);
+            }
+          }
+          return Number(bestValue || 1);
         },
       };
 
@@ -2320,14 +2391,6 @@
           resultMode: 'cube'
         };
 
-        if (state.modelKind === 'd4') {
-          const d4Spec = state.diceSpec || {};
-          applyD4FaceVertexLabels(
-            state.faceEls,
-            d4Spec.faceVertexIds || [],
-            d4Spec.vertexValueMap || { 1: 1, 2: 2, 3: 3, 4: 4 }
-          );
-        }
 
         state.baseVrx = Math.abs(state.vrx);
         state.baseVry = Math.abs(state.vry);
