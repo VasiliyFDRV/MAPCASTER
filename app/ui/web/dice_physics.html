@@ -782,7 +782,7 @@
                   label.style.transform = 'translate(-50%, -50%) rotate(' + String(normalizeAngle(labelRotate + 180).toFixed(3)) + 'deg)';
                   faceEls[i].appendChild(label);
                 }
-              } else if (String(spec.key || '') === 'd10') {
+                            } else if (String(spec.key || '') === 'd10') {
                 const label = document.createElement('span');
                 label.className = 'd10-label';
                 label.textContent = v;
@@ -791,7 +791,7 @@
                 const faceOffset = Number(D10_LABEL_ROTATE_OFFSETS[fid] || 0);
                 const labelRotate = normalizeAngle(baseRotate + faceOffset);
                 label.style.left = '50%';
-                label.style.top = '50%';
+                label.style.top = '60%';
                 label.style.transform = 'translate(-50%, -50%) rotate(' + String(labelRotate.toFixed(3)) + 'deg)';
                 if (v === '6' || v === '9') {
                   const mark = document.createElement('span');
@@ -811,7 +811,7 @@
                 const faceOffset = Number(D10_LABEL_ROTATE_OFFSETS[fid] || 0);
                 const labelRotate = normalizeAngle(baseRotate + faceOffset - 90);
                 label.style.left = '50%';
-                label.style.top = '50%';
+                label.style.top = '60%';
                 label.style.transform = 'translate(-50%, -50%) rotate(' + String(labelRotate.toFixed(3)) + 'deg)';
                 faceEls[i].textContent = '';
                 faceEls[i].appendChild(label);
@@ -2839,6 +2839,9 @@
   </script>
 </body>
 </html>
+
+
+
 
 
 
