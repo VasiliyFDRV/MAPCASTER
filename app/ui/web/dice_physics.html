@@ -233,6 +233,41 @@
       white-space: nowrap;
     }
 
+    .d10-mark {
+      position: absolute;
+      left: 50%;
+      top: 56%;
+      transform: translate(-50%, 0);
+      font-size: 0.82em;
+      line-height: 1;
+      color: #232323;
+      opacity: 1;
+      pointer-events: none;
+    }
+
+    .d12-label {
+      position: absolute;
+      line-height: 1;
+      transform-origin: 50% 50%;
+      pointer-events: none;
+      white-space: nowrap;
+      display: inline-block;
+      text-align: center;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .d12-mark {
+      position: absolute;
+      left: 50%;
+      top: 56%;
+      transform: translate(-50%, 0);
+      font-size: 0.82em;
+      line-height: 1;
+      color: #232323;
+      opacity: 1;
+      pointer-events: none;
+    }
+
     .d10-core {
       display: none;
     }
@@ -665,11 +700,31 @@
                 const baseRotate = normalizeAngle(resolveFaceLabelRotation(spec, ft, i, rz) - 90);
                 const faceOffset = Number(D10_LABEL_ROTATE_OFFSETS[fid] || 0);
                 const labelRotate = normalizeAngle(baseRotate + faceOffset);
-                const cxPct = Number(ft.labelCxPct === undefined ? 50 : ft.labelCxPct);
-                const cyPct = Number(ft.labelCyPct === undefined ? 50 : ft.labelCyPct);
-                label.style.left = String(cxPct.toFixed(4)) + '%';
-                label.style.top = String(cyPct.toFixed(4)) + '%';
+                label.style.left = '50%';
+                label.style.top = '50%';
                 label.style.transform = 'translate(-50%, -50%) rotate(' + String(labelRotate.toFixed(3)) + 'deg)';
+                if (v === '6' || v === '9') {
+                  const mark = document.createElement('span');
+                  mark.className = 'd10-mark';
+                  mark.textContent = '.';
+                  label.appendChild(mark);
+                }
+                faceEls[i].textContent = '';
+                faceEls[i].appendChild(label);
+              } else if (String(spec.key || '') === 'd12') {
+                const label = document.createElement('span');
+                label.className = 'd12-label';
+                label.textContent = v;
+                const labelRotate = normalizeAngle(resolveFaceLabelRotation(spec, ft, i, rz));
+                label.style.left = '50%';
+                label.style.top = '50%';
+                label.style.transform = 'translate(-50%, -50%) rotate(' + String(labelRotate.toFixed(3)) + 'deg)';
+                if (v === '6' || v === '9') {
+                  const mark = document.createElement('span');
+                  mark.className = 'd12-mark';
+                  mark.textContent = '.';
+                  label.appendChild(mark);
+                }
                 faceEls[i].textContent = '';
                 faceEls[i].appendChild(label);
               } else {
@@ -2341,6 +2396,9 @@
   </script>
 </body>
 </html>
+
+
+
 
 
 
