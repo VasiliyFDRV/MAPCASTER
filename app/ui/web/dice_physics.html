@@ -251,11 +251,11 @@
       position: absolute;
       left: 50%;
       top: 50%;
-      width: 56px;
-      height: 54px;
-      margin-left: -28px;
-      margin-top: -27px;
-      clip-path: polygon(50% 0%, 97.55% 34.55%, 79.39% 90.45%, 20.61% 90.45%, 2.45% 34.55%);
+      width: 34px;
+      height: 34px;
+      margin-left: -17px;
+      margin-top: -17px;
+      clip-path: polygon(50% 0%, 97.5528258% 34.5491503%, 79.3892626% 90.4508497%, 20.6107374% 90.4508497%, 2.4471742% 34.5491503%);
       background: #c9c9c9;
       color: #232323;
       font-family: Segoe UI, Arial, sans-serif;
@@ -1195,10 +1195,47 @@
         const faceNormals = [];
         for (let i = 0; i < faces.length; i += 1) {
           const fv = faces[i].ids.map((idx) => verts[idx]);
-          const faceCenter = centroidVec3(fv);
-          const hint = Math.abs(faceCenter.z) < 1e-6 ? vec3(0, 1, 0) : vec3(0, 0, 1);
+          const c = centroidVec3(fv);
+          let n = normalizeVec3Obj(crossVec3(subVec3(fv[1], fv[0]), subVec3(fv[2], fv[1])));
+          if (dotVec3(n, c) < 0) n = scaleVec3(n, -1);
+
+          let up = subVec3(vec3(0, 0, 1), scaleVec3(n, dotVec3(vec3(0, 0, 1), n)));
+          if (Math.hypot(up.x, up.y, up.z) <= 1e-6) {
+            up = subVec3(vec3(0, 1, 0), scaleVec3(n, dotVec3(vec3(0, 1, 0), n)));
+          }
+          up = normalizeVec3Obj(up);
+          let right = normalizeVec3Obj(crossVec3(up, n));
+          if (Math.hypot(right.x, right.y, right.z) <= 1e-6) {
+            right = vec3(1, 0, 0);
+          }
+
+          let topIdx = 0;
+          let bestUp = -1e9;
+          let bestRight = 1e9;
+          for (let k = 0; k < fv.length; k += 1) {
+            const rel = subVec3(fv[k], c);
+            const u = dotVec3(rel, up);
+            const r = dotVec3(rel, right);
+            if (u > bestUp + 1e-6 || (Math.abs(u - bestUp) <= 1e-6 && r < bestRight)) {
+              topIdx = k;
+              bestUp = u;
+              bestRight = r;
+            }
+          }
+          let hint = normalizeVec3Obj(subVec3(fv[topIdx], c));
+          if (Math.hypot(hint.x, hint.y, hint.z) <= 1e-6) {
+            hint = up;
+          }
+
           const built = buildFaceTransformFromVertices(i + 1, fv, 0, 0.00, hint);
-          faceTransforms.push(built.transform);
+          const t = built.transform;
+          faceTransforms.push({
+            id: i + 1,
+            rx: t.rx,
+            ry: t.ry,
+            rz: normalizeAngle(t.rz + 180),
+            tz: t.tz,
+          });
           faceNormals.push(normalizeVec3Obj(built.normal));
         }
 
@@ -1423,11 +1460,11 @@
             ry: t.ry,
             rz: t.rz,
             tz: t.tz,
-            fx: t.fx,
-            fy: t.fy,
-            fw: t.fw,
-            fh: t.fh,
-            clipPath: t.clipPath,
+            fx: 0,
+            fy: 0,
+            fw: 34,
+            fh: 34,
+            clipPath: 'polygon(50% 0%, 97.5528258% 34.5491503%, 79.3892626% 90.4508497%, 20.6107374% 90.4508497%, 2.4471742% 34.5491503%)',
           })),
           faceNormals: D12_FACE_DATA.faceNormals,
           sides: 12,
