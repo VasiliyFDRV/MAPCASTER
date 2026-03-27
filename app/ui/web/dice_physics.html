@@ -353,11 +353,11 @@
     }
 
     .d20-face {
-      transition: box-shadow 360ms ease, filter 360ms ease;
+      transition: box-shadow 180ms ease, filter 180ms ease;
     }
 
     .d20-label {
-      transition: color 360ms ease, text-shadow 360ms ease;
+      transition: color 180ms ease, text-shadow 180ms ease;
     }
 
     @keyframes d20CritPulseGold {
@@ -420,44 +420,6 @@
     .dice-wrap.d20-picked-dis .d20-label {
       color: #a33c3c;
       text-shadow: 0 0 5px rgba(163, 60, 60, 0.40);
-    }
-
-    @keyframes d20PickFlashAdv {
-      0% {
-        box-shadow:
-          inset 0 0 0 1.6px rgba(96, 255, 164, 1),
-          inset 0 0 18px rgba(96, 255, 164, 0.65),
-          0 0 20px rgba(96, 255, 164, 0.75);
-      }
-      100% {
-        box-shadow:
-          inset 0 0 0 1.2px rgba(56, 170, 96, 0.98),
-          inset 0 0 12px rgba(45, 148, 84, 0.24),
-          0 0 10px rgba(56, 170, 96, 0.28);
-      }
-    }
-
-    @keyframes d20PickFlashDis {
-      0% {
-        box-shadow:
-          inset 0 0 0 1.6px rgba(255, 118, 118, 1),
-          inset 0 0 18px rgba(255, 118, 118, 0.62),
-          0 0 20px rgba(255, 118, 118, 0.74);
-      }
-      100% {
-        box-shadow:
-          inset 0 0 0 1.2px rgba(156, 47, 47, 0.98),
-          inset 0 0 12px rgba(130, 34, 34, 0.24),
-          0 0 10px rgba(156, 47, 47, 0.28);
-      }
-    }
-
-    .dice-wrap.d20-picked-adv-flash .d20-face {
-      animation: d20PickFlashAdv 180ms ease-out 1;
-    }
-
-    .dice-wrap.d20-picked-dis-flash .d20-face {
-      animation: d20PickFlashDis 180ms ease-out 1;
     }
     .shadow {
       position: absolute;
@@ -654,8 +616,6 @@
           if (!wrap) continue;
           wrap.classList.remove('d20-picked-adv');
           wrap.classList.remove('d20-picked-dis');
-          wrap.classList.remove('d20-picked-adv-flash');
-          wrap.classList.remove('d20-picked-dis-flash');
         }
 
         if (mode !== 'advantage' && mode !== 'disadvantage') {
@@ -675,13 +635,7 @@
           if (!winner || !winner.wrap) {
             continue;
           }
-          const isAdv = mode === 'advantage';
-          winner.wrap.classList.add(isAdv ? 'd20-picked-adv' : 'd20-picked-dis');
-          winner.wrap.classList.add(isAdv ? 'd20-picked-adv-flash' : 'd20-picked-dis-flash');
-          setTimeout(function () {
-            if (!winner || !winner.wrap) return;
-            winner.wrap.classList.remove(isAdv ? 'd20-picked-adv-flash' : 'd20-picked-dis-flash');
-          }, 220);
+          winner.wrap.classList.add(mode === 'advantage' ? 'd20-picked-adv' : 'd20-picked-dis');
         }
       }
 
@@ -3038,6 +2992,7 @@
   </script>
 </body>
 </html>
+
 
 
 
