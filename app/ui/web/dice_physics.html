@@ -359,9 +359,7 @@
         inset 0 0 0 1px rgba(212, 212, 212, 0.34),
         inset 0 0 9px rgba(220, 220, 220, 0.14),
         0 0 7px rgba(226, 226, 226, 0.12);
-    }
-
-    .d20-face::before {
+    }`r`n`r`n    .d20-face::before {
       content: "";
       position: absolute;
       inset: -1px;
@@ -370,6 +368,17 @@
       transform: scale(1);
       opacity: 0.16;
       background: radial-gradient(circle at 50% 60%, rgba(236, 236, 236, 0.82) 0%, rgba(222, 222, 222, 0.42) 40%, rgba(206, 206, 206, 0.10) 72%, rgba(206, 206, 206, 0) 90%);
+    }
+
+    .d20-face::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      z-index: 1;
+      opacity: 0;
+      background: transparent;
+      border: 0;
     }
 
     .d20-label {
@@ -409,29 +418,28 @@
       color: #1f1f1f;
     }
 
-    .dice-wrap.d20-crit-success .d20-face,
-    .dice-wrap.d20-crit-fail .d20-face {
-      box-shadow:
-        inset 0 0 0 1px rgba(212, 212, 212, 0.34),
-        inset 0 0 9px rgba(220, 220, 220, 0.14),
-        0 0 7px rgba(226, 226, 226, 0.12);
-    }
-
-    .dice-wrap.d20-crit-success .d20-face::before,
-    .dice-wrap.d20-crit-fail .d20-face::before {
-      opacity: 0.16;
-      background: radial-gradient(circle at 50% 60%, rgba(236, 236, 236, 0.82) 0%, rgba(222, 222, 222, 0.42) 40%, rgba(206, 206, 206, 0.10) 72%, rgba(206, 206, 206, 0) 90%);
-      animation: none;
-    }
-
-    .dice-wrap.d20-crit-success .d20-label,
-    .dice-wrap.d20-crit-fail .d20-label {
-      color: #1f1f1f;
+    .d20-face.d20-crit-success-face .d20-label {
+      color: #ffffcc;
       text-shadow:
-        0 0 6px rgba(238, 238, 238, 0.70),
-        0 0 10px rgba(246, 246, 246, 0.52),
-        0 0 14px rgba(248, 248, 248, 0.34);
+        0 0 2px rgba(154, 90, 16, 0.95),
+        0 0 6px rgba(255, 255, 204, 0.74),
+        0 0 11px rgba(255, 255, 153, 0.58);
+      -webkit-text-stroke: 1px #6e4210;
+      paint-order: stroke fill;
       animation: none;
+      transition: none;
+    }
+
+    .d20-face.d20-crit-fail-face .d20-label {
+      color: #ffb5b5;
+      text-shadow:
+        0 0 2px rgba(123, 28, 28, 0.95),
+        0 0 6px rgba(255, 181, 181, 0.72),
+        0 0 10px rgba(214, 78, 78, 0.52);
+      -webkit-text-stroke: 1px #5a1f1f;
+      paint-order: stroke fill;
+      animation: none;
+      transition: none;
     }
 
     .dice-wrap.d20-picked-adv .d20-face {
@@ -2153,14 +2161,37 @@
         if (!wrap) {
           return;
         }
-        wrap.classList.remove('d20-crit-success');
-        wrap.classList.remove('d20-crit-fail');
-        const face = Number(state.resultFace || 0);
-        if (face === 20) {
-          wrap.classList.add('d20-crit-success');
-        } else if (face === 1) {
-          wrap.classList.add('d20-crit-fail');
+
+        const faceEls = Array.isArray(state.faceEls) ? state.faceEls : [];
+        for (let i = 0; i < faceEls.length; i += 1) {
+          const el = faceEls[i];
+          if (!el || !el.classList) continue;
+          el.classList.remove('d20-crit-success-face');
+          el.classList.remove('d20-crit-fail-face');
         }
+
+        const face = Number(state.resultFace || 0);
+        if (face !== 20 && face !== 1) {
+          return;
+        }
+
+        let targetFaceEl = null;
+        const cls = 'f' + String(face);
+        for (let i = 0; i < faceEls.length; i += 1) {
+          const el = faceEls[i];
+          if (el && el.classList && el.classList.contains(cls)) {
+            targetFaceEl = el;
+            break;
+          }
+        }
+        if (!targetFaceEl && wrap) {
+          targetFaceEl = wrap.querySelector('.d20-face.' + cls);
+        }
+        if (!targetFaceEl || !targetFaceEl.classList) {
+          return;
+        }
+
+        targetFaceEl.classList.add(face === 20 ? 'd20-crit-success-face' : 'd20-crit-fail-face');
       }
 
       function applyLighting(state) {
@@ -3032,6 +3063,13 @@
   </script>
 </body>
 </html>
+
+
+
+
+
+
+
 
 
 
