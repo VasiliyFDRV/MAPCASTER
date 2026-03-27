@@ -597,9 +597,9 @@
           }
           const firstWins = mode === 'advantage' ? (fv >= sv) : (fv <= sv);
           if (firstWins) {
-            second.pairDimTarget = 0.60;
+            second.pairDimTarget = 0.0001;
           } else {
-            first.pairDimTarget = 0.60;
+            first.pairDimTarget = 0.0001;
           }
         }
       }
