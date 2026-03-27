@@ -2002,6 +2002,10 @@
           sides: 20,
           alignMode: 'poly',
           resultMode: 'poly',
+          getFaceLabelRotation: (faceId, _faceIndex, ft) => {
+            const base = Number(ft && ft.labelRotate !== undefined ? ft.labelRotate : 0);
+            return Number(faceId) === 20 ? normalizeAngle(base + 180) : normalizeAngle(base);
+          },
           alignProfile: {
             startGroundedDelayRange: [0.02, 0.12],
             startPlanarThreshold: 2.0,
