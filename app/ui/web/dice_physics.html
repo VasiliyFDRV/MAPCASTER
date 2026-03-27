@@ -352,6 +352,14 @@
       display: none;
     }
 
+    .d20-face {
+      transition: box-shadow 360ms ease, filter 360ms ease;
+    }
+
+    .d20-label {
+      transition: color 360ms ease, text-shadow 360ms ease;
+    }
+
     @keyframes d20CritPulseGold {
       0% { filter: brightness(1) saturate(1); }
       50% { filter: brightness(1.16) saturate(1.24); }
@@ -388,6 +396,30 @@
     .dice-wrap.d20-crit-fail .d20-label {
       color: #8f2532;
       text-shadow: 0 0 6px rgba(143, 37, 50, 0.45);
+    }
+
+    .dice-wrap.d20-picked-adv .d20-face {
+      box-shadow:
+        inset 0 0 0 1.2px rgba(56, 170, 96, 0.98),
+        inset 0 0 12px rgba(45, 148, 84, 0.24),
+        0 0 10px rgba(56, 170, 96, 0.28);
+    }
+
+    .dice-wrap.d20-picked-adv .d20-label {
+      color: #2f8b4b;
+      text-shadow: 0 0 5px rgba(47, 139, 75, 0.40);
+    }
+
+    .dice-wrap.d20-picked-dis .d20-face {
+      box-shadow:
+        inset 0 0 0 1.2px rgba(156, 47, 47, 0.98),
+        inset 0 0 12px rgba(130, 34, 34, 0.24),
+        0 0 10px rgba(156, 47, 47, 0.28);
+    }
+
+    .dice-wrap.d20-picked-dis .d20-label {
+      color: #a33c3c;
+      text-shadow: 0 0 5px rgba(163, 60, 60, 0.40);
     }
     .shadow {
       position: absolute;
@@ -580,7 +612,10 @@
           .sort((a, b) => Number(a.rollId || 0) - Number(b.rollId || 0));
 
         for (let i = 0; i < d20States.length; i += 1) {
-          d20States[i].pairDimTarget = 1;
+          const wrap = d20States[i] && d20States[i].wrap;
+          if (!wrap) continue;
+          wrap.classList.remove('d20-picked-adv');
+          wrap.classList.remove('d20-picked-dis');
         }
 
         if (mode !== 'advantage' && mode !== 'disadvantage') {
@@ -596,11 +631,11 @@
             continue;
           }
           const firstWins = mode === 'advantage' ? (fv >= sv) : (fv <= sv);
-          if (firstWins) {
-            second.pairDimTarget = 0.0001;
-          } else {
-            first.pairDimTarget = 0.0001;
+          const winner = firstWins ? first : second;
+          if (!winner || !winner.wrap) {
+            continue;
           }
+          winner.wrap.classList.add(mode === 'advantage' ? 'd20-picked-adv' : 'd20-picked-dis');
         }
       }
 
@@ -2554,20 +2589,18 @@
       }
 
       function render(state) {
-        const targetDim = Number(state.pairDimTarget || 1);
-        state.pairDim = Number(state.pairDim || 1) + (targetDim - Number(state.pairDim || 1)) * 0.045;
         const zNorm = clamp(state.z / 260, 0, 1);
         const cx = state.px;
         const cy = state.py - state.z * 0.55;
         const scale = 0.78 + (1 - zNorm) * 0.22;
 
-        state.wrap.style.opacity = String(clamp(state.alpha * state.pairDim, 0, 1));
+        state.wrap.style.opacity = String(clamp(state.alpha, 0, 1));
         state.wrap.style.transform = `translate(${cx}px, ${cy}px) translate(-50%, -50%) scale(${scale})`;
         state.dice.style.transform =
           `translate(-50%, -50%) rotateZ(${state.rz}deg) rotateY(${state.ry}deg) rotateX(${state.rx}deg)`;
 
         const shadowScale = 0.78 + (1 - zNorm) * 0.26;
-        const shadowOpacity = clamp((1 - zNorm) * 0.38, 0, 0.36) * state.alpha * (0.55 + 0.45 * state.pairDim);
+        const shadowOpacity = clamp((1 - zNorm) * 0.38, 0, 0.36) * state.alpha;
         state.shadow.style.opacity = String(shadowOpacity);
         state.shadow.style.transform = `translate(${state.px}px, ${state.py + 28}px) translate(-50%, -50%) scale(${shadowScale})`;
 
@@ -2665,8 +2698,6 @@
           resultFace: 0,
           resultEmitted: false,
           resultMeasureAtMs: 0,
-          pairDim: 1,
-          pairDimTarget: 1,
           rollId: rollId,
           wrap: nodes.wrap,
           dice: nodes.dice,
