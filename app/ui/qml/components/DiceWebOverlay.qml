@@ -62,39 +62,40 @@ Item {
     }
 
     function startBatchNow() {
+        var started = false
+
         if (d100ActiveRequestId > 0 && (!d100TensReady || !d100OnesReady)) {
             web.runJavaScript("window.startRoll && window.startRoll(" + String(d100ActiveRequestId) + ", 'd10t', 1);")
             web.runJavaScript("window.startRoll && window.startRoll(" + String(d100ActiveRequestId) + ", 'd10', 1);")
-            hideTimer.restart()
-            return
+            started = true
         }
+
         if (d20ActiveRequestId > 0 && d20ExpectedCount > 0) {
             for (var k = 0; k < d20ExpectedCount; k++) {
                 runStandardScript(d20ActiveRequestId, 20)
             }
-            hideTimer.restart()
-            return
-        }
-        if (activeRequestId <= 0 || activeExpectedCount <= 0) {
-            return
+            started = true
         }
 
-        for (var i = 0; i < standardSides.length; i++) {
-            var s = Number(standardSides[i])
-            var cnt = Number(activeExpectedBySides[s] || 0)
-            for (var j = 0; j < cnt; j++) {
-                runStandardScript(activeRequestId, s)
+        if (activeRequestId > 0 && activeExpectedCount > 0) {
+            for (var i = 0; i < standardSides.length; i++) {
+                var s = Number(standardSides[i])
+                var cnt = Number(activeExpectedBySides[s] || 0)
+                for (var j = 0; j < cnt; j++) {
+                    runStandardScript(activeRequestId, s)
+                }
             }
+            started = true
         }
-        hideTimer.restart()
+
+        if (started) {
+            hideTimer.restart()
+        }
     }
 
     function triggerStandardBatch(requestId, d4Count, d6Count, d8Count, d10Count, d12Count, appendMode) {
         var append = Boolean(appendMode)
         var req = Number(requestId || 0)
-        d20ActiveRequestId = 0
-        d20ExpectedCount = 0
-        d20Values = []
         d100ActiveRequestId = 0
         d100TensValue = -1
         d100OnesValue = -1
@@ -108,7 +109,9 @@ Item {
 
         var sameActive = append && activeRequestId === req && activeExpectedCount > 0
         if (!sameActive) {
-            clearWebDiceNow()
+            if (d20ExpectedCount <= 0 && d100ActiveRequestId <= 0) {
+                clearWebDiceNow()
+            }
             activeRequestId = req
             activeExpectedCount = addTotal
             activeExpectedBySides = addBySides
@@ -154,26 +157,31 @@ Item {
         triggerStandardBatch(requestId, 0, Math.max(1, Number(count || 1)), 0, 0, 0, appendMode)
     }
 
-    function triggerD20Batch(requestId, count) {
+    function triggerD20Batch(requestId, count, appendMode) {
+        var append = Boolean(appendMode)
         var req = Number(requestId || 0)
         var cnt = Math.max(0, Number(count || 0))
         if (req <= 0 || cnt <= 0) {
             return
         }
 
-        clearWebDiceNow()
-        activeRequestId = 0
-        activeExpectedCount = 0
-        activeExpectedBySides = ({4: 0, 6: 0, 8: 0, 10: 0, 12: 0})
-        activeValuesBySides = ({4: [], 6: [], 8: [], 10: [], 12: []})
         d100ActiveRequestId = 0
         d100TensValue = -1
         d100OnesValue = -1
         d100TensReady = false
         d100OnesReady = false
-        d20ActiveRequestId = req
-        d20ExpectedCount = cnt
-        d20Values = []
+
+        var sameActive = append && d20ActiveRequestId === req && d20ExpectedCount > 0
+        if (!sameActive) {
+            if (activeExpectedCount <= 0 && d100ActiveRequestId <= 0) {
+                clearWebDiceNow()
+            }
+            d20ActiveRequestId = req
+            d20ExpectedCount = cnt
+            d20Values = []
+        } else {
+            d20ExpectedCount = Number(d20ExpectedCount || 0) + cnt
+        }
 
         active = true
         web.opacity = 1.0

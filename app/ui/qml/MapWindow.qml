@@ -3080,7 +3080,8 @@ Window {
                 console.log("[dice-visual] map -> 3d d20", "count=" + payload.dice.length)
                 diceWebOverlay.triggerD20Batch(
                     Number(payload.request_id || 0),
-                    Number(payload.dice.length || 0)
+                    Number(payload.dice.length || 0),
+                    Boolean(payload.append)
                 )
             } else if (mapWindow.shouldUseStandardPhysicsVisual(payload)) {
                 var d4Count = 0
