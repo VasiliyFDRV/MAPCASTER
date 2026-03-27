@@ -351,25 +351,69 @@
     .d20-core {
       display: none;
     }
-
     .d20-face {
-      transition: box-shadow 180ms ease, filter 180ms ease;
+      transition: box-shadow 180ms ease;
+      overflow: hidden;
+      isolation: isolate;
+    }
+
+    .d20-face::before {
+      content: "";
+      position: absolute;
+      inset: -1px;
+      pointer-events: none;
+      opacity: 0;
+      z-index: 1;
+      transform: scale(1);
     }
 
     .d20-label {
       transition: color 180ms ease, text-shadow 180ms ease;
+      z-index: 2;
     }
 
-    @keyframes d20CritPulseGold {
-      0% { filter: brightness(1) saturate(1); }
-      50% { filter: brightness(1.16) saturate(1.24); }
-      100% { filter: brightness(1) saturate(1); }
+    @keyframes d20InnerGlowGold {
+      0%, 100% {
+        opacity: 0.12;
+        transform: scale(0.96);
+      }
+      50% {
+        opacity: 0.28;
+        transform: scale(1.04);
+      }
     }
 
-    @keyframes d20CritPulseBordeaux {
-      0% { filter: brightness(1) saturate(1); }
-      50% { filter: brightness(1.14) saturate(1.22); }
-      100% { filter: brightness(1) saturate(1); }
+    @keyframes d20InnerGlowBordeaux {
+      0%, 100% {
+        opacity: 0.11;
+        transform: scale(0.96);
+      }
+      50% {
+        opacity: 0.26;
+        transform: scale(1.04);
+      }
+    }
+
+    @keyframes d20LabelPulseGold {
+      0%, 100% {
+        color: #f3bf42;
+        text-shadow: 0 0 6px rgba(255, 205, 86, 0.50);
+      }
+      50% {
+        color: #ffd978;
+        text-shadow: 0 0 10px rgba(255, 216, 120, 0.66);
+      }
+    }
+
+    @keyframes d20LabelPulseBordeaux {
+      0%, 100% {
+        color: #8f2532;
+        text-shadow: 0 0 6px rgba(143, 37, 50, 0.45);
+      }
+      50% {
+        color: #b93b4b;
+        text-shadow: 0 0 10px rgba(185, 59, 75, 0.58);
+      }
     }
 
     .dice-wrap.d20-crit-success .d20-face {
@@ -377,12 +421,15 @@
         inset 0 0 0 1.1px rgba(255, 219, 94, 0.98),
         inset 0 0 14px rgba(255, 196, 54, 0.26),
         0 0 12px rgba(255, 213, 92, 0.30);
-      animation: d20CritPulseGold 1.2s ease-in-out infinite;
+    }
+
+    .dice-wrap.d20-crit-success .d20-face::before {
+      background: radial-gradient(circle at 50% 60%, rgba(255, 228, 142, 0.95) 0%, rgba(255, 205, 104, 0.70) 36%, rgba(255, 172, 70, 0.20) 66%, rgba(255, 172, 70, 0) 86%);
+      animation: d20InnerGlowGold 1.2s ease-in-out infinite;
     }
 
     .dice-wrap.d20-crit-success .d20-label {
-      color: #f3bf42;
-      text-shadow: 0 0 6px rgba(255, 205, 86, 0.55);
+      animation: d20LabelPulseGold 1.2s ease-in-out infinite;
     }
 
     .dice-wrap.d20-crit-fail .d20-face {
@@ -390,15 +437,17 @@
         inset 0 0 0 1.1px rgba(152, 36, 52, 0.98),
         inset 0 0 13px rgba(116, 22, 37, 0.28),
         0 0 10px rgba(146, 34, 48, 0.34);
-      animation: d20CritPulseBordeaux 1.2s ease-in-out infinite;
+    }
+
+    .dice-wrap.d20-crit-fail .d20-face::before {
+      background: radial-gradient(circle at 50% 60%, rgba(210, 94, 109, 0.92) 0%, rgba(171, 52, 66, 0.68) 36%, rgba(129, 31, 44, 0.21) 66%, rgba(129, 31, 44, 0) 86%);
+      animation: d20InnerGlowBordeaux 1.2s ease-in-out infinite;
     }
 
     .dice-wrap.d20-crit-fail .d20-label {
-      color: #8f2532;
-      text-shadow: 0 0 6px rgba(143, 37, 50, 0.45);
+      animation: d20LabelPulseBordeaux 1.2s ease-in-out infinite;
     }
-
-    .dice-wrap.d20-picked-adv .d20-face {
+.dice-wrap.d20-picked-adv .d20-face {
       box-shadow:
         inset 0 0 0 1.2px rgba(56, 170, 96, 0.98),
         inset 0 0 12px rgba(45, 148, 84, 0.24),
@@ -2992,6 +3041,7 @@
   </script>
 </body>
 </html>
+
 
 
 
