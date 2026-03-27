@@ -28,6 +28,7 @@ class DiceController(QObject):
         self._physics_d100_fallback_timers: dict[int, QTimer] = {}
         self._active_standard_physics_batch: dict[str, Any] | None = None
         self._active_d20_physics_batch: dict[str, Any] | None = None
+        self._deferred_roll_completed: list[dict[str, Any]] = []
 
         self._event_bus.subscribe("dice.roll_requested", self._on_roll_requested)
         self._event_bus.subscribe("dice.roll_completed", self._on_roll_completed)
@@ -193,6 +194,7 @@ class DiceController(QObject):
             self._cancel_physics_fallback_timer(int(req_id))
         self._pending_physics_standard.clear()
         self._active_standard_physics_batch = None
+        self._deferred_roll_completed = []
         self._debug(f"cancel pending standard physics reason={reason} requests={pending_ids}")
 
     def _cancel_all_pending_d100_physics(self, reason: str) -> None:
@@ -202,6 +204,7 @@ class DiceController(QObject):
         for req_id in pending_ids:
             self._cancel_d100_fallback_timer(int(req_id))
         self._pending_physics_d100.clear()
+        self._deferred_roll_completed = []
         self._debug(f"cancel pending d100 physics reason={reason} requests={pending_ids}")
 
     def _cancel_all_pending_d20_physics(self, reason: str) -> None:
@@ -212,6 +215,7 @@ class DiceController(QObject):
             self._cancel_d20_fallback_timer(int(req_id))
         self._pending_physics_d20.clear()
         self._active_d20_physics_batch = None
+        self._deferred_roll_completed = []
         self._debug(f"cancel pending d20 physics reason={reason} requests={pending_ids}")
 
     def _is_supported_standard_physics_request(
@@ -1035,12 +1039,49 @@ class DiceController(QObject):
             },
         )
 
+    def _has_pending_physics_batches(self) -> bool:
+        return (
+            len(self._pending_physics_standard) > 0
+            or len(self._pending_physics_d20) > 0
+            or len(self._pending_physics_d100) > 0
+        )
+
+    def _emit_roll_completed_payload(self, payload: dict[str, Any]) -> None:
+        self.rollCompleted.emit(payload)
+
     def _on_roll_completed(self, event_name: str, payload: dict[str, Any]) -> None:
         self._debug(
             f"on_roll_completed event request_id={payload.get('request_id')} kind={payload.get('kind')} "
             f"mode={payload.get('mode')}"
         )
-        self.rollCompleted.emit(payload)
+
+        kind = str(payload.get("kind", "")).strip()
+        mode = str(payload.get("mode", "")).strip()
+        requested_mode = str(payload.get("requested_mode", "")).strip()
+        is_physics_roll = mode in {"physics", "physics_fallback_random"} or requested_mode == "physics"
+        should_sync = is_physics_roll and kind in {"standard", "d20", "d100"}
+
+        if not should_sync:
+            self._emit_roll_completed_payload(payload)
+            return
+
+        if self._has_pending_physics_batches():
+            self._deferred_roll_completed.append(dict(payload))
+            self._debug(
+                f"hold roll_completed until all physics batches settle kind={kind} "
+                f"deferred={len(self._deferred_roll_completed)}"
+            )
+            return
+
+        if len(self._deferred_roll_completed) > 0:
+            buffered = list(self._deferred_roll_completed)
+            self._deferred_roll_completed = []
+            buffered.append(dict(payload))
+            for event_payload in buffered:
+                self._emit_roll_completed_payload(event_payload)
+            return
+
+        self._emit_roll_completed_payload(payload)
 
 
 
