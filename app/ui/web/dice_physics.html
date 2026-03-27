@@ -351,6 +351,44 @@
     .d20-core {
       display: none;
     }
+
+    @keyframes d20CritPulseGold {
+      0% { filter: brightness(1) saturate(1); }
+      50% { filter: brightness(1.16) saturate(1.24); }
+      100% { filter: brightness(1) saturate(1); }
+    }
+
+    @keyframes d20CritPulseBordeaux {
+      0% { filter: brightness(1) saturate(1); }
+      50% { filter: brightness(1.14) saturate(1.22); }
+      100% { filter: brightness(1) saturate(1); }
+    }
+
+    .dice-wrap.d20-crit-success .d20-face {
+      box-shadow:
+        inset 0 0 0 1.1px rgba(255, 219, 94, 0.98),
+        inset 0 0 14px rgba(255, 196, 54, 0.26),
+        0 0 12px rgba(255, 213, 92, 0.30);
+      animation: d20CritPulseGold 1.2s ease-in-out infinite;
+    }
+
+    .dice-wrap.d20-crit-success .d20-label {
+      color: #f3bf42;
+      text-shadow: 0 0 6px rgba(255, 205, 86, 0.55);
+    }
+
+    .dice-wrap.d20-crit-fail .d20-face {
+      box-shadow:
+        inset 0 0 0 1.1px rgba(152, 36, 52, 0.98),
+        inset 0 0 13px rgba(116, 22, 37, 0.28),
+        0 0 10px rgba(146, 34, 48, 0.34);
+      animation: d20CritPulseBordeaux 1.2s ease-in-out infinite;
+    }
+
+    .dice-wrap.d20-crit-fail .d20-label {
+      color: #8f2532;
+      text-shadow: 0 0 6px rgba(143, 37, 50, 0.45);
+    }
     .shadow {
       position: absolute;
       width: 68px;
@@ -502,6 +540,7 @@
 
       let rollSeq = 0;
       const activeRollStates = new Map();
+      const d20RequestMeta = new Map();
 
       const COLLISION_RESTITUTION = 0.14;
       const COLLISION_FRICTION = 0.06;
@@ -517,6 +556,53 @@
       const COLLISION_REST_NORMAL_SPEED = 0.015;
       const COLLISION_GROUND_Z_GAP = 18;
       const COLLISION_GROUND_Z_MAX = 24;
+
+      function getD20RequestMode(requestId) {
+        const reqId = Number(requestId || 0);
+        if (reqId <= 0) {
+          return 'normal';
+        }
+        const mode = String(d20RequestMeta.get(reqId) || 'normal');
+        if (mode === 'advantage' || mode === 'disadvantage') {
+          return mode;
+        }
+        return 'normal';
+      }
+
+      function applyD20PairOutcomeVisuals(requestId) {
+        const reqId = Number(requestId || 0);
+        if (reqId <= 0) {
+          return;
+        }
+        const mode = getD20RequestMode(reqId);
+        const d20States = Array.from(activeRollStates.values())
+          .filter((s) => s && String(s.modelKind || '') === 'd20' && Number(s.requestId || 0) === reqId && s.resultEmitted)
+          .sort((a, b) => Number(a.rollId || 0) - Number(b.rollId || 0));
+
+        for (let i = 0; i < d20States.length; i += 1) {
+          d20States[i].pairDimTarget = 1;
+        }
+
+        if (mode !== 'advantage' && mode !== 'disadvantage') {
+          return;
+        }
+
+        for (let i = 0; i + 1 < d20States.length; i += 2) {
+          const first = d20States[i];
+          const second = d20States[i + 1];
+          const fv = Number(first.resultFace || 0);
+          const sv = Number(second.resultFace || 0);
+          if (fv <= 0 || sv <= 0) {
+            continue;
+          }
+          const firstWins = mode === 'advantage' ? (fv >= sv) : (fv <= sv);
+          if (firstWins) {
+            second.pairDimTarget = 0.60;
+          } else {
+            first.pairDimTarget = 0.60;
+          }
+        }
+      }
 
       function apparentScale(state) {
         const zNorm = clamp(state.z / 260, 0, 1);
@@ -1984,6 +2070,24 @@
         return { x: x / m, y: y / m, z: z / m };
       }
 
+      function applyD20CritVisual(state) {
+        if (!state || String(state.modelKind || '') !== 'd20') {
+          return;
+        }
+        const wrap = state.wrap;
+        if (!wrap) {
+          return;
+        }
+        wrap.classList.remove('d20-crit-success');
+        wrap.classList.remove('d20-crit-fail');
+        const face = Number(state.resultFace || 0);
+        if (face === 20) {
+          wrap.classList.add('d20-crit-success');
+        } else if (face === 1) {
+          wrap.classList.add('d20-crit-fail');
+        }
+      }
+
       function applyLighting(state) {
         if (!state || !state.faceEls || state.faceEls.length <= 0) {
           return;
@@ -2450,18 +2554,20 @@
       }
 
       function render(state) {
+        const targetDim = Number(state.pairDimTarget || 1);
+        state.pairDim = Number(state.pairDim || 1) + (targetDim - Number(state.pairDim || 1)) * 0.045;
         const zNorm = clamp(state.z / 260, 0, 1);
         const cx = state.px;
         const cy = state.py - state.z * 0.55;
         const scale = 0.78 + (1 - zNorm) * 0.22;
 
-        state.wrap.style.opacity = String(clamp(state.alpha, 0, 1));
+        state.wrap.style.opacity = String(clamp(state.alpha * state.pairDim, 0, 1));
         state.wrap.style.transform = `translate(${cx}px, ${cy}px) translate(-50%, -50%) scale(${scale})`;
         state.dice.style.transform =
           `translate(-50%, -50%) rotateZ(${state.rz}deg) rotateY(${state.ry}deg) rotateX(${state.rx}deg)`;
 
         const shadowScale = 0.78 + (1 - zNorm) * 0.26;
-        const shadowOpacity = clamp((1 - zNorm) * 0.38, 0, 0.36) * state.alpha;
+        const shadowOpacity = clamp((1 - zNorm) * 0.38, 0, 0.36) * state.alpha * (0.55 + 0.45 * state.pairDim);
         state.shadow.style.opacity = String(shadowOpacity);
         state.shadow.style.transform = `translate(${state.px}px, ${state.py + 28}px) translate(-50%, -50%) scale(${shadowScale})`;
 
@@ -2469,6 +2575,7 @@
       }
 
       window.clearAllDice = function clearAllDice() {
+        d20RequestMeta.clear();
         const states = Array.from(activeRollStates.values());
         for (let i = 0; i < states.length; i += 1) {
           const s = states[i];
@@ -2477,6 +2584,15 @@
           }
         }
       };
+      window.setD20RequestMeta = function setD20RequestMeta(requestId, modeName) {
+        const reqId = Number(requestId || 0);
+        if (reqId <= 0) {
+          return;
+        }
+        const mode = String(modeName || 'normal');
+        d20RequestMeta.set(reqId, (mode === 'advantage' || mode === 'disadvantage') ? mode : 'normal');
+      };
+
       window.startRoll = function startRoll(requestId, kind, count) {
         const reqId = Number(requestId || 0);
         const modelKind = String(kind || "d6");
@@ -2549,6 +2665,8 @@
           resultFace: 0,
           resultEmitted: false,
           resultMeasureAtMs: 0,
+          pairDim: 1,
+          pairDimTarget: 1,
           rollId: rollId,
           wrap: nodes.wrap,
           dice: nodes.dice,
@@ -2825,6 +2943,10 @@
             if (state.resultFace > 0) {
               state.resultEmitted = true;
               const resultSides = Number((state.diceSpec && state.diceSpec.sides) || 6);
+              applyD20CritVisual(state);
+              if (String(state.modelKind || '') === 'd20') {
+                applyD20PairOutcomeVisuals(state.requestId);
+              }
               console.log(`[dice-result] request=${state.requestId} sides=${resultSides} value=${state.resultFace}`);
             }
           }

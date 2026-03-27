@@ -933,6 +933,7 @@ class DiceController(QObject):
                     "kind": "d20",
                     "dice": [20] * add_total,
                     "requested_mode": requested_mode,
+                    "d20_mode": str(pending.get("mode", "normal")),
                     "append": append,
                 },
             )

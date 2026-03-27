@@ -17,6 +17,7 @@ Item {
     property int d20ActiveRequestId: 0
     property int d20ExpectedCount: 0
     property var d20Values: []
+    property string d20ActiveMode: "normal"
     property int d100ActiveRequestId: 0
     property int d100TensValue: -1
     property int d100OnesValue: -1
@@ -71,6 +72,7 @@ Item {
         }
 
         if (d20ActiveRequestId > 0 && d20ExpectedCount > 0) {
+            web.runJavaScript("window.setD20RequestMeta && window.setD20RequestMeta(" + String(d20ActiveRequestId) + ", '" + String(d20ActiveMode || 'normal') + "');")
             for (var k = 0; k < d20ExpectedCount; k++) {
                 runStandardScript(d20ActiveRequestId, 20)
             }
@@ -157,10 +159,14 @@ Item {
         triggerStandardBatch(requestId, 0, Math.max(1, Number(count || 1)), 0, 0, 0, appendMode)
     }
 
-    function triggerD20Batch(requestId, count, appendMode) {
+    function triggerD20Batch(requestId, count, appendMode, modeName) {
         var append = Boolean(appendMode)
         var req = Number(requestId || 0)
         var cnt = Math.max(0, Number(count || 0))
+        var mode = String(modeName || "normal")
+        if (mode !== "advantage" && mode !== "disadvantage") {
+            mode = "normal"
+        }
         if (req <= 0 || cnt <= 0) {
             return
         }
@@ -179,6 +185,7 @@ Item {
             d20ActiveRequestId = req
             d20ExpectedCount = cnt
             d20Values = []
+            d20ActiveMode = mode
         } else {
             d20ExpectedCount = Number(d20ExpectedCount || 0) + cnt
         }
@@ -189,6 +196,7 @@ Item {
 
         if (pageReady) {
             pendingRoll = false
+            web.runJavaScript("window.setD20RequestMeta && window.setD20RequestMeta(" + String(req) + ", '" + String(mode) + "');")
             for (var i = 0; i < cnt; i++) {
                 runStandardScript(req, 20)
             }
@@ -245,6 +253,7 @@ Item {
         d20ActiveRequestId = 0
         d20ExpectedCount = 0
         d20Values = []
+        d20ActiveMode = "normal"
         d100ActiveRequestId = 0
         d100TensValue = -1
         d100OnesValue = -1

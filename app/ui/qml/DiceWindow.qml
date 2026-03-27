@@ -239,6 +239,34 @@ Window {
             standardResult = payload.result ? payload.result.standard : null
         }
     }
+    function d20CritColor(value) {
+        var v = Number(value || 0)
+        if (v === 20) return "#F3BF42"
+        if (v === 1) return "#8F2532"
+        return textPrimary
+    }
+
+    function d20PairDieColor(entry, which) {
+        if (!entry || entry.type !== "pair") {
+            return textPrimary
+        }
+        var first = Number(entry.first || 0)
+        var second = Number(entry.second || 0)
+        var picked = Number(entry.picked || 0)
+        var value = which === "first" ? first : second
+        if (value !== picked) {
+            return textPrimary
+        }
+        return d20CritColor(value)
+    }
+
+    function d20SingleDieColor(entry) {
+        if (!entry || entry.type !== "single") {
+            return textPrimary
+        }
+        return d20CritColor(Number(entry.value || 0))
+    }
+
     function cloneStyle(style) {
         return {
             "scalePercent": Number(style && style.scalePercent !== undefined ? style.scalePercent : 100),
@@ -579,6 +607,10 @@ Window {
         property real lineWidth: 1.4
         property real valueOpacity: 1.0
 
+        Behavior on valueOpacity {
+            NumberAnimation { duration: 190; easing.type: Easing.OutCubic }
+        }
+
         implicitWidth: 40
         implicitHeight: 40
 
@@ -691,6 +723,7 @@ Window {
         onFillColorChanged: canvas.requestPaint()
         onLineColorChanged: canvas.requestPaint()
         onLineWidthChanged: canvas.requestPaint()
+        onValueOpacityChanged: canvas.requestPaint()
         onWidthChanged: canvas.requestPaint()
         onHeightChanged: canvas.requestPaint()
         Component.onCompleted: canvas.requestPaint()
@@ -922,7 +955,7 @@ Window {
                                         anchors.margins: 5
                                         spacing: 3
                                         Label { text: String(d20Result ? d20Result.formula : "") + ":"; color: textSecondary; font.pixelSize: 10; wrapMode: Text.WordWrap; Layout.fillWidth: true }
-                                        Label { text: d20Result ? String(d20Result.total) : ""; color: textPrimary; font.pixelSize: 20; font.weight: Font.Bold }
+                                        Label { text: d20Result ? String(d20Result.total) : ""; color: (d20Result && d20Result.rolls && d20Result.rolls.length === 1 && d20Result.rolls[0].type === "single") ? d20CritColor(Number(d20Result.rolls[0].value || 0)) : textPrimary; font.pixelSize: 20; font.weight: Font.Bold }
                                         Flow {
                                             Layout.fillWidth: true
                                             spacing: 3
@@ -940,6 +973,8 @@ Window {
                                                             implicitWidth: 27
                                                             implicitHeight: 27
                                                             valueOpacity: modelData.type === "pair" && modelData.first !== modelData.picked ? 0.35 : 1.0
+                                                            textColor: modelData.type === "pair" ? d20PairDieColor(modelData, "first") : d20SingleDieColor(modelData)
+                                                            lineColor: modelData.type === "pair" ? d20PairDieColor(modelData, "first") : d20SingleDieColor(modelData)
                                                         }
                                                         DieGlyph {
                                                             visible: modelData.type === "pair"
@@ -948,6 +983,8 @@ Window {
                                                             implicitWidth: 27
                                                             implicitHeight: 27
                                                             valueOpacity: modelData.type === "pair" && modelData.second !== modelData.picked ? 0.35 : 1.0
+                                                            textColor: d20PairDieColor(modelData, "second")
+                                                            lineColor: d20PairDieColor(modelData, "second")
                                                         }
                                                     }
                                                 }

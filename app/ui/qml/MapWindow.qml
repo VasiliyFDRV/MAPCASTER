@@ -3081,7 +3081,8 @@ Window {
                 diceWebOverlay.triggerD20Batch(
                     Number(payload.request_id || 0),
                     Number(payload.dice.length || 0),
-                    Boolean(payload.append)
+                    Boolean(payload.append),
+                    String(payload.d20_mode || "normal")
                 )
             } else if (mapWindow.shouldUseStandardPhysicsVisual(payload)) {
                 var d4Count = 0
