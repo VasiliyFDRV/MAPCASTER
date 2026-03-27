@@ -359,7 +359,9 @@
         inset 0 0 0 1px rgba(212, 212, 212, 0.34),
         inset 0 0 9px rgba(220, 220, 220, 0.14),
         0 0 7px rgba(226, 226, 226, 0.12);
-    }`r`n`r`n    .d20-face::before {
+    }
+
+    .d20-face::before {
       content: "";
       position: absolute;
       inset: -1px;
@@ -617,6 +619,19 @@
       let rollSeq = 0;
       const activeRollStates = new Map();
       const d20RequestMeta = new Map();
+      let previewDieKind = "d6";
+      let styleOverrides = {
+        faceColor: "#c9c9c9",
+        gradientEnabled: false,
+        gradientCenterColor: "#ffffff",
+
+        gradientSharpness: 0.5,
+        gradientOffset: 0.5,
+        textColor: "#1f1f1f",
+        textStrokeColor: "#6e6e6e",
+        edgeColor: "#d4d4d4",
+        edgeWidth: 1.0,
+      };
 
       const COLLISION_RESTITUTION = 0.14;
       const COLLISION_FRICTION = 0.06;
@@ -1017,7 +1032,8 @@
 
         scene.appendChild(shadow);
         scene.appendChild(wrap);
-        return { wrap, dice, shadow, faceEls, coreEl, spec };
+        const nodes = { wrap, dice, shadow, faceEls, coreEl, spec };
+        return nodes;
       }
 
       function random(min, max) {
@@ -1030,6 +1046,56 @@
 
       function clamp(v, min, max) {
         return Math.max(min, Math.min(max, v));
+      }
+
+      function normalizeColor(value, fallback) {
+        const s = String(value || '').trim();
+        return s.length > 0 ? s : fallback;
+      }
+
+      function buildFaceBackground() {
+        const faceColor = normalizeColor(styleOverrides.faceColor, "#c9c9c9");
+        const centerColor = normalizeColor(styleOverrides.gradientCenterColor, faceColor);
+        if (!Boolean(styleOverrides.gradientEnabled)) {
+          return faceColor;
+        }
+        const softness = clamp(Number(styleOverrides.gradientSharpness || 0), 0, 1);
+        const offset = clamp(Number(styleOverrides.gradientOffset || 0), 0, 1);
+        const coreStop = 6 + offset * 26;
+        const feather = 24 + softness * 56;
+        const stop1 = clamp(coreStop, 0, 92).toFixed(1);
+        const stop2 = clamp(coreStop + feather, 0, 100).toFixed(1);
+        return `radial-gradient(circle at 50% 50%, ${centerColor} 0%, ${centerColor} ${stop1}%, ${faceColor} ${stop2}%, ${faceColor} 100%)`;
+      }
+
+      function applyStyleToState(state) {
+        if (!state || !Array.isArray(state.faceEls)) {
+          return;
+        }
+        const faceBg = buildFaceBackground();
+        const textColor = normalizeColor(styleOverrides.textColor, "#1f1f1f");
+        const strokeColor = normalizeColor(styleOverrides.textStrokeColor, "#6e6e6e");
+        const edgeColor = normalizeColor(styleOverrides.edgeColor, "#d4d4d4");
+        const edgeWidth = clamp(Number(styleOverrides.edgeWidth || 0), 0, 5);
+        const edgeInset = edgeWidth > 0.01 ? `inset 0 0 0 ${edgeWidth.toFixed(2)}px ${edgeColor}, ` : "";
+        const baseLight = "inset 0 0 9px rgba(220, 220, 220, 0.14), 0 0 7px rgba(226, 226, 226, 0.12)";
+        for (let i = 0; i < state.faceEls.length; i += 1) {
+          const face = state.faceEls[i];
+          if (!face) continue;
+          face.style.background = faceBg;
+          face.style.color = textColor;
+          face.style.border = "none";
+          face.style.boxSizing = "border-box";
+          face.style.boxShadow = edgeInset + baseLight;
+          const labels = face.querySelectorAll(".d4-label, .d10-label, .d10t-label, .d12-label, .d20-label");
+          for (let j = 0; j < labels.length; j += 1) {
+            const label = labels[j];
+            if (!label) continue;
+            label.style.color = textColor;
+            label.style.webkitTextStroke = `0.85px ${strokeColor}`;
+            label.style.paintOrder = "stroke fill";
+          }
+        }
       }
 
       function clampSpinToFloor(current, floorAbs) {
@@ -2688,6 +2754,40 @@
           }
         }
       };
+      window.setStyleOverrides = function setStyleOverrides(payload) {
+        const p = payload && typeof payload === "object" ? payload : {};
+        styleOverrides = {
+          faceColor: normalizeColor(p.faceColor, styleOverrides.faceColor),
+          gradientEnabled: Boolean(p.gradientEnabled),
+          gradientCenterColor: normalizeColor(p.gradientCenterColor, styleOverrides.gradientCenterColor),
+          gradientSharpness: clamp(Number(p.gradientSharpness !== undefined ? p.gradientSharpness : styleOverrides.gradientSharpness), 0, 1),
+          gradientOffset: clamp(Number(p.gradientOffset !== undefined ? p.gradientOffset : styleOverrides.gradientOffset), 0, 1),
+          textColor: normalizeColor(p.textColor, styleOverrides.textColor),
+          textStrokeColor: normalizeColor(p.textStrokeColor, styleOverrides.textStrokeColor),
+          edgeColor: normalizeColor(p.edgeColor, styleOverrides.edgeColor),
+          edgeWidth: clamp(Number(p.edgeWidth !== undefined ? p.edgeWidth : styleOverrides.edgeWidth), 0, 5),
+        };
+        const states = Array.from(activeRollStates.values());
+        for (let i = 0; i < states.length; i += 1) {
+          if (Number(states[i] && states[i].requestId || 0) === 0) {
+            applyStyleToState(states[i]);
+          }
+        }
+      };
+
+      window.setPreviewDieKind = function setPreviewDieKind(kind) {
+        previewDieKind = String(kind || "d6").toLowerCase();
+      };
+
+      window.startPreviewRoll = function startPreviewRoll() {
+        window.clearAllDice();
+        if (previewDieKind === "d100") {
+          window.startRoll(0, "d10t", 1);
+          window.startRoll(0, "d10", 1);
+          return;
+        }
+        window.startRoll(0, previewDieKind, 1);
+      };
       window.setD20RequestMeta = function setD20RequestMeta(requestId, modeName) {
         const reqId = Number(requestId || 0);
         if (reqId <= 0) {
@@ -2781,7 +2881,9 @@
           alignMode: 'cube',
           resultMode: 'cube'
         };
-
+        if (state.requestId === 0) {
+          applyStyleToState(state);
+        }
 
         state.baseVrx = Math.abs(state.vrx);
         state.baseVry = Math.abs(state.vry);
@@ -3063,153 +3165,6 @@
   </script>
 </body>
 </html>
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 

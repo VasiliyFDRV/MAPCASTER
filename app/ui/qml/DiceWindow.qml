@@ -48,10 +48,14 @@ Window {
     property var dieEditorWorking: ({
         "scalePercent": 100,
         "color": "#D9E1F0",
+        "gradientEnabled": false,
+        "gradientCenterColor": "#FFFFFF",
+        "gradientSharpness": 50,
+        "gradientOffset": 50,
         "fontColor": "#EFEFF2",
-        "material": "Classic",
-        "fontName": "DemiBold",
-        "fontSize": 12
+        "textStrokeColor": "#6E6E6E",
+        "edgeColor": "#D4D4D4",
+        "edgeWidth": 1.0
     })
     property bool previewWebReady: false
 
@@ -271,10 +275,14 @@ Window {
         return {
             "scalePercent": Number(style && style.scalePercent !== undefined ? style.scalePercent : 100),
             "color": String(style && style.color ? style.color : "#D9E1F0"),
+            "gradientEnabled": Boolean(style && style.gradientEnabled),
+            "gradientCenterColor": String(style && style.gradientCenterColor ? style.gradientCenterColor : "#FFFFFF"),
+            "gradientSharpness": Number(style && style.gradientSharpness !== undefined ? style.gradientSharpness : 50),
+            "gradientOffset": Number(style && style.gradientOffset !== undefined ? style.gradientOffset : 50),
             "fontColor": String(style && style.fontColor ? style.fontColor : "#EFEFF2"),
-            "material": String(style && style.material ? style.material : "Classic"),
-            "fontName": String(style && style.fontName ? style.fontName : "DemiBold"),
-            "fontSize": Number(style && style.fontSize !== undefined ? style.fontSize : 12)
+            "textStrokeColor": String(style && style.textStrokeColor ? style.textStrokeColor : "#6E6E6E"),
+            "edgeColor": String(style && style.edgeColor ? style.edgeColor : "#D4D4D4"),
+            "edgeWidth": Number(style && style.edgeWidth !== undefined ? style.edgeWidth : 1.0)
         }
     }
 
@@ -306,97 +314,49 @@ Window {
         dieStylePopup.close()
     }
 
-
     function openDieEditor(key) {
         dieEditorDieKey = String(key)
         dieEditorWorking = styleForDie(dieEditorDieKey)
         dieStylePopup.open()
     }
 
-    function fontFamilyFor(name) {
-        if (name === "Monospace") return "Consolas"
-        if (name === "Serif") return "Georgia"
-        if (name === "Handwritten") return "Comic Sans MS"
-        return "Segoe UI"
-    }
-
-    function fontWeightFor(name) {
-        if (name === "Bold") return Font.Bold
-        if (name === "Black") return Font.Black
-        return Font.DemiBold
-    }
-
-    function materialFaceColor(baseColor, materialName) {
-        if (materialName === "Matte") return Qt.darker(baseColor, 1.25)
-        if (materialName === "Metal") return Qt.lighter(baseColor, 1.48)
-        if (materialName === "Stone") return Qt.tint(Qt.darker(baseColor, 1.35), "#B0B0B0")
-        if (materialName === "Glass") return Qt.lighter(baseColor, 1.65)
-        return baseColor
-    }
-
-    function materialLineColor(baseColor, materialName) {
-        if (materialName === "Metal") return "#F4F4F4"
-        if (materialName === "Stone") return Qt.darker(baseColor, 2.2)
-        if (materialName === "Glass") return Qt.lighter(baseColor, 2.0)
-        return Qt.darker(baseColor, 1.6)
-    }
-
-    function materialStrokeWidth(materialName) {
-        if (materialName === "Metal") return 1.9
-        if (materialName === "Stone") return 1.8
-        if (materialName === "Glass") return 1.2
-        if (materialName === "Matte") return 1.6
-        return 1.4
-    }
-
-    function materialGlossOpacity(materialName) {
-        if (materialName === "Glass") return 0.28
-        if (materialName === "Metal") return 0.2
-        if (materialName === "Stone") return 0.05
-        if (materialName === "Matte") return 0.08
-        return 0.12
-    }
-
-
-    function jsEscape(value) {
-        var s = String(value === undefined || value === null ? "" : value)
-        return s.replace(/\\/g, "\\\\").replace(/"/g, "\\\"")
-    }
-
-    function pushD6PreviewStyle() {
+    function pushPreviewStyle() {
         if (!dieStylePopup || !dieStylePopup.visible) {
             return
         }
-        if (dieEditorDieKey !== "d6") {
-            return
-        }
-        if (!previewWeb || !previewWeb.visible) {
+        if (!previewWeb || !previewWeb.visible || !previewWebReady) {
             return
         }
 
         var stylePayload = {
-            "sizePercent": Number(dieEditorWorking.scalePercent || 100),
             "faceColor": String(dieEditorWorking.color || "#D9E1F0"),
+            "gradientEnabled": Boolean(dieEditorWorking.gradientEnabled),
+            "gradientCenterColor": String(dieEditorWorking.gradientCenterColor || "#FFFFFF"),
+            "gradientSharpness": Math.max(0, Math.min(1, Number(dieEditorWorking.gradientSharpness || 50) / 100.0)),
+            "gradientOffset": Math.max(0, Math.min(1, Number(dieEditorWorking.gradientOffset || 50) / 100.0)),
             "textColor": String(dieEditorWorking.fontColor || "#EFEFF2"),
-            "material": String(dieEditorWorking.material || "Classic"),
-            "fontName": String(dieEditorWorking.fontName || "DemiBold"),
-            "fontSize": Number(dieEditorWorking.fontSize || 12)
+            "textStrokeColor": String(dieEditorWorking.textStrokeColor || "#6E6E6E"),
+            "edgeColor": String(dieEditorWorking.edgeColor || "#D4D4D4"),
+            "edgeWidth": Number(dieEditorWorking.edgeWidth !== undefined ? dieEditorWorking.edgeWidth : 1.0)
         }
-        var js = "window.setPreviewStyle && window.setPreviewStyle(" + JSON.stringify(stylePayload) + ");"
-        previewWeb.runJavaScript(js)
+        previewWeb.runJavaScript("window.setStyleOverrides && window.setStyleOverrides(" + JSON.stringify(stylePayload) + ");")
+        previewWeb.runJavaScript("window.setPreviewDieKind && window.setPreviewDieKind('" + String(dieEditorDieKey || "d6") + "');")
     }
-    function materialShadowOpacity(materialName) {
-        if (materialName === "Glass") return 0.14
-        if (materialName === "Metal") return 0.22
-        if (materialName === "Stone") return 0.28
-        if (materialName === "Matte") return 0.2
-        return 0.18
+
+    function startPreviewRollNow() {
+        if (!previewWeb || !previewWeb.visible || !previewWebReady) {
+            return
+        }
+        previewWeb.runJavaScript("window.startPreviewRoll && window.startPreviewRoll();")
     }
 
 
     onResetTokenChanged: resetState()
-    onDieEditorWorkingChanged: pushD6PreviewStyle()
-    onDieEditorDieKeyChanged: pushD6PreviewStyle()
+    onDieEditorWorkingChanged: pushPreviewStyle()
+    onDieEditorDieKeyChanged: {
+        pushPreviewStyle()
+        startPreviewRollNow()
+    }
     Component.onCompleted: resetState()
 
     Connections {
@@ -1224,8 +1184,8 @@ Window {
         id: dieStylePopup
         modal: true
         focus: true
-        width: Math.min(360, diceWindow.width - 24)
-        height: 440
+        width: Math.min(460, diceWindow.width - 24)
+        height: Math.min(760, diceWindow.height - 24)
         closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
         anchors.centerIn: Overlay.overlay
         padding: 0
@@ -1266,10 +1226,10 @@ Window {
                     WebEngineView {
                         id: previewWeb
                         anchors.fill: parent
-                        visible: dieStylePopup.visible && dieEditorDieKey === "d6"
+                        visible: dieStylePopup.visible
                         enabled: visible
                         backgroundColor: "#121214"
-                        url: Qt.resolvedUrl("../web/dice_preview_d6.html")
+                        url: Qt.resolvedUrl("../web/dice_physics.html")
                         onLoadingChanged: function(req) {
                             if (req.status === WebEngineView.LoadFailedStatus) {
                                 previewWebReady = false
@@ -1277,14 +1237,14 @@ Window {
                             }
                             if (req.status === WebEngineView.LoadSucceededStatus) {
                                 previewWebReady = true
-                                diceWindow.pushD6PreviewStyle()
-                                previewWeb.runJavaScript("window.startD6PreviewRoll && window.startD6PreviewRoll();")
+                                diceWindow.pushPreviewStyle()
+                                diceWindow.startPreviewRollNow()
                             }
                         }
                         onVisibleChanged: {
                             if (visible) {
-                                diceWindow.pushD6PreviewStyle()
-                                previewWeb.runJavaScript("window.startD6PreviewRoll && window.startD6PreviewRoll();")
+                                diceWindow.pushPreviewStyle()
+                                diceWindow.startPreviewRollNow()
                             }
                         }
                         onJavaScriptConsoleMessage: function(level, message, lineNumber, sourceID) {
@@ -1296,75 +1256,8 @@ Window {
                         id: previewRollTimer
                         interval: 3200
                         repeat: true
-                        running: dieStylePopup.visible && dieEditorDieKey === "d6" && previewWebReady
-                        onTriggered: previewWeb.runJavaScript("window.startD6PreviewRoll && window.startD6PreviewRoll();")
-                    }
-
-                    Item {
-                        visible: dieEditorDieKey !== "d6"
-                        anchors.fill: parent
-                        property real animY: -20
-                        property real animRot: -100
-                        property real animScale: 0.75
-
-                        DieGlyph {
-                            id: previewDie
-                            anchors.centerIn: parent
-                            dieType: dieEditorDieKey
-                            label: dieEditorDieKey
-                            implicitWidth: 56 * (Number(dieEditorWorking.scalePercent || 100) / 100.0)
-                            implicitHeight: implicitWidth
-                            fillColor: materialFaceColor(dieEditorWorking.color, dieEditorWorking.material)
-                            lineColor: materialLineColor(dieEditorWorking.color, dieEditorWorking.material)
-                            labelFontFamily: fontFamilyFor(dieEditorWorking.fontName)
-                            labelFontWeight: fontWeightFor(dieEditorWorking.fontName)
-                            labelPixelSize: Number(dieEditorWorking.fontSize || 12)
-                            textColor: dieEditorWorking.fontColor
-                            lineWidth: materialStrokeWidth(dieEditorWorking.material)
-                            y: parent.animY
-                            rotation: parent.animRot
-                            scale: parent.animScale
-                        }
-
-                        Rectangle {
-                            id: previewShadow
-                            anchors.horizontalCenter: previewDie.horizontalCenter
-                            y: previewDie.y + previewDie.height * 0.86
-                            width: previewDie.width * 1.28
-                            height: Math.max(8, previewDie.width * 0.18)
-                            radius: height / 2
-                            color: "#000000"
-                            opacity: materialShadowOpacity(dieEditorWorking.material)
-                        }
-
-                        Rectangle {
-                            anchors.centerIn: previewDie
-                            width: previewDie.width * 0.72
-                            height: previewDie.height * 0.28
-                            radius: width * 0.2
-                            color: "#FFFFFF"
-                            opacity: materialGlossOpacity(dieEditorWorking.material)
-                        }
-
-                        SequentialAnimation on animY {
-                            loops: Animation.Infinite
-                            running: dieStylePopup.visible && dieEditorDieKey !== "d6"
-                            NumberAnimation { from: -22; to: 8; duration: 520; easing.type: Easing.OutBounce }
-                            PauseAnimation { duration: 260 }
-                        }
-                        SequentialAnimation on animRot {
-                            loops: Animation.Infinite
-                            running: dieStylePopup.visible && dieEditorDieKey !== "d6"
-                            NumberAnimation { from: -110; to: 16; duration: 820; easing.type: Easing.OutCubic }
-                            PauseAnimation { duration: 180 }
-                        }
-                        SequentialAnimation on animScale {
-                            loops: Animation.Infinite
-                            running: dieStylePopup.visible && dieEditorDieKey !== "d6"
-                            NumberAnimation { from: 0.72; to: 1.03; duration: 430; easing.type: Easing.OutCubic }
-                            PauseAnimation { duration: 230 }
-                            NumberAnimation { from: 1.03; to: 1.0; duration: 180; easing.type: Easing.OutCubic }
-                        }
+                        running: dieStylePopup.visible && previewWebReady
+                        onTriggered: diceWindow.startPreviewRollNow()
                     }
                 }
             }
@@ -1383,7 +1276,7 @@ Window {
             RowLayout {
                 Layout.fillWidth: true
                 spacing: 8
-                Label { text: "Цвет кубика"; color: textSecondary; font.pixelSize: 11 }
+                Label { text: "Цвет граней"; color: textSecondary; font.pixelSize: 11 }
                 Rectangle {
                     implicitWidth: 40
                     implicitHeight: 20
@@ -1401,11 +1294,76 @@ Window {
                 Item { Layout.fillWidth: true }
             }
 
+            RowLayout {
+                Layout.fillWidth: true
+                spacing: 8
+                Label { text: "Градиент"; color: textSecondary; font.pixelSize: 11 }
+                Switch {
+                    checked: Boolean(dieEditorWorking.gradientEnabled)
+                    onToggled: updateEditorField("gradientEnabled", checked)
+                }
+                Item { Layout.fillWidth: true }
+            }
+
+            RowLayout {
+                visible: Boolean(dieEditorWorking.gradientEnabled)
+                Layout.fillWidth: true
+                spacing: 8
+                Label { text: "Цвет центра"; color: textSecondary; font.pixelSize: 11 }
+                Rectangle {
+                    implicitWidth: 40
+                    implicitHeight: 20
+                    radius: 6
+                    color: dieEditorWorking.gradientCenterColor
+                    border.width: 1
+                    border.color: "#666666"
+                }
+                AppButton {
+                    text: "🎨"
+                    implicitWidth: 32
+                    implicitHeight: 24
+                    onClicked: dieGradientCenterColorDialog.open()
+                }
+                Item { Layout.fillWidth: true }
+            }
+            Label {
+                visible: Boolean(dieEditorWorking.gradientEnabled)
+                text: "Резкость/плавность градиента"
+                color: textSecondary
+                font.pixelSize: 11
+            }
+            Slider {
+                visible: Boolean(dieEditorWorking.gradientEnabled)
+                Layout.fillWidth: true
+                from: 0
+                to: 100
+                stepSize: 1
+                value: Number(dieEditorWorking.gradientSharpness || 50)
+                onMoved: updateEditorField("gradientSharpness", Math.round(value))
+                onValueChanged: if (pressed) updateEditorField("gradientSharpness", Math.round(value))
+            }
+
+            Label {
+                visible: Boolean(dieEditorWorking.gradientEnabled)
+                text: "Смещение градиента"
+                color: textSecondary
+                font.pixelSize: 11
+            }
+            Slider {
+                visible: Boolean(dieEditorWorking.gradientEnabled)
+                Layout.fillWidth: true
+                from: 0
+                to: 100
+                stepSize: 1
+                value: Number(dieEditorWorking.gradientOffset || 50)
+                onMoved: updateEditorField("gradientOffset", Math.round(value))
+                onValueChanged: if (pressed) updateEditorField("gradientOffset", Math.round(value))
+            }
 
             RowLayout {
                 Layout.fillWidth: true
                 spacing: 8
-                Label { text: "Цвет шрифта"; color: textSecondary; font.pixelSize: 11 }
+                Label { text: "Цвет текста"; color: textSecondary; font.pixelSize: 11 }
                 Rectangle {
                     implicitWidth: 40
                     implicitHeight: 20
@@ -1422,49 +1380,59 @@ Window {
                 }
                 Item { Layout.fillWidth: true }
             }
-            Label { text: "Материал"; color: textSecondary; font.pixelSize: 11 }
-            ComboBox {
+
+            RowLayout {
                 Layout.fillWidth: true
-                model: ["Classic", "Matte", "Metal", "Stone", "Glass"]
-                currentIndex: Math.max(0, model.indexOf(dieEditorWorking.material))
-                onActivated: function(index) { updateEditorField("material", model[index]) }
+                spacing: 8
+                Label { text: "Цвет обводки текста"; color: textSecondary; font.pixelSize: 11 }
+                Rectangle {
+                    implicitWidth: 40
+                    implicitHeight: 20
+                    radius: 6
+                    color: dieEditorWorking.textStrokeColor
+                    border.width: 1
+                    border.color: "#666666"
+                }
+                AppButton {
+                    text: "🎨"
+                    implicitWidth: 32
+                    implicitHeight: 24
+                    onClicked: dieTextStrokeColorDialog.open()
+                }
+                Item { Layout.fillWidth: true }
             }
 
             RowLayout {
                 Layout.fillWidth: true
                 spacing: 8
-                Label { text: "Шрифт"; color: textSecondary; font.pixelSize: 11 }
-                ComboBox {
-                    Layout.fillWidth: true
-                    model: ["DemiBold", "Bold", "Black", "Monospace", "Serif", "Handwritten"]
-                    currentIndex: Math.max(0, model.indexOf(dieEditorWorking.fontName))
-                    onActivated: function(index) { updateEditorField("fontName", model[index]) }
+                Label { text: "Цвет ребер"; color: textSecondary; font.pixelSize: 11 }
+                Rectangle {
+                    implicitWidth: 40
+                    implicitHeight: 20
+                    radius: 6
+                    color: dieEditorWorking.edgeColor
+                    border.width: 1
+                    border.color: "#666666"
                 }
-                Label { text: "Размер"; color: textSecondary; font.pixelSize: 11 }
-                CountStepper {
-                    id: fontSizeStepper
-                    from: 8
-                    to: 26
-                    value: 12
-                    Component.onCompleted: value = Number(dieEditorWorking.fontSize || 12)
-                    onValueChanged: {
-                        var current = Number(dieEditorWorking.fontSize || 12)
-                        if (current !== value) {
-                            updateEditorField("fontSize", value)
-                        }
-                    }
-                    Connections {
-                        target: diceWindow
-                        function onDieEditorWorkingChanged() {
-                            var next = Number(dieEditorWorking.fontSize || 12)
-                            if (fontSizeStepper.value !== next) {
-                                fontSizeStepper.value = next
-                            }
-                        }
-                    }
+                AppButton {
+                    text: "🎨"
+                    implicitWidth: 32
+                    implicitHeight: 24
+                    onClicked: dieEdgeColorDialog.open()
                 }
+                Item { Layout.fillWidth: true }
             }
 
+            Label { text: "Толщина ребер"; color: textSecondary; font.pixelSize: 11 }
+            Slider {
+                Layout.fillWidth: true
+                from: 0
+                to: 5
+                stepSize: 0.1
+                value: Number(dieEditorWorking.edgeWidth !== undefined ? dieEditorWorking.edgeWidth : 1.0)
+                onMoved: updateEditorField("edgeWidth", Math.round(value * 10) / 10)
+                onValueChanged: if (pressed) updateEditorField("edgeWidth", Math.round(value * 10) / 10)
+            }
             Item { Layout.fillHeight: true }
 
             RowLayout {
@@ -1489,5 +1457,30 @@ Window {
         selectedColor: dieEditorWorking.fontColor
         onAccepted: updateEditorField("fontColor", selectedColor)
     }
+
+    ColorDialog {
+        id: dieGradientCenterColorDialog
+        title: "Выбор цвета центра градиента"
+        selectedColor: dieEditorWorking.gradientCenterColor
+        onAccepted: updateEditorField("gradientCenterColor", selectedColor)
+    }
+    ColorDialog {
+        id: dieTextStrokeColorDialog
+        title: "Выбор цвета обводки текста"
+        selectedColor: dieEditorWorking.textStrokeColor
+        onAccepted: updateEditorField("textStrokeColor", selectedColor)
+    }
+
+    ColorDialog {
+        id: dieEdgeColorDialog
+        title: "Выбор цвета ребер"
+        selectedColor: dieEditorWorking.edgeColor
+        onAccepted: updateEditorField("edgeColor", selectedColor)
+    }
 }
+
+
+
+
+
 
