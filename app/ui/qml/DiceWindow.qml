@@ -1,7 +1,6 @@
 ﻿import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
-import QtQuick.Dialogs
 import QtQuick.Window
 import QtWebEngine
 Window {
@@ -45,19 +44,29 @@ Window {
     property color panelBorder: "#4A4A4A"
     property var dieStyles: ({})
     property string dieEditorDieKey: "d6"
+    property string pendingColorField: ""
+    property string pendingColorTitle: "Выбор цвета"
     property var dieEditorWorking: ({
         "scalePercent": 100,
-        "color": "#D9E1F0",
+        "color": "#C9C9C9",
         "gradientEnabled": false,
         "gradientCenterColor": "#FFFFFF",
         "gradientSharpness": 50,
         "gradientOffset": 50,
-        "fontColor": "#EFEFF2",
-        "textStrokeColor": "#6E6E6E",
+        "fontColor": "#1F1F1F",
+        "textStrokeColor": "#EEEEEE",
+        "textGlowRadius": 100,
+        "textGlowOpacity": 100,
         "edgeColor": "#D4D4D4",
-        "edgeWidth": 1.0
+        "edgeWidth": 0.0
     })
     property bool previewWebReady: false
+    property int pickerHue: 0
+    property int pickerSaturation: 0
+    property int pickerValue: 100
+    property string pickerHexText: "#FFFFFF"
+    property string pickerPreviewColor: "#FFFFFF"
+    property string pickerCurrentColor: "#FFFFFF"
 
     function effectiveCount(countValue) {
         return countValue > 0 ? countValue : 1
@@ -272,20 +281,24 @@ Window {
     }
 
     function cloneStyle(style) {
+        var legacyGlow = Number(style && style.textShadowIntensity !== undefined ? style.textShadowIntensity : 100)
+        var glowRadius = Number(style && style.textGlowRadius !== undefined ? style.textGlowRadius : legacyGlow)
+        var glowOpacity = Number(style && style.textGlowOpacity !== undefined ? style.textGlowOpacity : legacyGlow)
         return {
             "scalePercent": Number(style && style.scalePercent !== undefined ? style.scalePercent : 100),
-            "color": String(style && style.color ? style.color : "#D9E1F0"),
+            "color": String(style && style.color ? style.color : "#C9C9C9"),
             "gradientEnabled": Boolean(style && style.gradientEnabled),
             "gradientCenterColor": String(style && style.gradientCenterColor ? style.gradientCenterColor : "#FFFFFF"),
             "gradientSharpness": Number(style && style.gradientSharpness !== undefined ? style.gradientSharpness : 50),
             "gradientOffset": Number(style && style.gradientOffset !== undefined ? style.gradientOffset : 50),
-            "fontColor": String(style && style.fontColor ? style.fontColor : "#EFEFF2"),
-            "textStrokeColor": String(style && style.textStrokeColor ? style.textStrokeColor : "#6E6E6E"),
+            "fontColor": String(style && style.fontColor ? style.fontColor : "#1F1F1F"),
+            "textStrokeColor": String(style && style.textStrokeColor ? style.textStrokeColor : "#EEEEEE"),
+            "textGlowRadius": Math.max(0, Math.min(200, glowRadius)),
+            "textGlowOpacity": Math.max(0, Math.min(200, glowOpacity)),
             "edgeColor": String(style && style.edgeColor ? style.edgeColor : "#D4D4D4"),
-            "edgeWidth": Number(style && style.edgeWidth !== undefined ? style.edgeWidth : 1.0)
+            "edgeWidth": Number(style && style.edgeWidth !== undefined ? style.edgeWidth : 0.0)
         }
     }
-
     function ensureDieStyle(key) {
         var k = String(key)
         var bag = dieStyles || {}
@@ -314,6 +327,243 @@ Window {
         dieStylePopup.close()
     }
 
+    function resetDieEditorToDefaults() {
+        dieEditorWorking = cloneStyle(null)
+    }
+
+    function clampNumber(value, minValue, maxValue) {
+        var n = Number(value)
+        if (!isFinite(n)) {
+            n = Number(minValue)
+        }
+        return Math.max(Number(minValue), Math.min(Number(maxValue), n))
+    }
+
+    function roundToDecimals(value, decimals) {
+        var d = Math.max(0, Number(decimals || 0))
+        var p = Math.pow(10, d)
+        return Math.round(Number(value) * p) / p
+    }
+
+    function clampAndRound(textValue, minValue, maxValue, decimals, fallbackValue) {
+        var parsed = Number(String(textValue || "").replace(",", "."))
+        if (!isFinite(parsed)) {
+            parsed = Number(fallbackValue)
+        }
+        var clamped = clampNumber(parsed, minValue, maxValue)
+        return roundToDecimals(clamped, decimals)
+    }
+
+    function formatSliderValue(value, decimals) {
+        var d = Math.max(0, Number(decimals || 0))
+        var n = Number(value)
+        if (!isFinite(n)) {
+            n = 0
+        }
+        if (d <= 0) {
+            return String(Math.round(n))
+        }
+        return Number(n).toFixed(d)
+    }
+
+    function byteToHex(value) {
+        var n = Math.max(0, Math.min(255, Math.round(Number(value) || 0)))
+        var h = n.toString(16).toUpperCase()
+        return h.length < 2 ? ("0" + h) : h
+    }
+
+    function rgbaToHex(r, g, b) {
+        return "#" + byteToHex(r) + byteToHex(g) + byteToHex(b)
+    }
+
+    function parseColorInput(raw, fallbackColor) {
+        var value = String(raw || "").trim()
+        if (value.length <= 0 && fallbackColor !== undefined) {
+            value = String(fallbackColor || "").trim()
+        }
+
+        var m = value.match(/^#([0-9a-fA-F]{3})$/)
+        if (m) {
+            var h3 = m[1]
+            return {
+                ok: true,
+                r: parseInt(h3[0] + h3[0], 16),
+                g: parseInt(h3[1] + h3[1], 16),
+                b: parseInt(h3[2] + h3[2], 16),
+                hex: "#" + (h3[0] + h3[0] + h3[1] + h3[1] + h3[2] + h3[2]).toUpperCase()
+            }
+        }
+
+        m = value.match(/^#([0-9a-fA-F]{6})$/)
+        if (m) {
+            var h6 = m[1].toUpperCase()
+            return {
+                ok: true,
+                r: parseInt(h6.slice(0, 2), 16),
+                g: parseInt(h6.slice(2, 4), 16),
+                b: parseInt(h6.slice(4, 6), 16),
+                hex: "#" + h6
+            }
+        }
+
+        m = value.match(/^#([0-9a-fA-F]{8})$/)
+        if (m) {
+            var h8 = m[1].toUpperCase()
+            var rgb = h8.slice(2)
+            return {
+                ok: true,
+                r: parseInt(rgb.slice(0, 2), 16),
+                g: parseInt(rgb.slice(2, 4), 16),
+                b: parseInt(rgb.slice(4, 6), 16),
+                hex: "#" + rgb
+            }
+        }
+
+        m = value.match(/^rgba?\(\s*([+-]?\d+(?:\.\d+)?)\s*,\s*([+-]?\d+(?:\.\d+)?)\s*,\s*([+-]?\d+(?:\.\d+)?)(?:\s*,\s*([+-]?\d*(?:\.\d+)?))?\s*\)$/i)
+        if (m) {
+            var rr = clampNumber(m[1], 0, 255)
+            var gg = clampNumber(m[2], 0, 255)
+            var bb = clampNumber(m[3], 0, 255)
+            return {
+                ok: true,
+                r: Math.round(rr),
+                g: Math.round(gg),
+                b: Math.round(bb),
+                hex: rgbaToHex(rr, gg, bb)
+            }
+        }
+
+        if (fallbackColor !== undefined && String(value) !== String(fallbackColor)) {
+            return parseColorInput(String(fallbackColor || "#FFFFFF"), "#FFFFFF")
+        }
+
+        return {
+            ok: false,
+            r: 255,
+            g: 255,
+            b: 255,
+            hex: "#FFFFFF"
+        }
+    }
+
+    function normalizePickerColor(raw, fallback) {
+        return parseColorInput(raw, fallback || "#FFFFFF").hex
+    }
+
+    function rgbToHsv(r, g, b) {
+        var rn = clampNumber(r, 0, 255) / 255.0
+        var gn = clampNumber(g, 0, 255) / 255.0
+        var bn = clampNumber(b, 0, 255) / 255.0
+        var maxc = Math.max(rn, gn, bn)
+        var minc = Math.min(rn, gn, bn)
+        var d = maxc - minc
+        var h = 0
+        if (d > 1e-6) {
+            if (maxc === rn) {
+                h = 60 * (((gn - bn) / d) % 6)
+            } else if (maxc === gn) {
+                h = 60 * (((bn - rn) / d) + 2)
+            } else {
+                h = 60 * (((rn - gn) / d) + 4)
+            }
+        }
+        if (h < 0) {
+            h += 360
+        }
+        var s = maxc <= 1e-6 ? 0 : (d / maxc)
+        var v = maxc
+        return {
+            h: Math.round(clampNumber(h, 0, 360)),
+            s: Math.round(clampNumber(s * 100, 0, 100)),
+            v: Math.round(clampNumber(v * 100, 0, 100))
+        }
+    }
+
+    function hsvToRgb(h, s, v) {
+        var hh = clampNumber(h, 0, 360)
+        var ss = clampNumber(s, 0, 100) / 100.0
+        var vv = clampNumber(v, 0, 100) / 100.0
+        if (ss <= 1e-6) {
+            var g = Math.round(vv * 255)
+            return { r: g, g: g, b: g }
+        }
+        if (hh >= 360) {
+            hh = 0
+        }
+        var c = vv * ss
+        var x = c * (1 - Math.abs(((hh / 60) % 2) - 1))
+        var m = vv - c
+        var rp = 0
+        var gp = 0
+        var bp = 0
+        if (hh < 60) {
+            rp = c; gp = x; bp = 0
+        } else if (hh < 120) {
+            rp = x; gp = c; bp = 0
+        } else if (hh < 180) {
+            rp = 0; gp = c; bp = x
+        } else if (hh < 240) {
+            rp = 0; gp = x; bp = c
+        } else if (hh < 300) {
+            rp = x; gp = 0; bp = c
+        } else {
+            rp = c; gp = 0; bp = x
+        }
+        return {
+            r: Math.round((rp + m) * 255),
+            g: Math.round((gp + m) * 255),
+            b: Math.round((bp + m) * 255)
+        }
+    }
+
+    function refreshPickerColorFromHSV(syncText) {
+        var rgb = hsvToRgb(pickerHue, pickerSaturation, pickerValue)
+        var hex = rgbaToHex(rgb.r, rgb.g, rgb.b)
+        pickerPreviewColor = hex
+        if (syncText) {
+            pickerHexText = hex
+            if (pickerHexInput && !pickerHexInput.activeFocus) {
+                pickerHexInput.text = hex
+            }
+        }
+    }
+
+    function setPickerFromColor(raw, fallbackColor) {
+        var parsed = parseColorInput(raw, fallbackColor || "#FFFFFF")
+        var hsv = rgbToHsv(parsed.r, parsed.g, parsed.b)
+        pickerHue = hsv.h
+        pickerSaturation = hsv.s
+        pickerValue = hsv.v
+        pickerCurrentColor = parsed.hex
+        pickerHexText = parsed.hex
+        pickerPreviewColor = parsed.hex
+        if (pickerHexInput) {
+            pickerHexInput.text = parsed.hex
+        }
+    }
+
+    function applyPickerTypedColor() {
+        var parsed = parseColorInput(pickerHexText, pickerPreviewColor)
+        var hsv = rgbToHsv(parsed.r, parsed.g, parsed.b)
+        pickerHue = hsv.h
+        pickerSaturation = hsv.s
+        pickerValue = hsv.v
+        pickerHexText = parsed.hex
+        pickerPreviewColor = parsed.hex
+        if (pickerHexInput) {
+            pickerHexInput.text = parsed.hex
+        }
+    }
+
+    function openDieColorDialog(field, titleText, fallbackColor) {
+        pendingColorField = String(field || "")
+        pendingColorTitle = String(titleText || "Выбор цвета")
+        var current = dieEditorWorking && pendingColorField.length > 0 ? dieEditorWorking[pendingColorField] : null
+        setPickerFromColor(current, fallbackColor || "#FFFFFF")
+        colorPickerPopup.open()
+    }
+
+
     function openDieEditor(key) {
         dieEditorDieKey = String(key)
         dieEditorWorking = styleForDie(dieEditorDieKey)
@@ -329,15 +579,18 @@ Window {
         }
 
         var stylePayload = {
-            "faceColor": String(dieEditorWorking.color || "#D9E1F0"),
+            "scalePercent": Number(dieEditorWorking.scalePercent !== undefined ? dieEditorWorking.scalePercent : 100),
+            "faceColor": String(dieEditorWorking.color || "#C9C9C9"),
             "gradientEnabled": Boolean(dieEditorWorking.gradientEnabled),
             "gradientCenterColor": String(dieEditorWorking.gradientCenterColor || "#FFFFFF"),
             "gradientSharpness": Math.max(0, Math.min(1, Number(dieEditorWorking.gradientSharpness || 50) / 100.0)),
             "gradientOffset": Math.max(0, Math.min(1, Number(dieEditorWorking.gradientOffset || 50) / 100.0)),
-            "textColor": String(dieEditorWorking.fontColor || "#EFEFF2"),
-            "textStrokeColor": String(dieEditorWorking.textStrokeColor || "#6E6E6E"),
+            "textColor": String(dieEditorWorking.fontColor || "#1F1F1F"),
+            "textStrokeColor": String(dieEditorWorking.textStrokeColor || "#EEEEEE"),
+            "textGlowRadius": Math.max(0, Math.min(2, Number(dieEditorWorking.textGlowRadius !== undefined ? dieEditorWorking.textGlowRadius : 100) / 100.0)),
+            "textGlowOpacity": Math.max(0, Math.min(2, Number(dieEditorWorking.textGlowOpacity !== undefined ? dieEditorWorking.textGlowOpacity : 100) / 100.0)),
             "edgeColor": String(dieEditorWorking.edgeColor || "#D4D4D4"),
-            "edgeWidth": Number(dieEditorWorking.edgeWidth !== undefined ? dieEditorWorking.edgeWidth : 1.0)
+            "edgeWidth": Number(dieEditorWorking.edgeWidth !== undefined ? dieEditorWorking.edgeWidth : 0.0)
         }
         previewWeb.runJavaScript("window.setStyleOverrides && window.setStyleOverrides(" + JSON.stringify(stylePayload) + ");")
         previewWeb.runJavaScript("window.setPreviewDieKind && window.setPreviewDieKind('" + String(dieEditorDieKey || "d6") + "');")
@@ -480,7 +733,7 @@ Window {
         value: 0
         focusPolicy: Qt.NoFocus
 
-        validator: IntValidator { bottom: control.from; top: control.to }
+        validator: RegularExpressionValidator { regularExpression: /[+-]?\d*/ }
 
         textFromValue: function(value, locale) {
             return Number(value).toLocaleString(locale, 'f', 0)
@@ -488,6 +741,9 @@ Window {
 
         valueFromText: function(text, locale) {
             var n = Number.fromLocaleString(locale, text)
+            if (!isFinite(n)) {
+                n = Number(text)
+            }
             if (!isFinite(n)) {
                 return control.from
             }
@@ -504,20 +760,15 @@ Window {
             font.pixelSize: 13
             validator: control.validator
             readOnly: !control.editable
-            onTextEdited: {
-                if (text.length === 0 || text === "-" || text === "+") {
-                    return
-                }
+            onEditingFinished: {
                 var parsed = control.valueFromText(text, control.locale)
                 if (!isFinite(parsed)) {
-                    return
+                    parsed = control.from
                 }
                 var bounded = Math.max(control.from, Math.min(control.to, parsed))
-                if (control.value !== bounded) {
-                    control.value = bounded
-                }
+                control.value = Math.round(bounded)
+                text = control.textFromValue(control.value, control.locale)
             }
-            onEditingFinished: control.value = control.valueFromText(text, control.locale)
         }
 
         background: Rectangle {
@@ -552,8 +803,52 @@ Window {
                 font.pixelSize: 9
             }
         }
-    }
+    }
 
+    component SliderNumberControl: RowLayout {
+        id: control
+        property real minValue: 0
+        property real maxValue: 100
+        property real step: 1
+        property int decimals: 0
+        property real value: 0
+        signal valueCommitted(real value)
+
+        Layout.fillWidth: true
+        spacing: 8
+
+        Slider {
+            id: slider
+            Layout.fillWidth: true
+            from: control.minValue
+            to: control.maxValue
+            stepSize: control.step
+            value: control.value
+            onMoved: control.valueCommitted(value)
+            onValueChanged: if (pressed) control.valueCommitted(value)
+        }
+
+        TextField {
+            id: valueInput
+            Layout.preferredWidth: 62
+            selectByMouse: true
+            inputMethodHints: Qt.ImhFormattedNumbersOnly
+            validator: RegularExpressionValidator { regularExpression: /[+-]?\d*(?:\.\d*)?/ }
+            text: formatSliderValue(control.value, control.decimals)
+
+            onEditingFinished: {
+                var v = clampAndRound(text, control.minValue, control.maxValue, control.decimals, control.value)
+                control.valueCommitted(v)
+                text = formatSliderValue(v, control.decimals)
+            }
+        }
+
+        onValueChanged: {
+            if (!valueInput.activeFocus) {
+                valueInput.text = formatSliderValue(control.value, control.decimals)
+            }
+        }
+    }
     component DieGlyph: Item {
         id: glyph
         property string dieType: "d6"
@@ -742,7 +1037,7 @@ Window {
                 horizontalAlignment: Text.AlignHCenter
                 verticalAlignment: Text.AlignVCenter
                 font.pixelSize: 11
-                validator: IntValidator { bottom: stepper.from; top: stepper.to }
+                validator: RegularExpressionValidator { regularExpression: /[+-]?\d*/ }
                 selectByMouse: true
 
                 onEditingFinished: {
@@ -1256,21 +1551,19 @@ Window {
                         id: previewRollTimer
                         interval: 3200
                         repeat: true
-                        running: dieStylePopup.visible && previewWebReady
+                        running: false
                         onTriggered: diceWindow.startPreviewRollNow()
                     }
                 }
-            }
-
+            }
             Label { text: "Размер (50%..150%)"; color: textSecondary; font.pixelSize: 11 }
-            Slider {
-                Layout.fillWidth: true
-                from: 50
-                to: 150
-                stepSize: 1
+            SliderNumberControl {
+                minValue: 50
+                maxValue: 150
+                step: 1
+                decimals: 0
                 value: Number(dieEditorWorking.scalePercent || 100)
-                onMoved: updateEditorField("scalePercent", Math.round(value))
-                onValueChanged: if (pressed) updateEditorField("scalePercent", Math.round(value))
+                onValueCommitted: updateEditorField("scalePercent", Math.round(value))
             }
 
             RowLayout {
@@ -1289,7 +1582,7 @@ Window {
                     text: "🎨"
                     implicitWidth: 32
                     implicitHeight: 24
-                    onClicked: dieFaceColorDialog.open()
+                    onClicked: openDieColorDialog("color", "Выбор цвета граней", "#C9C9C9")
                 }
                 Item { Layout.fillWidth: true }
             }
@@ -1322,7 +1615,7 @@ Window {
                     text: "🎨"
                     implicitWidth: 32
                     implicitHeight: 24
-                    onClicked: dieGradientCenterColorDialog.open()
+                    onClicked: openDieColorDialog("gradientCenterColor", "Выбор цвета центра градиента", "#FFFFFF")
                 }
                 Item { Layout.fillWidth: true }
             }
@@ -1332,15 +1625,14 @@ Window {
                 color: textSecondary
                 font.pixelSize: 11
             }
-            Slider {
+            SliderNumberControl {
                 visible: Boolean(dieEditorWorking.gradientEnabled)
-                Layout.fillWidth: true
-                from: 0
-                to: 100
-                stepSize: 1
+                minValue: 0
+                maxValue: 100
+                step: 1
+                decimals: 0
                 value: Number(dieEditorWorking.gradientSharpness || 50)
-                onMoved: updateEditorField("gradientSharpness", Math.round(value))
-                onValueChanged: if (pressed) updateEditorField("gradientSharpness", Math.round(value))
+                onValueCommitted: updateEditorField("gradientSharpness", Math.round(value))
             }
 
             Label {
@@ -1349,15 +1641,14 @@ Window {
                 color: textSecondary
                 font.pixelSize: 11
             }
-            Slider {
+            SliderNumberControl {
                 visible: Boolean(dieEditorWorking.gradientEnabled)
-                Layout.fillWidth: true
-                from: 0
-                to: 100
-                stepSize: 1
+                minValue: 0
+                maxValue: 100
+                step: 1
+                decimals: 0
                 value: Number(dieEditorWorking.gradientOffset || 50)
-                onMoved: updateEditorField("gradientOffset", Math.round(value))
-                onValueChanged: if (pressed) updateEditorField("gradientOffset", Math.round(value))
+                onValueCommitted: updateEditorField("gradientOffset", Math.round(value))
             }
 
             RowLayout {
@@ -1376,7 +1667,7 @@ Window {
                     text: "🎨"
                     implicitWidth: 32
                     implicitHeight: 24
-                    onClicked: dieFontColorDialog.open()
+                    onClicked: openDieColorDialog("fontColor", "Выбор цвета шрифта", "#1F1F1F")
                 }
                 Item { Layout.fillWidth: true }
             }
@@ -1384,7 +1675,7 @@ Window {
             RowLayout {
                 Layout.fillWidth: true
                 spacing: 8
-                Label { text: "Цвет обводки текста"; color: textSecondary; font.pixelSize: 11 }
+                Label { text: "Цвет свечения текста"; color: textSecondary; font.pixelSize: 11 }
                 Rectangle {
                     implicitWidth: 40
                     implicitHeight: 20
@@ -1397,11 +1688,28 @@ Window {
                     text: "🎨"
                     implicitWidth: 32
                     implicitHeight: 24
-                    onClicked: dieTextStrokeColorDialog.open()
+                    onClicked: openDieColorDialog("textStrokeColor", "Выбор цвета свечения текста", "#EEEEEE")
                 }
                 Item { Layout.fillWidth: true }
             }
-
+            Label { text: "Glow radius"; color: textSecondary; font.pixelSize: 11 }
+            SliderNumberControl {
+                minValue: 0
+                maxValue: 200
+                step: 1
+                decimals: 0
+                value: Number(dieEditorWorking.textGlowRadius !== undefined ? dieEditorWorking.textGlowRadius : 100)
+                onValueCommitted: updateEditorField("textGlowRadius", Math.round(value))
+            }
+            Label { text: "Glow opacity"; color: textSecondary; font.pixelSize: 11 }
+            SliderNumberControl {
+                minValue: 0
+                maxValue: 200
+                step: 1
+                decimals: 0
+                value: Number(dieEditorWorking.textGlowOpacity !== undefined ? dieEditorWorking.textGlowOpacity : 100)
+                onValueCommitted: updateEditorField("textGlowOpacity", Math.round(value))
+            }
             RowLayout {
                 Layout.fillWidth: true
                 spacing: 8
@@ -1418,20 +1726,19 @@ Window {
                     text: "🎨"
                     implicitWidth: 32
                     implicitHeight: 24
-                    onClicked: dieEdgeColorDialog.open()
+                    onClicked: openDieColorDialog("edgeColor", "Выбор цвета ребер", "#D4D4D4")
                 }
                 Item { Layout.fillWidth: true }
             }
 
             Label { text: "Толщина ребер"; color: textSecondary; font.pixelSize: 11 }
-            Slider {
-                Layout.fillWidth: true
-                from: 0
-                to: 5
-                stepSize: 0.1
-                value: Number(dieEditorWorking.edgeWidth !== undefined ? dieEditorWorking.edgeWidth : 1.0)
-                onMoved: updateEditorField("edgeWidth", Math.round(value * 10) / 10)
-                onValueChanged: if (pressed) updateEditorField("edgeWidth", Math.round(value * 10) / 10)
+            SliderNumberControl {
+                minValue: 0
+                maxValue: 5
+                step: 0.1
+                decimals: 1
+                value: Number(dieEditorWorking.edgeWidth !== undefined ? dieEditorWorking.edgeWidth : 0.0)
+                onValueCommitted: updateEditorField("edgeWidth", roundToDecimals(value, 1))
             }
             Item { Layout.fillHeight: true }
 
@@ -1439,48 +1746,155 @@ Window {
                 Layout.fillWidth: true
                 spacing: 8
                 AppButton { Layout.fillWidth: true; text: "Отмена"; onClicked: dieStylePopup.close() }
+                AppButton { Layout.fillWidth: true; text: "По умолчанию"; onClicked: resetDieEditorToDefaults() }
                 AppButton { Layout.fillWidth: true; text: "Сохранить"; accent: true; onClicked: saveDieEditor() }
             }
         }
-    }
+    }
+    Popup {
+        id: colorPickerPopup
+        modal: true
+        focus: true
+        width: Math.min(420, diceWindow.width - 24)
+        height: 430
+        closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
+        anchors.centerIn: Overlay.overlay
+        padding: 0
 
-    ColorDialog {
-        id: dieFaceColorDialog
-        title: "Выбор цвета кубика"
-        selectedColor: dieEditorWorking.color
-        onAccepted: updateEditorField("color", selectedColor)
-    }
+        background: Rectangle {
+            radius: 12
+            color: "#1E1E1F"
+            border.width: 1
+            border.color: "#4D4D4D"
+        }
 
-    ColorDialog {
-        id: dieFontColorDialog
-        title: "Выбор цвета шрифта"
-        selectedColor: dieEditorWorking.fontColor
-        onAccepted: updateEditorField("fontColor", selectedColor)
-    }
+        ColumnLayout {
+            anchors.fill: parent
+            anchors.margins: 10
+            spacing: 8
 
-    ColorDialog {
-        id: dieGradientCenterColorDialog
-        title: "Выбор цвета центра градиента"
-        selectedColor: dieEditorWorking.gradientCenterColor
-        onAccepted: updateEditorField("gradientCenterColor", selectedColor)
-    }
-    ColorDialog {
-        id: dieTextStrokeColorDialog
-        title: "Выбор цвета обводки текста"
-        selectedColor: dieEditorWorking.textStrokeColor
-        onAccepted: updateEditorField("textStrokeColor", selectedColor)
-    }
+            Label {
+                Layout.fillWidth: true
+                text: pendingColorTitle
+                color: textPrimary
+                font.pixelSize: 14
+                font.weight: Font.DemiBold
+            }
 
-    ColorDialog {
-        id: dieEdgeColorDialog
-        title: "Выбор цвета ребер"
-        selectedColor: dieEditorWorking.edgeColor
-        onAccepted: updateEditorField("edgeColor", selectedColor)
+            RowLayout {
+                Layout.fillWidth: true
+                spacing: 10
+
+                Rectangle {
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: 42
+                    radius: 8
+                    color: pickerCurrentColor
+                    border.width: 1
+                    border.color: "#666666"
+                    Label {
+                        anchors.centerIn: parent
+                        text: "Текущий"
+                        color: "#202020"
+                        font.pixelSize: 11
+                        font.weight: Font.DemiBold
+                    }
+                }
+
+                Rectangle {
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: 42
+                    radius: 8
+                    color: pickerPreviewColor
+                    border.width: 1
+                    border.color: "#666666"
+                    Label {
+                        anchors.centerIn: parent
+                        text: "Новый"
+                        color: "#202020"
+                        font.pixelSize: 11
+                        font.weight: Font.DemiBold
+                    }
+                }
+            }
+
+            Label { text: "Тон"; color: textSecondary; font.pixelSize: 11 }
+            SliderNumberControl {
+                minValue: 0
+                maxValue: 360
+                step: 1
+                decimals: 0
+                value: pickerHue
+                onValueCommitted: {
+                    pickerHue = Math.round(value)
+                    refreshPickerColorFromHSV(true)
+                }
+            }
+
+            Label { text: "Насыщенность"; color: textSecondary; font.pixelSize: 11 }
+            SliderNumberControl {
+                minValue: 0
+                maxValue: 100
+                step: 1
+                decimals: 0
+                value: pickerSaturation
+                onValueCommitted: {
+                    pickerSaturation = Math.round(value)
+                    refreshPickerColorFromHSV(true)
+                }
+            }
+
+            Label { text: "Яркость"; color: textSecondary; font.pixelSize: 11 }
+            SliderNumberControl {
+                minValue: 0
+                maxValue: 100
+                step: 1
+                decimals: 0
+                value: pickerValue
+                onValueCommitted: {
+                    pickerValue = Math.round(value)
+                    refreshPickerColorFromHSV(true)
+                }
+            }
+
+            Label { text: "Код цвета (HEX / RGB(A))"; color: textSecondary; font.pixelSize: 11 }
+            TextField {
+                id: pickerHexInput
+                Layout.fillWidth: true
+                text: pickerHexText
+                placeholderText: "#RRGGBB или rgb(255,255,255)"
+                selectByMouse: true
+                onTextEdited: pickerHexText = text
+                onEditingFinished: {
+                    pickerHexText = text
+                    applyPickerTypedColor()
+                }
+            }
+
+            Item { Layout.fillHeight: true }
+
+            RowLayout {
+                Layout.fillWidth: true
+                spacing: 8
+                AppButton {
+                    Layout.fillWidth: true
+                    text: "Отмена"
+                    onClicked: colorPickerPopup.close()
+                }
+                AppButton {
+                    Layout.fillWidth: true
+                    text: "Применить"
+                    accent: true
+                    onClicked: {
+                        if (pendingColorField && pendingColorField.length > 0) {
+                            updateEditorField(pendingColorField, pickerPreviewColor)
+                        }
+                        colorPickerPopup.close()
+                    }
+                }
+            }
+        }
     }
 }
-
-
-
-
 
 

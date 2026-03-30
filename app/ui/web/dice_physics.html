@@ -62,6 +62,8 @@
       box-shadow: none;
       text-rendering: geometricPrecision;
       -webkit-font-smoothing: antialiased;
+      overflow: hidden;
+      isolation: isolate;
     }
 
     .core {
@@ -119,6 +121,8 @@
       box-sizing: border-box;
       backface-visibility: hidden;
       transform-origin: 50% 66.666%;
+      overflow: hidden;
+      isolation: isolate;
     }
 
     .d8-core {
@@ -159,6 +163,8 @@
       box-sizing: border-box;
       backface-visibility: hidden;
       transform-origin: 50% 50%;
+      overflow: hidden;
+      isolation: isolate;
     }
 
     .d4-core {
@@ -176,6 +182,7 @@
       display: inline-block;
       text-align: center;
       font-variant-numeric: tabular-nums;
+      z-index: 3;
     }
 
     .d10 {
@@ -208,6 +215,8 @@
       backface-visibility: hidden;
       transform-origin: 50% 50%;
       border: none;
+      overflow: hidden;
+      isolation: isolate;
     }
 
     .d10-label {
@@ -216,6 +225,7 @@
       transform-origin: 50% 50%;
       pointer-events: none;
       white-space: nowrap;
+      z-index: 3;
     }
 
     .d10t-label {
@@ -224,6 +234,7 @@
       transform-origin: 50% 50%;
       pointer-events: none;
       white-space: nowrap;
+      z-index: 3;
     }
 
     .d10-mark {
@@ -236,6 +247,7 @@
       color: #232323;
       opacity: 1;
       pointer-events: none;
+      z-index: 3;
     }
 
     .d12-label {
@@ -247,6 +259,7 @@
       display: inline-block;
       text-align: center;
       font-variant-numeric: tabular-nums;
+      z-index: 3;
     }
 
     .d20-label {
@@ -258,6 +271,7 @@
       display: inline-block;
       text-align: center;
       font-variant-numeric: tabular-nums;
+      z-index: 3;
     }
 
     .d12-mark {
@@ -270,6 +284,7 @@
       color: #232323;
       opacity: 1;
       pointer-events: none;
+      z-index: 3;
     }
 
     .d10-core {
@@ -307,6 +322,8 @@
       box-sizing: border-box;
       backface-visibility: hidden;
       transform-origin: 50% 50%;
+      overflow: hidden;
+      isolation: isolate;
     }
 
     .d12-core {
@@ -346,19 +363,32 @@
       box-sizing: border-box;
       backface-visibility: hidden;
       transform-origin: 50% 50%;
+      overflow: hidden;
+      isolation: isolate;
+      transition: box-shadow 180ms ease;
     }
 
     .d20-core {
       display: none;
     }
-    .d20-face {
-      transition: box-shadow 180ms ease;
-      overflow: hidden;
-      isolation: isolate;
-      box-shadow:
-        inset 0 0 0 1px rgba(212, 212, 212, 0.34),
-        inset 0 0 9px rgba(220, 220, 220, 0.14),
-        0 0 7px rgba(226, 226, 226, 0.12);
+    
+    .face-edge-overlay {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      z-index: 0;
+      overflow: visible;
+    }
+
+    .face-edge-overlay polygon {
+      fill: none;
+      stroke: transparent;
+      stroke-width: 0;
+      vector-effect: non-scaling-stroke;
+      stroke-linejoin: round;
+      stroke-linecap: round;
     }
 
     .d20-face::before {
@@ -385,7 +415,7 @@
 
     .d20-label {
       transition: color 180ms ease, text-shadow 180ms ease;
-      z-index: 2;
+      z-index: 3;
       color: #1f1f1f;
       text-shadow:
         0 0 6px rgba(238, 238, 238, 0.70),
@@ -621,16 +651,19 @@
       const d20RequestMeta = new Map();
       let previewDieKind = "d6";
       let styleOverrides = {
+        scalePercent: 100,
         faceColor: "#c9c9c9",
         gradientEnabled: false,
         gradientCenterColor: "#ffffff",
-
         gradientSharpness: 0.5,
         gradientOffset: 0.5,
         textColor: "#1f1f1f",
-        textStrokeColor: "#6e6e6e",
-        edgeColor: "#d4d4d4",
-        edgeWidth: 1.0,
+        textStrokeColor: "#eeeeee",
+          textShadowIntensity: 1.0,
+          textGlowRadius: 1.0,
+          textGlowOpacity: 1.0,
+          edgeColor: "#d4d4d4",
+          edgeWidth: 0.0,
       };
 
       const COLLISION_RESTITUTION = 0.14;
@@ -1032,7 +1065,8 @@
 
         scene.appendChild(shadow);
         scene.appendChild(wrap);
-        const nodes = { wrap, dice, shadow, faceEls, coreEl, spec };
+        const nodes = { wrap, dice, shadow, faceEls, coreEl, spec };
+
         return nodes;
       }
 
@@ -1053,7 +1087,60 @@
         return s.length > 0 ? s : fallback;
       }
 
-      function buildFaceBackground() {
+      function parsePercent(value, fallback) {
+        const s = String(value || '').trim();
+        if (s.endsWith('%')) {
+          const v = Number(s.slice(0, -1));
+          return Number.isFinite(v) ? clamp(v, 0, 100) : fallback;
+        }
+        const n = Number(s);
+        return Number.isFinite(n) ? clamp(n, 0, 100) : fallback;
+      }
+
+      function getFaceGradientCenter(face) {
+        let cx = 50;
+        let cy = 50;
+        if (face && typeof face.querySelector === 'function') {
+          const label = face.querySelector('.d4-label, .d10-label, .d10t-label, .d12-label, .d20-label');
+          if (label) {
+            cx = parsePercent(label.style.left, 50);
+            cy = parsePercent(label.style.top, 50);
+          }
+        }
+        return { cx, cy };
+      }
+
+      function colorWithAlpha(color, alpha) {
+        const a = clamp(Number(alpha || 0), 0, 1);
+        const s = normalizeColor(color, '#eeeeee').trim();
+        if (/^#([0-9a-f]{3,8})$/i.test(s)) {
+          let hex = s.slice(1);
+          if (hex.length === 3 || hex.length === 4) {
+            hex = hex.split('').map((c) => c + c).join('');
+          }
+          if (hex.length === 6 || hex.length === 8) {
+            const r = parseInt(hex.slice(0, 2), 16);
+            const g = parseInt(hex.slice(2, 4), 16);
+            const b = parseInt(hex.slice(4, 6), 16);
+            const aIn = hex.length === 8 ? parseInt(hex.slice(6, 8), 16) / 255 : 1;
+            return `rgba(${r}, ${g}, ${b}, ${(a * aIn).toFixed(3)})`;
+          }
+        }
+        const rgb = /^rgba?\(([^)]+)\)$/i.exec(s);
+        if (rgb) {
+          const parts = rgb[1].split(',').map((x) => Number(x.trim()));
+          if (parts.length >= 3) {
+            const r = clamp(parts[0], 0, 255);
+            const g = clamp(parts[1], 0, 255);
+            const b = clamp(parts[2], 0, 255);
+            const aIn = parts.length >= 4 && Number.isFinite(parts[3]) ? clamp(parts[3], 0, 1) : 1;
+            return `rgba(${r}, ${g}, ${b}, ${(a * aIn).toFixed(3)})`;
+          }
+        }
+        return `rgba(238, 238, 238, ${a.toFixed(3)})`;
+      }
+
+      function buildFaceBackground(cxPct, cyPct) {
         const faceColor = normalizeColor(styleOverrides.faceColor, "#c9c9c9");
         const centerColor = normalizeColor(styleOverrides.gradientCenterColor, faceColor);
         if (!Boolean(styleOverrides.gradientEnabled)) {
@@ -1061,39 +1148,236 @@
         }
         const softness = clamp(Number(styleOverrides.gradientSharpness || 0), 0, 1);
         const offset = clamp(Number(styleOverrides.gradientOffset || 0), 0, 1);
-        const coreStop = 6 + offset * 26;
-        const feather = 24 + softness * 56;
-        const stop1 = clamp(coreStop, 0, 92).toFixed(1);
+        const coreStop = 4 + offset * 18;
+        const feather = 36 + softness * 76;
+        const stop1 = clamp(coreStop, 0, 90).toFixed(1);
         const stop2 = clamp(coreStop + feather, 0, 100).toFixed(1);
-        return `radial-gradient(circle at 50% 50%, ${centerColor} 0%, ${centerColor} ${stop1}%, ${faceColor} ${stop2}%, ${faceColor} 100%)`;
+        const cx = clamp(Number(cxPct || 50), 0, 100).toFixed(1);
+        const cy = clamp(Number(cyPct || 50), 0, 100).toFixed(1);
+        return `radial-gradient(circle at ${cx}% ${cy}%, ${centerColor} 0%, ${centerColor} ${stop1}%, ${faceColor} ${stop2}%, ${faceColor} 100%)`;
+      }
+
+            function parseClipPolygonPoints(clipPathValue) {
+        const clip = String(clipPathValue || '').trim();
+        const m = /^polygon\((.*)\)$/i.exec(clip);
+        if (!m) {
+          return null;
+        }
+        const body = String(m[1] || '').trim().replace(/^evenodd\s*,\s*/i, '');
+        if (!body) {
+          return null;
+        }
+        const parts = body.split(',');
+        const points = [];
+        for (let i = 0; i < parts.length; i += 1) {
+          const token = String(parts[i] || '').trim();
+          const mm = /^(-?\d*\.?\d+)(?:%)?\s+(-?\d*\.?\d+)(?:%)?$/.exec(token);
+          if (!mm) {
+            continue;
+          }
+          points.push({
+            x: clamp(Number(mm[1]), 0, 100),
+            y: clamp(Number(mm[2]), 0, 100),
+          });
+        }
+        return points.length >= 3 ? points : null;
+      }
+
+      function fallbackFacePolygonPoints(face) {
+        if (!face || !face.classList) {
+          return [
+            { x: 0, y: 0 },
+            { x: 100, y: 0 },
+            { x: 100, y: 100 },
+            { x: 0, y: 100 },
+          ];
+        }
+        if (face.classList.contains('d8-face') || face.classList.contains('d20-face')) {
+          return [
+            { x: 50, y: 0 },
+            { x: 0, y: 100 },
+            { x: 100, y: 100 },
+          ];
+        }
+        if (face.classList.contains('d10-face')) {
+          return [
+            { x: 50, y: 0 },
+            { x: 100, y: 50 },
+            { x: 50, y: 100 },
+            { x: 0, y: 50 },
+          ];
+        }
+        if (face.classList.contains('d12-face')) {
+          return [
+            { x: 50, y: 0 },
+            { x: 97.5528258, y: 34.5491503 },
+            { x: 79.3892626, y: 90.4508497 },
+            { x: 20.6107374, y: 90.4508497 },
+            { x: 2.4471742, y: 34.5491503 },
+          ];
+        }
+        return [
+          { x: 0, y: 0 },
+          { x: 100, y: 0 },
+          { x: 100, y: 100 },
+          { x: 0, y: 100 },
+        ];
+      }
+
+      function resolveFacePolygonPoints(face, explicitClipPath) {
+        const fromExplicit = parseClipPolygonPoints(explicitClipPath);
+        if (fromExplicit && fromExplicit.length >= 3) {
+          return fromExplicit;
+        }
+        const inlineClip = parseClipPolygonPoints(face && face.style ? face.style.clipPath : '');
+        if (inlineClip && inlineClip.length >= 3) {
+          return inlineClip;
+        }
+        if (face && typeof window.getComputedStyle === 'function') {
+          const cs = window.getComputedStyle(face);
+          const computedClip = parseClipPolygonPoints((cs && (cs.clipPath || cs.webkitClipPath)) || '');
+          if (computedClip && computedClip.length >= 3) {
+            return computedClip;
+          }
+        }
+        return fallbackFacePolygonPoints(face);
+      }
+
+      function ensureFaceEdgeOverlay(face, explicitClipPath) {
+        if (!face) {
+          return null;
+        }
+        let overlay = null;
+        const children = face.children || [];
+        for (let i = 0; i < children.length; i += 1) {
+          const child = children[i];
+          if (child && child.classList && child.classList.contains('face-edge-overlay')) {
+            overlay = child;
+            break;
+          }
+        }
+        if (!overlay) {
+          overlay = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+          overlay.setAttribute('class', 'face-edge-overlay');
+          overlay.setAttribute('viewBox', '0 0 100 100');
+          overlay.setAttribute('preserveAspectRatio', 'none');
+          overlay.setAttribute('aria-hidden', 'true');
+          const poly = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
+          poly.setAttribute('class', 'face-edge-shape');
+          overlay.appendChild(poly);
+          face.insertBefore(overlay, face.firstChild || null);
+        }
+
+        const polygon = overlay.querySelector('.face-edge-shape');
+        if (polygon) {
+          const pts = resolveFacePolygonPoints(face, explicitClipPath);
+          const pointsAttr = pts.map((p) => `${Number(p.x).toFixed(3)},${Number(p.y).toFixed(3)}`).join(' ');
+          polygon.setAttribute('points', pointsAttr);
+        }
+        return overlay;
+      }
+
+      function applyFaceEdgeOverlay(face, explicitClipPath, edgeColor, edgeWidth) {
+        if (!face) {
+          return;
+        }
+        const overlay = ensureFaceEdgeOverlay(face, explicitClipPath);
+        if (!overlay) {
+          return;
+        }
+        const polygon = overlay.querySelector('.face-edge-shape');
+        if (!polygon) {
+          return;
+        }
+        if (edgeWidth <= 0.01) {
+          overlay.style.display = 'none';
+          polygon.style.strokeWidth = '0';
+          return;
+        }
+        overlay.style.display = 'block';
+        polygon.style.stroke = edgeColor;
+        polygon.style.strokeWidth = String(edgeWidth.toFixed(3));
+      }
+
+      function buildTextGlowShadow(glowColor, glowRadius, glowOpacity) {
+        const radius = clamp(Number(glowRadius || 0), 0, 2);
+        const opacity = clamp(Number(glowOpacity || 0), 0, 2);
+        if (radius <= 0.001 || opacity <= 0.001) {
+          return 'none';
+        }
+
+        const contourDist = 0.35 + radius * 0.95;
+        const diagDist = contourDist * 0.72;
+        const hardAlpha = clamp(0.48 + opacity * 0.28, 0, 1);
+        const softAlpha1 = clamp(opacity * 0.42, 0, 1);
+        const softAlpha2 = clamp(opacity * 0.30, 0, 1);
+
+        const shadows = [
+          `${contourDist.toFixed(2)}px 0 0 ${colorWithAlpha(glowColor, hardAlpha)}`,
+          `-${contourDist.toFixed(2)}px 0 0 ${colorWithAlpha(glowColor, hardAlpha)}`,
+          `0 ${contourDist.toFixed(2)}px 0 ${colorWithAlpha(glowColor, hardAlpha)}`,
+          `0 -${contourDist.toFixed(2)}px 0 ${colorWithAlpha(glowColor, hardAlpha)}`,
+          `${diagDist.toFixed(2)}px ${diagDist.toFixed(2)}px 0 ${colorWithAlpha(glowColor, hardAlpha)}`,
+          `${diagDist.toFixed(2)}px -${diagDist.toFixed(2)}px 0 ${colorWithAlpha(glowColor, hardAlpha)}`,
+          `-${diagDist.toFixed(2)}px ${diagDist.toFixed(2)}px 0 ${colorWithAlpha(glowColor, hardAlpha)}`,
+          `-${diagDist.toFixed(2)}px -${diagDist.toFixed(2)}px 0 ${colorWithAlpha(glowColor, hardAlpha)}`,
+        ];
+
+        const blur1 = Math.max(0, (radius - 0.22) * 6.5);
+        const blur2 = Math.max(0, (radius - 0.90) * 12.0);
+        if (blur1 > 0.05) {
+          shadows.push(`0 0 ${blur1.toFixed(2)}px ${colorWithAlpha(glowColor, softAlpha1)}`);
+        }
+        if (blur2 > 0.05) {
+          shadows.push(`0 0 ${blur2.toFixed(2)}px ${colorWithAlpha(glowColor, softAlpha2)}`);
+        }
+        return shadows.join(', ');
       }
 
       function applyStyleToState(state) {
         if (!state || !Array.isArray(state.faceEls)) {
           return;
         }
-        const faceBg = buildFaceBackground();
-        const textColor = normalizeColor(styleOverrides.textColor, "#1f1f1f");
-        const strokeColor = normalizeColor(styleOverrides.textStrokeColor, "#6e6e6e");
-        const edgeColor = normalizeColor(styleOverrides.edgeColor, "#d4d4d4");
+        const textColor = normalizeColor(styleOverrides.textColor, '#1f1f1f');
+        const glowColor = normalizeColor(styleOverrides.textStrokeColor, '#eeeeee');
+        const edgeColor = normalizeColor(styleOverrides.edgeColor, '#d4d4d4');
         const edgeWidth = clamp(Number(styleOverrides.edgeWidth || 0), 0, 5);
-        const edgeInset = edgeWidth > 0.01 ? `inset 0 0 0 ${edgeWidth.toFixed(2)}px ${edgeColor}, ` : "";
-        const baseLight = "inset 0 0 9px rgba(220, 220, 220, 0.14), 0 0 7px rgba(226, 226, 226, 0.12)";
+        const legacyGlow = clamp(Number(styleOverrides.textShadowIntensity || 1), 0, 2);
+        const glowRadius = clamp(Number(styleOverrides.textGlowRadius !== undefined ? styleOverrides.textGlowRadius : legacyGlow), 0, 2);
+        const glowOpacity = clamp(Number(styleOverrides.textGlowOpacity !== undefined ? styleOverrides.textGlowOpacity : legacyGlow), 0, 2);
+        const glowShadow = buildTextGlowShadow(glowColor, glowRadius, glowOpacity);
+
         for (let i = 0; i < state.faceEls.length; i += 1) {
           const face = state.faceEls[i];
           if (!face) continue;
-          face.style.background = faceBg;
+          const center = getFaceGradientCenter(face);
+          face.style.background = buildFaceBackground(center.cx, center.cy);
           face.style.color = textColor;
-          face.style.border = "none";
-          face.style.boxSizing = "border-box";
-          face.style.boxShadow = edgeInset + baseLight;
-          const labels = face.querySelectorAll(".d4-label, .d10-label, .d10t-label, .d12-label, .d20-label");
+          face.style.boxSizing = 'border-box';
+          face.style.textShadow = glowShadow;
+
+          const ft = state.diceSpec && Array.isArray(state.diceSpec.faceTransforms)
+            ? state.diceSpec.faceTransforms[i]
+            : null;
+          const explicitClipPath = ft && ft.clipPath ? String(ft.clipPath) : '';
+          applyFaceEdgeOverlay(face, explicitClipPath, edgeColor, edgeWidth);
+
+          const labels = face.querySelectorAll('.d4-label, .d10-label, .d10t-label, .d12-label, .d20-label');
           for (let j = 0; j < labels.length; j += 1) {
             const label = labels[j];
             if (!label) continue;
             label.style.color = textColor;
-            label.style.webkitTextStroke = `0.85px ${strokeColor}`;
-            label.style.paintOrder = "stroke fill";
+            label.style.webkitTextStroke = '0px transparent';
+            label.style.paintOrder = 'fill';
+            label.style.textShadow = glowShadow;
+          }
+
+          const marks = face.querySelectorAll('.d10-mark, .d12-mark');
+          for (let j = 0; j < marks.length; j += 1) {
+            const mark = marks[j];
+            if (!mark) continue;
+            mark.style.color = textColor;
+            mark.style.textShadow = glowShadow;
           }
         }
       }
@@ -2271,6 +2555,8 @@
 
         const l = normalizeVec3(lightX - state.px, lightY - state.py, lightZ - state.z);
         const v = { x: 0, y: 0, z: 1 };
+        const edgeWidth = clamp(Number(styleOverrides.edgeWidth || 0), 0, 5);
+        const strictPreviewNoEdge = Boolean(state.previewMode) && edgeWidth <= 0.01;
 
         const normals = (state.diceSpec && state.diceSpec.faceNormals) || FACE_NORMALS;
         for (let i = 0; i < state.faceEls.length; i += 1) {
@@ -2290,10 +2576,19 @@
 
           const bright = clamp(diffuse, profile.brightnessMin, profile.brightnessMax);
           face.style.filter = `brightness(${bright.toFixed(3)}) contrast(${profile.contrast.toFixed(2)})`;
-          const rimLight = (profile.rimLightBase + spec * profile.rimLightScale).toFixed(3);
-          const rimDark = (profile.rimDarkBase + (1 - ndotl) * profile.rimDarkScale).toFixed(3);
+          const rimLight = strictPreviewNoEdge ? 0 : Number((profile.rimLightBase + spec * profile.rimLightScale).toFixed(3));
+          const rimDark = strictPreviewNoEdge ? 0 : Number((profile.rimDarkBase + (1 - ndotl) * profile.rimDarkScale).toFixed(3));
           const faceShade = (profile.faceShadeBase + (1 - ndotl) * profile.faceShadeScale).toFixed(3);
-          face.style.boxShadow = `inset 0 0 0 ${profile.faceOutlinePx}px rgba(255,255,255,${rimLight}), inset 0 0 0 ${profile.faceInnerOutlinePx}px rgba(0,0,0,${rimDark}), inset 0 0 0 999px rgba(0,0,0,${faceShade})`;
+
+          const shadowParts = [];
+          if (rimLight > 0.0005 && profile.faceOutlinePx > 0) {
+            shadowParts.push(`inset 0 0 0 ${profile.faceOutlinePx}px rgba(255,255,255,${rimLight.toFixed(3)})`);
+          }
+          if (rimDark > 0.0005 && profile.faceInnerOutlinePx > 0) {
+            shadowParts.push(`inset 0 0 0 ${profile.faceInnerOutlinePx}px rgba(0,0,0,${rimDark.toFixed(3)})`);
+          }
+          shadowParts.push(`inset 0 0 0 999px rgba(0,0,0,${faceShade})`);
+          face.style.boxShadow = shadowParts.join(', ');
         }
 
         if (state.coreEl) {
@@ -2306,7 +2601,6 @@
           state.coreEl.style.backgroundColor = `rgba(${profile.coreColorR}, ${profile.coreColorG}, ${profile.coreColorB}, ${darkness.toFixed(3)})`;
         }
       }
-
       function screenFacingFaceId(rx, ry) {
         const faces = [
           { id: 1, n: { x: 0, y: 0, z: 1 } },
@@ -2729,15 +3023,16 @@
         const zNorm = clamp(state.z / 260, 0, 1);
         const cx = state.px;
         const cy = state.py - state.z * 0.55;
-        const scale = 0.78 + (1 - zNorm) * 0.22;
+        const previewScale = clamp(Number(styleOverrides.scalePercent || 100) / 100, 0.5, 1.5);
+        const scale = state.previewMode ? previewScale : (0.78 + (1 - zNorm) * 0.22);
 
         state.wrap.style.opacity = String(clamp(state.alpha, 0, 1));
         state.wrap.style.transform = `translate(${cx}px, ${cy}px) translate(-50%, -50%) scale(${scale})`;
         state.dice.style.transform =
           `translate(-50%, -50%) rotateZ(${state.rz}deg) rotateY(${state.ry}deg) rotateX(${state.rx}deg)`;
 
-        const shadowScale = 0.78 + (1 - zNorm) * 0.26;
-        const shadowOpacity = clamp((1 - zNorm) * 0.38, 0, 0.36) * state.alpha;
+        const shadowScale = state.previewMode ? (0.72 * previewScale) : (0.78 + (1 - zNorm) * 0.26);
+        const shadowOpacity = (state.previewMode ? 0.22 : clamp((1 - zNorm) * 0.38, 0, 0.36)) * state.alpha;
         state.shadow.style.opacity = String(shadowOpacity);
         state.shadow.style.transform = `translate(${state.px}px, ${state.py + 28}px) translate(-50%, -50%) scale(${shadowScale})`;
 
@@ -2754,9 +3049,18 @@
           }
         }
       };
-      window.setStyleOverrides = function setStyleOverrides(payload) {
+            window.setStyleOverrides = function setStyleOverrides(payload) {
         const p = payload && typeof payload === "object" ? payload : {};
+        const legacyGlow = clamp(Number(p.textShadowIntensity !== undefined ? p.textShadowIntensity : styleOverrides.textShadowIntensity), 0, 2);
+        const radiusInput = p.textGlowRadius !== undefined
+          ? p.textGlowRadius
+          : (styleOverrides.textGlowRadius !== undefined ? styleOverrides.textGlowRadius : legacyGlow);
+        const opacityInput = p.textGlowOpacity !== undefined
+          ? p.textGlowOpacity
+          : (styleOverrides.textGlowOpacity !== undefined ? styleOverrides.textGlowOpacity : legacyGlow);
+
         styleOverrides = {
+          scalePercent: clamp(Number(p.scalePercent !== undefined ? p.scalePercent : styleOverrides.scalePercent), 50, 150),
           faceColor: normalizeColor(p.faceColor, styleOverrides.faceColor),
           gradientEnabled: Boolean(p.gradientEnabled),
           gradientCenterColor: normalizeColor(p.gradientCenterColor, styleOverrides.gradientCenterColor),
@@ -2764,6 +3068,9 @@
           gradientOffset: clamp(Number(p.gradientOffset !== undefined ? p.gradientOffset : styleOverrides.gradientOffset), 0, 1),
           textColor: normalizeColor(p.textColor, styleOverrides.textColor),
           textStrokeColor: normalizeColor(p.textStrokeColor, styleOverrides.textStrokeColor),
+          textShadowIntensity: legacyGlow,
+          textGlowRadius: clamp(Number(radiusInput), 0, 2),
+          textGlowOpacity: clamp(Number(opacityInput), 0, 2),
           edgeColor: normalizeColor(p.edgeColor, styleOverrides.edgeColor),
           edgeWidth: clamp(Number(p.edgeWidth !== undefined ? p.edgeWidth : styleOverrides.edgeWidth), 0, 5),
         };
@@ -2774,7 +3081,23 @@
           }
         }
       };
-
+      window.getDefaultDiceStyle = function getDefaultDiceStyle() {
+        return {
+          scalePercent: 100,
+          faceColor: "#c9c9c9",
+          gradientEnabled: false,
+          gradientCenterColor: "#ffffff",
+          gradientSharpness: 0.5,
+          gradientOffset: 0.5,
+          textColor: "#1f1f1f",
+          textStrokeColor: "#eeeeee",
+          textShadowIntensity: 1.0,
+          textGlowRadius: 1.0,
+          textGlowOpacity: 1.0,
+          edgeColor: "#d4d4d4",
+          edgeWidth: 0.0,
+        };
+      };
       window.setPreviewDieKind = function setPreviewDieKind(kind) {
         previewDieKind = String(kind || "d6").toLowerCase();
       };
@@ -2782,11 +3105,11 @@
       window.startPreviewRoll = function startPreviewRoll() {
         window.clearAllDice();
         if (previewDieKind === "d100") {
-          window.startRoll(0, "d10t", 1);
-          window.startRoll(0, "d10", 1);
+          window.startD6Roll(0, "d10t", 0, 2);
+          window.startD6Roll(0, "d10", 1, 2);
           return;
         }
-        window.startRoll(0, previewDieKind, 1);
+        window.startD6Roll(0, previewDieKind, 0, 1);
       };
       window.setD20RequestMeta = function setD20RequestMeta(requestId, modeName) {
         const reqId = Number(requestId || 0);
@@ -2802,7 +3125,7 @@
         const modelKind = String(kind || "d6");
         const rollCount = Math.max(1, Number(count || 1));
         for (let i = 0; i < rollCount; i += 1) {
-          window.startD6Roll(reqId, modelKind);
+          window.startD6Roll(reqId, modelKind, i, rollCount);
         }
       };
 
@@ -2810,7 +3133,7 @@
         window.startRoll(0, "d8", 1);
       };
 
-      window.startD6Roll = function startD6Roll(requestId, kind) {
+      window.startD6Roll = function startD6Roll(requestId, kind, slotIndex, totalCount) {
         const modelKind = String(kind || "d6");
         const nodes = createRollNodes(modelKind);
         if (!nodes) {
@@ -2823,27 +3146,33 @@
 
         const rollId = ++rollSeq;
 
-        const throwPower = random(0.72, 1.35);
-        const spinPower = random(0.95, 1.90);
-        const driftPower = random(0.95, 1.75);
-        const spawnPy = h * random(0.10, 0.19);
-        const spawnPx = pickSpawnX(centerX, w, spawnPy);
+        const reqId = Number(requestId || 0);
+        const previewMode = reqId === 0;
+        const previewIndex = Number(slotIndex || 0);
+        const previewTotal = Math.max(1, Number(totalCount || 1));
+        const previewOffset = (previewIndex - (previewTotal - 1) * 0.5) * 56;
+
+        const throwPower = previewMode ? 0 : random(0.72, 1.35);
+        const spinPower = previewMode ? 0 : random(0.95, 1.90);
+        const driftPower = previewMode ? 0 : random(0.95, 1.75);
+        const spawnPy = previewMode ? (h * 0.5) : (h * random(0.10, 0.19));
+        const spawnPx = previewMode ? (centerX + previewOffset) : pickSpawnX(centerX, w, spawnPy);
 
         const state = {
           px: spawnPx,
           py: spawnPy,
-          vx: random(-3.2, 3.2) * driftPower,
-          vy: random(1.4, 5.4) * throwPower,
+          vx: previewMode ? 0 : (random(-3.2, 3.2) * driftPower),
+          vy: previewMode ? 0 : (random(1.4, 5.4) * throwPower),
 
-          z: random(190, 280),
-          vz: random(20, 95) * throwPower,
+          z: previewMode ? 0 : random(190, 280),
+          vz: previewMode ? 0 : (random(20, 95) * throwPower),
 
           rx: random(0, 360),
           ry: random(0, 360),
           rz: random(0, 360),
-          vrx: random(124, 428) * spinPower,
-          vry: random(145, 483) * spinPower,
-          vrz: random(76, 290) * spinPower,
+          vrx: previewMode ? random(12, 24) * (Math.random() < 0.5 ? -1 : 1) : (random(124, 428) * spinPower),
+          vry: previewMode ? random(18, 30) * (Math.random() < 0.5 ? -1 : 1) : (random(145, 483) * spinPower),
+          vrz: previewMode ? random(6, 14) * (Math.random() < 0.5 ? -1 : 1) : (random(76, 290) * spinPower),
           baseVrx: 0,
           baseVry: 0,
           baseVrz: 0,
@@ -2852,7 +3181,7 @@
           bounces: 0,
           settledFor: 0,
           alpha: 1,
-          phase: 'rolling',
+          phase: previewMode ? 'preview' : 'rolling',
           phaseTime: 0,
           alignTarget: null,
           alignReady: false,
@@ -2865,7 +3194,7 @@
           alignProbeLogged: false,
           landingBlend: 0,
           landingProfile: random(0, 1),
-          requestId: Number(requestId || 0),
+          requestId: reqId,
           resultFace: 0,
           resultEmitted: false,
           resultMeasureAtMs: 0,
@@ -2879,7 +3208,10 @@
           diceSpec: nodes.spec || getDiceSpec(modelKind),
           alignConfig: null,
           alignMode: 'cube',
-          resultMode: 'cube'
+          resultMode: 'cube',
+          previewMode: previewMode,
+          previewSlot: previewIndex,
+          previewTotal: previewTotal
         };
         if (state.requestId === 0) {
           applyStyleToState(state);
@@ -2934,6 +3266,21 @@
         function frame(ts) {
           const dt = Math.min(0.033, (ts - lastTs) / 1000);
           lastTs = ts;
+
+          if (state.phase === 'preview') {
+            const pw = window.innerWidth;
+            const ph = window.innerHeight;
+            const pOffset = (Number(state.previewSlot || 0) - (Number(state.previewTotal || 1) - 1) * 0.5) * 56;
+            state.px = pw * 0.5 + pOffset;
+            state.py = ph * 0.5;
+            state.z = 0;
+            state.rx = normalizeAngle(state.rx + state.vrx * dt);
+            state.ry = normalizeAngle(state.ry + state.vry * dt);
+            state.rz = normalizeAngle(state.rz + state.vrz * dt);
+            render(state);
+            raf = requestAnimationFrame(frame);
+            return;
+          }
 
           if (state.phase === 'rolling') {
             state.px += state.vx * 62 * dt;
@@ -3165,6 +3512,30 @@
   </script>
 </body>
 </html>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
