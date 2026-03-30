@@ -3213,9 +3213,7 @@
           previewSlot: previewIndex,
           previewTotal: previewTotal
         };
-        if (state.requestId === 0) {
-          applyStyleToState(state);
-        }
+        applyStyleToState(state);
 
         state.baseVrx = Math.abs(state.vrx);
         state.baseVry = Math.abs(state.vry);

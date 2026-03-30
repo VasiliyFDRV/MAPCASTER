@@ -180,6 +180,16 @@ Window {
         }
         return Number(payload.dice[0]) === 10 && Number(payload.dice[1]) === 10
     }
+    function pushDiceStylesToOverlay() {
+        if (!diceWebOverlay || !diceWebOverlay.setStyleBag) {
+            return
+        }
+        var bag = {}
+        if (typeof appController !== "undefined" && appController && appController.diceStyles) {
+            bag = appController.diceStyles
+        }
+        diceWebOverlay.setStyleBag(bag)
+    }
 
 
     function useCustomCursor(toolName) {
@@ -3028,6 +3038,7 @@ Window {
         target: appController
         function onSettingsChanged() {
             requestFullMapRepaint()
+            pushDiceStylesToOverlay()
         }
     }
 
@@ -3073,6 +3084,7 @@ Window {
             if (!payload || !payload.dice) {
                 return
             }
+            pushDiceStylesToOverlay()
             if (mapWindow.shouldUseD100PhysicsVisual(payload)) {
                 console.log("[dice-visual] map -> 3d d100 2xd10")
                 diceWebOverlay.triggerD100(Number(payload.request_id || 0))
@@ -3173,6 +3185,7 @@ Window {
         refreshEraseStrokesFromController()
         refreshStrokesFromController()
         refreshHexGroupsFromController()
+        pushDiceStylesToOverlay()
         diceController.set_map_window_open(true)
     }
 }

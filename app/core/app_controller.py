@@ -224,6 +224,9 @@ class AppController(QObject):
     def leftRevealZone(self) -> int:
         return int(self._settings["ui"].get("left_reveal_zone", 300))
 
+    @Property("QVariantMap", notify=settings_changed)
+    def diceStyles(self) -> dict[str, Any]:
+        return copy.deepcopy(self._dice_styles_ref())
     @Property(str, notify=status_changed)
     def statusMessage(self) -> str:
         return self._status_message
@@ -861,6 +864,17 @@ class AppController(QObject):
         self._settings["ui"]["left_reveal_zone"] = reveal
         self._emit_settings_changed()
 
+    @Slot(str, "QVariantMap")
+    def update_dice_style(self, die_key: str, style: dict[str, Any]) -> None:
+        key = str(die_key or "").strip().lower()
+        if key not in {"d4", "d6", "d8", "d10", "d12", "d20", "d100"}:
+            return
+
+        incoming = dict(style or {})
+        styles = self._dice_styles_ref()
+        styles[key] = copy.deepcopy(incoming)
+        self._settings_service.save(self._settings)
+        self._emit_settings_changed()
     @Slot()
     def persist_settings(self) -> None:
         self._settings_service.save(self._settings)
@@ -1652,6 +1666,12 @@ class AppController(QObject):
         if media_type == "image" and detected != "image":
             return f"Для {label} выбран файл неподдерживаемого формата изображения."
         return ""
+    def _dice_styles_ref(self) -> dict[str, Any]:
+        styles = self._settings.get("dice_styles")
+        if not isinstance(styles, dict):
+            styles = {}
+            self._settings["dice_styles"] = styles
+        return styles
 
     def _build_default_runtime_scene(self) -> dict[str, Any]:
         defaults = self._settings["default_scene"]

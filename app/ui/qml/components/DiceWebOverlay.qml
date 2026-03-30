@@ -8,6 +8,7 @@ Item {
     property bool active: false
     property bool pageReady: false
     property bool pendingRoll: false
+    property var styleBag: ({})
 
     property int activeRequestId: 0
     property int activeExpectedCount: 0
@@ -30,11 +31,75 @@ Item {
     signal d20BatchResultReady(int requestId, var values)
     signal d100ResultReady(int requestId, int tensValue, int onesValue)
 
+    function clampNumber(value, minValue, maxValue) {
+        var n = Number(value)
+        if (!isFinite(n)) {
+            n = Number(minValue)
+        }
+        return Math.max(Number(minValue), Math.min(Number(maxValue), n))
+    }
+
+    function setStyleBag(bag) {
+        styleBag = bag && typeof bag === "object" ? bag : ({})
+    }
+
+    function styleKeyForKind(kind) {
+        var k = String(kind || "d6").toLowerCase()
+        if (k === "d10t") {
+            return "d100"
+        }
+        if (k === "d4" || k === "d6" || k === "d8" || k === "d10" || k === "d12" || k === "d20" || k === "d100") {
+            return k
+        }
+        return "d6"
+    }
+
+    function stylePayloadForKind(kind) {
+        var bag = styleBag || ({})
+        var key = styleKeyForKind(kind)
+        var style = bag[key]
+        if (!style && key === "d100") {
+            style = bag["d10"]
+        }
+
+        var legacyGlow = Number(style && style.textShadowIntensity !== undefined ? style.textShadowIntensity : 100)
+        var glowRadius = Number(style && style.textGlowRadius !== undefined ? style.textGlowRadius : legacyGlow)
+        var glowOpacity = Number(style && style.textGlowOpacity !== undefined ? style.textGlowOpacity : legacyGlow)
+
+        return {
+            "scalePercent": clampNumber(Number(style && style.scalePercent !== undefined ? style.scalePercent : 100), 50, 150),
+            "faceColor": String(style && style.color ? style.color : "#C9C9C9"),
+            "gradientEnabled": Boolean(style && style.gradientEnabled),
+            "gradientCenterColor": String(style && style.gradientCenterColor ? style.gradientCenterColor : "#FFFFFF"),
+            "gradientSharpness": clampNumber(Number(style && style.gradientSharpness !== undefined ? style.gradientSharpness : 50) / 100.0, 0, 1),
+            "gradientOffset": clampNumber(Number(style && style.gradientOffset !== undefined ? style.gradientOffset : 50) / 100.0, 0, 1),
+            "textColor": String(style && style.fontColor ? style.fontColor : "#1F1F1F"),
+            "textStrokeColor": String(style && style.textStrokeColor ? style.textStrokeColor : "#EEEEEE"),
+            "textGlowRadius": clampNumber(glowRadius / 100.0, 0, 2),
+            "textGlowOpacity": clampNumber(glowOpacity / 100.0, 0, 2),
+            "edgeColor": String(style && style.edgeColor ? style.edgeColor : "#D4D4D4"),
+            "edgeWidth": clampNumber(Number(style && style.edgeWidth !== undefined ? style.edgeWidth : 0.0), 0, 5)
+        }
+    }
+
+    function runRollScript(requestId, kind, count, styleKindOverride) {
+        var req = Number(requestId || 0)
+        var modelKind = String(kind || "d6")
+        var rollCount = Math.max(1, Number(count || 1))
+        var styleKeyKind = styleKindOverride !== undefined && styleKindOverride !== null ? styleKindOverride : modelKind
+        var stylePayload = stylePayloadForKind(styleKeyKind)
+        var script = "(function(){"
+            + "if (window.setStyleOverrides) { window.setStyleOverrides(" + JSON.stringify(stylePayload) + "); }"
+            + "if (window.startRoll) { window.startRoll(" + String(req) + ", " + JSON.stringify(modelKind) + ", " + String(rollCount) + "); }"
+            + "})();"
+        web.runJavaScript(script)
+    }
+
     function runStandardScript(requestId, sides) {
         var req = Number(requestId || activeRequestId || 0)
         var s = Number(sides || 6)
         var kind = "d" + String(s)
-        web.runJavaScript("window.startRoll && window.startRoll(" + String(req) + ", '" + kind + "', 1);")
+        runRollScript(req, kind, 1)
     }
 
     function clearWebDiceNow() {
@@ -66,8 +131,8 @@ Item {
         var started = false
 
         if (d100ActiveRequestId > 0 && (!d100TensReady || !d100OnesReady)) {
-            web.runJavaScript("window.startRoll && window.startRoll(" + String(d100ActiveRequestId) + ", 'd10t', 1);")
-            web.runJavaScript("window.startRoll && window.startRoll(" + String(d100ActiveRequestId) + ", 'd10', 1);")
+            runRollScript(d100ActiveRequestId, "d10t", 1, "d100")
+            runRollScript(d100ActiveRequestId, "d10", 1, "d100")
             started = true
         }
 
@@ -233,8 +298,8 @@ Item {
 
         if (pageReady) {
             pendingRoll = false
-            web.runJavaScript("window.startRoll && window.startRoll(" + String(req) + ", 'd10t', 1);")
-            web.runJavaScript("window.startRoll && window.startRoll(" + String(req) + ", 'd10', 1);")
+            runRollScript(req, "d10t", 1, "d100")
+            runRollScript(req, "d10", 1, "d100")
         } else {
             pendingRoll = true
             web.reload()

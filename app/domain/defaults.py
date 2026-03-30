@@ -53,4 +53,5 @@ def build_default_settings(project_root: Path) -> dict[str, Any]:
             "previous_scene": "PageUp",
             "save_scene": "Ctrl+S",
         },
+        "dice_styles": {},
     }

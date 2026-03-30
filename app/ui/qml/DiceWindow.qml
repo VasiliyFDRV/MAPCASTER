@@ -313,6 +313,19 @@ Window {
         return cloneStyle(ensureDieStyle(key))
     }
 
+    function loadDieStylesFromSettings() {
+        var source = {}
+        if (typeof appController !== "undefined" && appController && appController.diceStyles) {
+            source = appController.diceStyles
+        }
+        var keys = ["d4", "d6", "d8", "d10", "d12", "d20", "d100"]
+        var bag = {}
+        for (var i = 0; i < keys.length; i++) {
+            var key = keys[i]
+            bag[key] = cloneStyle(source && source[key] ? source[key] : null)
+        }
+        dieStyles = bag
+    }
     function updateEditorField(field, value) {
         var next = cloneStyle(dieEditorWorking)
         next[field] = value
@@ -321,9 +334,13 @@ Window {
 
     function saveDieEditor() {
         var key = String(dieEditorDieKey)
+        var savedStyle = cloneStyle(dieEditorWorking)
         var bag = Object.assign({}, dieStyles || {})
-        bag[key] = cloneStyle(dieEditorWorking)
+        bag[key] = savedStyle
         dieStyles = bag
+        if (typeof appController !== "undefined" && appController && appController.update_dice_style) {
+            appController.update_dice_style(key, savedStyle)
+        }
         dieStylePopup.close()
     }
 
@@ -593,7 +610,11 @@ Window {
             "edgeWidth": Number(dieEditorWorking.edgeWidth !== undefined ? dieEditorWorking.edgeWidth : 0.0)
         }
         previewWeb.runJavaScript("window.setStyleOverrides && window.setStyleOverrides(" + JSON.stringify(stylePayload) + ");")
-        previewWeb.runJavaScript("window.setPreviewDieKind && window.setPreviewDieKind('" + String(dieEditorDieKey || "d6") + "');")
+        var previewKind = String(dieEditorDieKey || "d6")
+        if (previewKind === "d100") {
+            previewKind = "d10t"
+        }
+        previewWeb.runJavaScript("window.setPreviewDieKind && window.setPreviewDieKind('" + previewKind + "');")
     }
 
     function startPreviewRollNow() {
@@ -610,7 +631,19 @@ Window {
         pushPreviewStyle()
         startPreviewRollNow()
     }
-    Component.onCompleted: resetState()
+    Component.onCompleted: {
+        resetState()
+        loadDieStylesFromSettings()
+    }
+
+    Connections {
+        target: appController
+        function onSettingsChanged() {
+            if (!dieStylePopup || !dieStylePopup.visible) {
+                loadDieStylesFromSettings()
+            }
+        }
+    }
 
     Connections {
         target: diceController
@@ -1437,6 +1470,13 @@ Window {
                                 cursorShape: Qt.PointingHandCursor
                                 onClicked: rollD100Only()
                             }
+                        }
+
+                        AppButton {
+                            text: "🖌"
+                            implicitWidth: 26
+                            implicitHeight: 22
+                            onClicked: openDieEditor("d100")
                         }
 
                         AppButton {
