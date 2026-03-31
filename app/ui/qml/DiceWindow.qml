@@ -1,4 +1,4 @@
-﻿import QtQuick
+import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
 import QtQuick.Window
@@ -43,6 +43,21 @@ Window {
     property color panelColor: "#242424"
     property color panelBorder: "#4A4A4A"
     property var dieStyles: ({})
+    property var dieStyleTemplates: ({"user": [], "damage": []})
+    property var damageTemplateLabels: ([
+        "Оружие",
+        "Огонь",
+        "Звук",
+        "Излучение",
+        "Некротический",
+        "Психический",
+        "Силовое поле",
+        "Холод",
+        "Кислота",
+        "Яд"
+    ])
+    property string templateContextRow: "user"
+    property int templateContextIndex: -1
     property string dieEditorDieKey: "d6"
     property string pendingColorField: ""
     property string pendingColorTitle: "Выбор цвета"
@@ -325,6 +340,152 @@ Window {
             bag[key] = cloneStyle(source && source[key] ? source[key] : null)
         }
         dieStyles = bag
+    }
+    function defaultDamageTemplateStyles() {
+        return [
+            { "scalePercent": 100, "color": "#C8C8C8", "gradientEnabled": true, "gradientCenterColor": "#F3F3F3", "gradientSharpness": 58, "gradientOffset": 50, "fontColor": "#1F2228", "textStrokeColor": "#F0F3FA", "textGlowRadius": 90, "textGlowOpacity": 85, "edgeColor": "#7A7E86", "edgeWidth": 1.2 },
+            { "scalePercent": 100, "color": "#D35A28", "gradientEnabled": true, "gradientCenterColor": "#FFD08C", "gradientSharpness": 64, "gradientOffset": 52, "fontColor": "#2A140C", "textStrokeColor": "#FFE3A8", "textGlowRadius": 110, "textGlowOpacity": 105, "edgeColor": "#7A2315", "edgeWidth": 1.4 },
+            { "scalePercent": 100, "color": "#5F6CE0", "gradientEnabled": true, "gradientCenterColor": "#C7D0FF", "gradientSharpness": 56, "gradientOffset": 50, "fontColor": "#151933", "textStrokeColor": "#D9E2FF", "textGlowRadius": 108, "textGlowOpacity": 96, "edgeColor": "#2E356E", "edgeWidth": 1.2 },
+            { "scalePercent": 100, "color": "#E4CE63", "gradientEnabled": true, "gradientCenterColor": "#FFF7BE", "gradientSharpness": 62, "gradientOffset": 48, "fontColor": "#2A240F", "textStrokeColor": "#FFF4B0", "textGlowRadius": 116, "textGlowOpacity": 108, "edgeColor": "#8B7422", "edgeWidth": 1.3 },
+            { "scalePercent": 100, "color": "#5C4A6A", "gradientEnabled": true, "gradientCenterColor": "#A296B8", "gradientSharpness": 60, "gradientOffset": 53, "fontColor": "#F0EAF8", "textStrokeColor": "#2B1F36", "textGlowRadius": 92, "textGlowOpacity": 78, "edgeColor": "#2D2236", "edgeWidth": 1.3 },
+            { "scalePercent": 100, "color": "#8A5FD6", "gradientEnabled": true, "gradientCenterColor": "#E1CCFF", "gradientSharpness": 57, "gradientOffset": 50, "fontColor": "#26173A", "textStrokeColor": "#F0E3FF", "textGlowRadius": 122, "textGlowOpacity": 110, "edgeColor": "#4B2F7B", "edgeWidth": 1.2 },
+            { "scalePercent": 100, "color": "#4D8DF0", "gradientEnabled": true, "gradientCenterColor": "#D8EBFF", "gradientSharpness": 58, "gradientOffset": 50, "fontColor": "#12243D", "textStrokeColor": "#E4F1FF", "textGlowRadius": 114, "textGlowOpacity": 102, "edgeColor": "#224D83", "edgeWidth": 1.3 },
+            { "scalePercent": 100, "color": "#8CCEF1", "gradientEnabled": true, "gradientCenterColor": "#E8F9FF", "gradientSharpness": 54, "gradientOffset": 48, "fontColor": "#163147", "textStrokeColor": "#F6FDFF", "textGlowRadius": 126, "textGlowOpacity": 116, "edgeColor": "#FFFFFF", "edgeWidth": 1.6 },
+            { "scalePercent": 100, "color": "#6FAF2C", "gradientEnabled": true, "gradientCenterColor": "#D8FF8A", "gradientSharpness": 63, "gradientOffset": 53, "fontColor": "#1A2D0D", "textStrokeColor": "#EDFFC8", "textGlowRadius": 118, "textGlowOpacity": 104, "edgeColor": "#2D5F15", "edgeWidth": 1.3 },
+            { "scalePercent": 100, "color": "#4A7A44", "gradientEnabled": true, "gradientCenterColor": "#98D08E", "gradientSharpness": 58, "gradientOffset": 52, "fontColor": "#102012", "textStrokeColor": "#D0F0C8", "textGlowRadius": 104, "textGlowOpacity": 94, "edgeColor": "#20391F", "edgeWidth": 1.2 }
+        ]
+    }
+
+    function cloneTemplateBag(payload) {
+        var source = payload && typeof payload === "object" ? payload : {}
+        var sourceUser = source.user && source.user.length ? source.user : []
+        var sourceDamage = source.damage && source.damage.length ? source.damage : []
+        var defaultDamage = defaultDamageTemplateStyles()
+
+        var user = []
+        var damage = []
+        for (var i = 0; i < 10; i++) {
+            var u = i < sourceUser.length ? sourceUser[i] : null
+            if (u && typeof u === "object") {
+                user.push(cloneStyle(u))
+            } else {
+                user.push(null)
+            }
+
+            var d = i < sourceDamage.length ? sourceDamage[i] : defaultDamage[i]
+            if (d && typeof d === "object") {
+                damage.push(cloneStyle(d))
+            } else {
+                damage.push(cloneStyle(defaultDamage[i]))
+            }
+        }
+
+        return {"user": user, "damage": damage}
+    }
+
+    function loadDieStyleTemplatesFromSettings() {
+        var source = {}
+        if (typeof appController !== "undefined" && appController && appController.diceStyleTemplates) {
+            source = appController.diceStyleTemplates
+        }
+        dieStyleTemplates = cloneTemplateBag(source)
+    }
+
+    function persistDieStyleTemplates() {
+        if (typeof appController !== "undefined" && appController && appController.update_dice_style_templates) {
+            appController.update_dice_style_templates(cloneTemplateBag(dieStyleTemplates))
+        }
+    }
+
+    function templateSlotList(rowKey) {
+        var bag = cloneTemplateBag(dieStyleTemplates)
+        return rowKey === "damage" ? bag.damage : bag.user
+    }
+
+    function templateStyle(rowKey, index) {
+        var list = templateSlotList(rowKey)
+        if (index < 0 || index >= list.length) {
+            return null
+        }
+        var item = list[index]
+        if (!item || typeof item !== "object") {
+            return null
+        }
+        return item
+    }
+
+    function hasTemplateStyle(rowKey, index) {
+        return templateStyle(rowKey, index) !== null
+    }
+
+    function applyTemplateSlot(rowKey, index) {
+        var style = templateStyle(rowKey, index)
+        if (!style) {
+            return
+        }
+        dieEditorWorking = cloneStyle(style)
+    }
+
+    function saveCurrentStyleToTemplateQueue() {
+        var next = cloneTemplateBag(dieStyleTemplates)
+        for (var i = 9; i > 0; i--) {
+            next.user[i] = next.user[i - 1] ? cloneStyle(next.user[i - 1]) : null
+        }
+        next.user[0] = cloneStyle(dieEditorWorking)
+        dieStyleTemplates = next
+        persistDieStyleTemplates()
+    }
+
+    function openTemplateContextMenu(rowKey, index, x, y) {
+        if (!hasTemplateStyle(rowKey, index)) {
+            return
+        }
+        templateContextRow = String(rowKey || "user")
+        templateContextIndex = Number(index)
+        templateSlotContextMenu.popup(x, y)
+    }
+
+    function overwriteTemplateContextSlot() {
+        if (templateContextIndex < 0 || !hasTemplateStyle(templateContextRow, templateContextIndex)) {
+            return
+        }
+        var next = cloneTemplateBag(dieStyleTemplates)
+        var row = templateContextRow === "damage" ? "damage" : "user"
+        next[row][templateContextIndex] = cloneStyle(dieEditorWorking)
+        dieStyleTemplates = next
+        persistDieStyleTemplates()
+    }
+
+    function deleteTemplateContextSlot() {
+        if (templateContextRow !== "user" || templateContextIndex < 0) {
+            return
+        }
+        if (!hasTemplateStyle("user", templateContextIndex)) {
+            return
+        }
+        var next = cloneTemplateBag(dieStyleTemplates)
+        next.user[templateContextIndex] = null
+        dieStyleTemplates = next
+        persistDieStyleTemplates()
+    }
+
+    function previewLabelForDieType(dieType) {
+        var key = String(dieType || "d6").toLowerCase()
+        if (key === "d100") return "00"
+        if (key === "d20") return "20"
+        if (key === "d12") return "12"
+        if (key === "d10") return "10"
+        if (key === "d8") return "8"
+        if (key === "d6") return "6"
+        if (key === "d4") return "4"
+        return "6"
+    }
+
+    function templateSlotSizeForWidth(availableWidth) {
+        var gap = 6
+        var width = Math.max(320, Number(availableWidth || 0))
+        var s = Math.floor((width - gap * 9) / 10)
+        return Math.max(30, Math.min(54, s))
     }
     function updateEditorField(field, value) {
         var next = cloneStyle(dieEditorWorking)
@@ -634,6 +795,7 @@ Window {
     Component.onCompleted: {
         resetState()
         loadDieStylesFromSettings()
+        loadDieStyleTemplatesFromSettings()
     }
 
     Connections {
@@ -641,6 +803,7 @@ Window {
         function onSettingsChanged() {
             if (!dieStylePopup || !dieStylePopup.visible) {
                 loadDieStylesFromSettings()
+                loadDieStyleTemplatesFromSettings()
             }
         }
     }
@@ -836,7 +999,8 @@ Window {
                 font.pixelSize: 9
             }
         }
-    }
+    }
+
 
     component SliderNumberControl: RowLayout {
         id: control
@@ -1015,6 +1179,223 @@ Window {
         onWidthChanged: canvas.requestPaint()
         onHeightChanged: canvas.requestPaint()
         Component.onCompleted: canvas.requestPaint()
+    }
+    component TemplateStylePreview: Item {
+        id: preview
+        property string dieType: "d6"
+        property var styleData: ({})
+        property string labelText: diceWindow.previewLabelForDieType(dieType)
+
+        Canvas {
+            id: templateCanvas
+            anchors.fill: parent
+            onPaint: {
+                var ctx = getContext("2d")
+                ctx.reset()
+                ctx.clearRect(0, 0, width, height)
+
+                var w = width
+                var h = height
+                var cx = w * 0.5
+                var cy = h * 0.5
+                var pad = Math.max(2, Math.round(Math.min(w, h) * 0.08))
+
+                var style = preview.styleData || {}
+                var faceColor = String(style.color || "#C9C9C9")
+                var centerColor = String(style.gradientCenterColor || "#FFFFFF")
+                var gradientEnabled = Boolean(style.gradientEnabled)
+                var sharpness = Math.max(0, Math.min(100, Number(style.gradientSharpness !== undefined ? style.gradientSharpness : 50)))
+                var offset = Math.max(0, Math.min(100, Number(style.gradientOffset !== undefined ? style.gradientOffset : 50)))
+                var textColor = String(style.fontColor || "#1F1F1F")
+                var glowColor = String(style.textStrokeColor || "#EEEEEE")
+                var glowRadius = Math.max(0, Math.min(200, Number(style.textGlowRadius !== undefined ? style.textGlowRadius : 100)))
+                var glowOpacity = Math.max(0, Math.min(200, Number(style.textGlowOpacity !== undefined ? style.textGlowOpacity : 100)))
+                var edgeColor = String(style.edgeColor || "#D4D4D4")
+                var edgeWidth = Math.max(0, Math.min(5, Number(style.edgeWidth !== undefined ? style.edgeWidth : 0)))
+
+                function hexToRgb(hex) {
+                    var s = String(hex || "").trim()
+                    var m3 = /^#([0-9a-fA-F]{3})$/.exec(s)
+                    if (m3) {
+                        return {
+                            r: parseInt(m3[1][0] + m3[1][0], 16),
+                            g: parseInt(m3[1][1] + m3[1][1], 16),
+                            b: parseInt(m3[1][2] + m3[1][2], 16)
+                        }
+                    }
+                    var m6 = /^#([0-9a-fA-F]{6})$/.exec(s)
+                    if (m6) {
+                        return {
+                            r: parseInt(m6[1].slice(0, 2), 16),
+                            g: parseInt(m6[1].slice(2, 4), 16),
+                            b: parseInt(m6[1].slice(4, 6), 16)
+                        }
+                    }
+                    return { r: 255, g: 255, b: 255 }
+                }
+
+                function rgba(hex, alpha) {
+                    var rgb = hexToRgb(hex)
+                    var a = Math.max(0, Math.min(1, Number(alpha || 0)))
+                    return "rgba(" + rgb.r + "," + rgb.g + "," + rgb.b + "," + a.toFixed(3) + ")"
+                }
+
+                function shapePoints(kind) {
+                    var t = String(kind || "d6").toLowerCase()
+                    if (t === "d4") {
+                        return [{x: cx, y: pad}, {x: w - pad, y: h - pad}, {x: pad, y: h - pad}]
+                    }
+                    if (t === "d6") {
+                        return [{x: pad, y: pad}, {x: w - pad, y: pad}, {x: w - pad, y: h - pad}, {x: pad, y: h - pad}]
+                    }
+                    if (t === "d8") {
+                        return [{x: cx, y: pad}, {x: w - pad, y: cy}, {x: cx, y: h - pad}, {x: pad, y: cy}]
+                    }
+                    if (t === "d10" || t === "d100") {
+                        return [{x: cx, y: pad}, {x: w - pad, y: cy}, {x: cx, y: h - pad}, {x: pad, y: cy}]
+                    }
+                    if (t === "d12") {
+                        var p12 = []
+                        var r12 = Math.min(w, h) * 0.43
+                        for (var i = 0; i < 10; i++) {
+                            var a12 = -Math.PI / 2 + (Math.PI * 2 * i / 10)
+                            p12.push({x: cx + Math.cos(a12) * r12, y: cy + Math.sin(a12) * r12})
+                        }
+                        return p12
+                    }
+                    if (t === "d20") {
+                        var p20 = []
+                        var r20 = Math.min(w, h) * 0.43
+                        for (var j = 0; j < 6; j++) {
+                            var a20 = -Math.PI / 2 + (Math.PI * 2 * j / 6)
+                            p20.push({x: cx + Math.cos(a20) * r20, y: cy + Math.sin(a20) * r20})
+                        }
+                        return p20
+                    }
+                    return [{x: pad, y: pad}, {x: w - pad, y: pad}, {x: w - pad, y: h - pad}, {x: pad, y: h - pad}]
+                }
+
+                function drawPolygon(points) {
+                    if (!points || points.length === 0) {
+                        return
+                    }
+                    ctx.beginPath()
+                    ctx.moveTo(points[0].x, points[0].y)
+                    for (var i = 1; i < points.length; i++) {
+                        ctx.lineTo(points[i].x, points[i].y)
+                    }
+                    ctx.closePath()
+
+                    if (gradientEnabled) {
+                        var rad = Math.max(6, Math.min(w, h) * (0.26 + offset * 0.0048))
+                        var grd = ctx.createRadialGradient(cx, cy, 0, cx, cy, rad)
+                        var stop = Math.max(0.05, Math.min(0.95, 0.20 + (100 - sharpness) * 0.0055))
+                        grd.addColorStop(0, centerColor)
+                        grd.addColorStop(stop, centerColor)
+                        grd.addColorStop(1, faceColor)
+                        ctx.fillStyle = grd
+                    } else {
+                        ctx.fillStyle = faceColor
+                    }
+                    ctx.fill()
+
+                    if (edgeWidth > 0.01) {
+                        ctx.lineWidth = Math.max(0.6, edgeWidth * 0.85)
+                        ctx.strokeStyle = edgeColor
+                        ctx.stroke()
+                    }
+                }
+
+                if (String(preview.dieType || "") === "d100") {
+                    var backPad = Math.max(3, pad + 1)
+                    ctx.beginPath()
+                    ctx.moveTo(cx + 2, backPad)
+                    ctx.lineTo(w - backPad + 2, cy)
+                    ctx.lineTo(cx + 2, h - backPad)
+                    ctx.lineTo(backPad + 2, cy)
+                    ctx.closePath()
+                    ctx.lineWidth = Math.max(0.6, edgeWidth * 0.7)
+                    ctx.strokeStyle = edgeColor
+                    ctx.stroke()
+                }
+
+                drawPolygon(shapePoints(preview.dieType))
+
+                var glowA = Math.max(0, Math.min(1, glowOpacity / 200.0))
+                var blur = Math.max(0, glowRadius / 200.0 * 7.5)
+                ctx.save()
+                ctx.textAlign = "center"
+                ctx.textBaseline = "middle"
+                ctx.font = "600 " + Math.max(8, Math.round(Math.min(w, h) * 0.34)) + "px Segoe UI"
+                if (glowA > 0.001) {
+                    ctx.shadowColor = rgba(glowColor, Math.min(0.95, 0.25 + glowA * 0.55))
+                    ctx.shadowBlur = blur
+                }
+                ctx.fillStyle = textColor
+                ctx.fillText(String(preview.labelText || ""), cx, cy)
+                if (glowA > 0.18) {
+                    ctx.shadowBlur = 0
+                    ctx.lineWidth = Math.max(0.35, glowRadius / 200.0 * 1.1)
+                    ctx.strokeStyle = rgba(glowColor, Math.min(1, glowA * 0.55))
+                    ctx.strokeText(String(preview.labelText || ""), cx, cy)
+                }
+                ctx.restore()
+            }
+        }
+
+        onDieTypeChanged: templateCanvas.requestPaint()
+        onStyleDataChanged: templateCanvas.requestPaint()
+        onLabelTextChanged: templateCanvas.requestPaint()
+        onWidthChanged: templateCanvas.requestPaint()
+        onHeightChanged: templateCanvas.requestPaint()
+        Component.onCompleted: templateCanvas.requestPaint()
+    }
+
+    component TemplateSlotButton: Item {
+        id: slot
+        property string rowKey: "user"
+        property int slotIndex: 0
+        property int slotSize: 34
+        property var slotStyle: null
+
+        implicitWidth: slotSize
+        implicitHeight: slotSize
+
+        Rectangle {
+            anchors.fill: parent
+            radius: Math.max(6, slot.slotSize * 0.18)
+            color: slot.slotStyle ? "#151619" : "#111214"
+            border.width: 1
+            border.color: slot.slotStyle ? "#5B5D64" : "#3B3D43"
+        }
+
+        TemplateStylePreview {
+            anchors.centerIn: parent
+            width: Math.max(18, slot.slotSize - 8)
+            height: Math.max(18, slot.slotSize - 8)
+            visible: !!slot.slotStyle
+            dieType: diceWindow.dieEditorDieKey
+            styleData: slot.slotStyle || ({})
+            labelText: diceWindow.previewLabelForDieType(diceWindow.dieEditorDieKey)
+        }
+
+        MouseArea {
+            anchors.fill: parent
+            hoverEnabled: true
+            acceptedButtons: Qt.LeftButton | Qt.RightButton
+            onClicked: function(mouse) {
+                if (mouse.button === Qt.LeftButton) {
+                    if (slot.slotStyle) {
+                        diceWindow.applyTemplateSlot(slot.rowKey, slot.slotIndex)
+                    }
+                    return
+                }
+                if (mouse.button === Qt.RightButton && slot.slotStyle) {
+                    var p = slot.mapToItem(dieStylePopup.contentItem, mouse.x, mouse.y)
+                    diceWindow.openTemplateContextMenu(slot.rowKey, slot.slotIndex, p.x, p.y)
+                }
+            }
+        }
     }
 
     component CountStepper: RowLayout {
@@ -1514,7 +1895,6 @@ Window {
             }
         }
     }
-
     Popup {
         id: dieStylePopup
         modal: true
@@ -1524,6 +1904,11 @@ Window {
         closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
         anchors.centerIn: Overlay.overlay
         padding: 0
+
+        onOpened: {
+            diceWindow.pushPreviewStyle()
+            diceWindow.startPreviewRollNow()
+        }
 
         background: Rectangle {
             radius: 12
@@ -1595,192 +1980,268 @@ Window {
                         onTriggered: diceWindow.startPreviewRollNow()
                     }
                 }
-            }
-            Label { text: "Размер (50%..150%)"; color: textSecondary; font.pixelSize: 11 }
-            SliderNumberControl {
-                minValue: 50
-                maxValue: 150
-                step: 1
-                decimals: 0
-                value: Number(dieEditorWorking.scalePercent || 100)
-                onValueCommitted: updateEditorField("scalePercent", Math.round(value))
+            }
+
+            ScrollView {
+                id: styleEditorScroll
+                Layout.fillWidth: true
+                Layout.fillHeight: true
+                clip: true
+                ScrollBar.vertical.policy: ScrollBar.AsNeeded
+
+                ColumnLayout {
+                    id: styleEditorContent
+                    width: styleEditorScroll.availableWidth > 0 ? styleEditorScroll.availableWidth : styleEditorScroll.width
+                    spacing: 8
+
+                    Label { text: "Размер (50%..150%)"; color: textSecondary; font.pixelSize: 11 }
+                    SliderNumberControl {
+                        minValue: 50
+                        maxValue: 150
+                        step: 1
+                        decimals: 0
+                        value: Number(dieEditorWorking.scalePercent || 100)
+                        onValueCommitted: updateEditorField("scalePercent", Math.round(value))
+                    }
+
+                    RowLayout {
+                        Layout.fillWidth: true
+                        spacing: 8
+                        Label { text: "Цвет граней"; color: textSecondary; font.pixelSize: 11 }
+                        Rectangle {
+                            implicitWidth: 40
+                            implicitHeight: 20
+                            radius: 6
+                            color: dieEditorWorking.color
+                            border.width: 1
+                            border.color: "#666666"
+                        }
+                        AppButton {
+                            text: "🎨"
+                            implicitWidth: 32
+                            implicitHeight: 24
+                            onClicked: openDieColorDialog("color", "Выбор цвета граней", "#C9C9C9")
+                        }
+                        Item { Layout.fillWidth: true }
+                    }
+
+                    RowLayout {
+                        Layout.fillWidth: true
+                        spacing: 8
+                        Label { text: "Градиент"; color: textSecondary; font.pixelSize: 11 }
+                        Switch {
+                            checked: Boolean(dieEditorWorking.gradientEnabled)
+                            onToggled: updateEditorField("gradientEnabled", checked)
+                        }
+                        Item { Layout.fillWidth: true }
+                    }
+
+                    RowLayout {
+                        visible: Boolean(dieEditorWorking.gradientEnabled)
+                        Layout.fillWidth: true
+                        spacing: 8
+                        Label { text: "Цвет центра"; color: textSecondary; font.pixelSize: 11 }
+                        Rectangle {
+                            implicitWidth: 40
+                            implicitHeight: 20
+                            radius: 6
+                            color: dieEditorWorking.gradientCenterColor
+                            border.width: 1
+                            border.color: "#666666"
+                        }
+                        AppButton {
+                            text: "🎨"
+                            implicitWidth: 32
+                            implicitHeight: 24
+                            onClicked: openDieColorDialog("gradientCenterColor", "Выбор цвета центра градиента", "#FFFFFF")
+                        }
+                        Item { Layout.fillWidth: true }
+                    }
+
+                    Label {
+                        visible: Boolean(dieEditorWorking.gradientEnabled)
+                        text: "Резкость/плавность градиента"
+                        color: textSecondary
+                        font.pixelSize: 11
+                    }
+                    SliderNumberControl {
+                        visible: Boolean(dieEditorWorking.gradientEnabled)
+                        minValue: 0
+                        maxValue: 100
+                        step: 1
+                        decimals: 0
+                        value: Number(dieEditorWorking.gradientSharpness || 50)
+                        onValueCommitted: updateEditorField("gradientSharpness", Math.round(value))
+                    }
+
+                    Label {
+                        visible: Boolean(dieEditorWorking.gradientEnabled)
+                        text: "Смещение градиента"
+                        color: textSecondary
+                        font.pixelSize: 11
+                    }
+                    SliderNumberControl {
+                        visible: Boolean(dieEditorWorking.gradientEnabled)
+                        minValue: 0
+                        maxValue: 100
+                        step: 1
+                        decimals: 0
+                        value: Number(dieEditorWorking.gradientOffset || 50)
+                        onValueCommitted: updateEditorField("gradientOffset", Math.round(value))
+                    }
+
+                    RowLayout {
+                        Layout.fillWidth: true
+                        spacing: 8
+                        Label { text: "Цвет текста"; color: textSecondary; font.pixelSize: 11 }
+                        Rectangle {
+                            implicitWidth: 40
+                            implicitHeight: 20
+                            radius: 6
+                            color: dieEditorWorking.fontColor
+                            border.width: 1
+                            border.color: "#666666"
+                        }
+                        AppButton {
+                            text: "🎨"
+                            implicitWidth: 32
+                            implicitHeight: 24
+                            onClicked: openDieColorDialog("fontColor", "Выбор цвета шрифта", "#1F1F1F")
+                        }
+                        Item { Layout.fillWidth: true }
+                    }
+
+                    RowLayout {
+                        Layout.fillWidth: true
+                        spacing: 8
+                        Label { text: "Цвет свечения текста"; color: textSecondary; font.pixelSize: 11 }
+                        Rectangle {
+                            implicitWidth: 40
+                            implicitHeight: 20
+                            radius: 6
+                            color: dieEditorWorking.textStrokeColor
+                            border.width: 1
+                            border.color: "#666666"
+                        }
+                        AppButton {
+                            text: "🎨"
+                            implicitWidth: 32
+                            implicitHeight: 24
+                            onClicked: openDieColorDialog("textStrokeColor", "Выбор цвета свечения текста", "#EEEEEE")
+                        }
+                        Item { Layout.fillWidth: true }
+                    }
+
+                    Label { text: "Glow radius"; color: textSecondary; font.pixelSize: 11 }
+                    SliderNumberControl {
+                        minValue: 0
+                        maxValue: 200
+                        step: 1
+                        decimals: 0
+                        value: Number(dieEditorWorking.textGlowRadius !== undefined ? dieEditorWorking.textGlowRadius : 100)
+                        onValueCommitted: updateEditorField("textGlowRadius", Math.round(value))
+                    }
+
+                    Label { text: "Glow opacity"; color: textSecondary; font.pixelSize: 11 }
+                    SliderNumberControl {
+                        minValue: 0
+                        maxValue: 200
+                        step: 1
+                        decimals: 0
+                        value: Number(dieEditorWorking.textGlowOpacity !== undefined ? dieEditorWorking.textGlowOpacity : 100)
+                        onValueCommitted: updateEditorField("textGlowOpacity", Math.round(value))
+                    }
+
+                    RowLayout {
+                        Layout.fillWidth: true
+                        spacing: 8
+                        Label { text: "Цвет ребер"; color: textSecondary; font.pixelSize: 11 }
+                        Rectangle {
+                            implicitWidth: 40
+                            implicitHeight: 20
+                            radius: 6
+                            color: dieEditorWorking.edgeColor
+                            border.width: 1
+                            border.color: "#666666"
+                        }
+                        AppButton {
+                            text: "🎨"
+                            implicitWidth: 32
+                            implicitHeight: 24
+                            onClicked: openDieColorDialog("edgeColor", "Выбор цвета ребер", "#D4D4D4")
+                        }
+                        Item { Layout.fillWidth: true }
+                    }
+
+                    Label { text: "Толщина ребер"; color: textSecondary; font.pixelSize: 11 }
+                    SliderNumberControl {
+                        minValue: 0
+                        maxValue: 5
+                        step: 0.1
+                        decimals: 1
+                        value: Number(dieEditorWorking.edgeWidth !== undefined ? dieEditorWorking.edgeWidth : 0.0)
+                        onValueCommitted: updateEditorField("edgeWidth", roundToDecimals(value, 1))
+                    }
+
+                    Item { Layout.fillWidth: true; Layout.preferredHeight: 4 }
+
+                    Label { text: "Шаблоны стиля"; color: textSecondary; font.pixelSize: 11 }
+
+                    Label { text: "Пользовательские"; color: textSecondary; font.pixelSize: 10 }
+                    Item {
+                        Layout.fillWidth: true
+                        property int gap: 6
+                        property int slotSize: diceWindow.templateSlotSizeForWidth(width)
+                        implicitHeight: slotSize
+
+                        Row {
+                            anchors.horizontalCenter: parent.horizontalCenter
+                            spacing: parent.gap
+                            Repeater {
+                                model: 10
+                                delegate: TemplateSlotButton {
+                                    rowKey: "user"
+                                    slotIndex: index
+                                    slotSize: parent.parent.slotSize
+                                    slotStyle: diceWindow.templateStyle("user", index)
+                                }
+                            }
+                        }
+                    }
+
+                    Label { text: "Типы урона"; color: textSecondary; font.pixelSize: 10 }
+                    Item {
+                        Layout.fillWidth: true
+                        property int gap: 6
+                        property int slotSize: diceWindow.templateSlotSizeForWidth(width)
+                        implicitHeight: slotSize
+
+                        Row {
+                            anchors.horizontalCenter: parent.horizontalCenter
+                            spacing: parent.gap
+                            Repeater {
+                                model: 10
+                                delegate: TemplateSlotButton {
+                                    rowKey: "damage"
+                                    slotIndex: index
+                                    slotSize: parent.parent.slotSize
+                                    slotStyle: diceWindow.templateStyle("damage", index)
+                                }
+                            }
+                        }
+                    }
+                }
             }
 
             RowLayout {
                 Layout.fillWidth: true
                 spacing: 8
-                Label { text: "Цвет граней"; color: textSecondary; font.pixelSize: 11 }
-                Rectangle {
-                    implicitWidth: 40
-                    implicitHeight: 20
-                    radius: 6
-                    color: dieEditorWorking.color
-                    border.width: 1
-                    border.color: "#666666"
-                }
                 AppButton {
-                    text: "🎨"
-                    implicitWidth: 32
-                    implicitHeight: 24
-                    onClicked: openDieColorDialog("color", "Выбор цвета граней", "#C9C9C9")
+                    Layout.fillWidth: true
+                    text: "Сохранить стиль"
+                    onClicked: saveCurrentStyleToTemplateQueue()
                 }
-                Item { Layout.fillWidth: true }
             }
-
-            RowLayout {
-                Layout.fillWidth: true
-                spacing: 8
-                Label { text: "Градиент"; color: textSecondary; font.pixelSize: 11 }
-                Switch {
-                    checked: Boolean(dieEditorWorking.gradientEnabled)
-                    onToggled: updateEditorField("gradientEnabled", checked)
-                }
-                Item { Layout.fillWidth: true }
-            }
-
-            RowLayout {
-                visible: Boolean(dieEditorWorking.gradientEnabled)
-                Layout.fillWidth: true
-                spacing: 8
-                Label { text: "Цвет центра"; color: textSecondary; font.pixelSize: 11 }
-                Rectangle {
-                    implicitWidth: 40
-                    implicitHeight: 20
-                    radius: 6
-                    color: dieEditorWorking.gradientCenterColor
-                    border.width: 1
-                    border.color: "#666666"
-                }
-                AppButton {
-                    text: "🎨"
-                    implicitWidth: 32
-                    implicitHeight: 24
-                    onClicked: openDieColorDialog("gradientCenterColor", "Выбор цвета центра градиента", "#FFFFFF")
-                }
-                Item { Layout.fillWidth: true }
-            }
-            Label {
-                visible: Boolean(dieEditorWorking.gradientEnabled)
-                text: "Резкость/плавность градиента"
-                color: textSecondary
-                font.pixelSize: 11
-            }
-            SliderNumberControl {
-                visible: Boolean(dieEditorWorking.gradientEnabled)
-                minValue: 0
-                maxValue: 100
-                step: 1
-                decimals: 0
-                value: Number(dieEditorWorking.gradientSharpness || 50)
-                onValueCommitted: updateEditorField("gradientSharpness", Math.round(value))
-            }
-
-            Label {
-                visible: Boolean(dieEditorWorking.gradientEnabled)
-                text: "Смещение градиента"
-                color: textSecondary
-                font.pixelSize: 11
-            }
-            SliderNumberControl {
-                visible: Boolean(dieEditorWorking.gradientEnabled)
-                minValue: 0
-                maxValue: 100
-                step: 1
-                decimals: 0
-                value: Number(dieEditorWorking.gradientOffset || 50)
-                onValueCommitted: updateEditorField("gradientOffset", Math.round(value))
-            }
-
-            RowLayout {
-                Layout.fillWidth: true
-                spacing: 8
-                Label { text: "Цвет текста"; color: textSecondary; font.pixelSize: 11 }
-                Rectangle {
-                    implicitWidth: 40
-                    implicitHeight: 20
-                    radius: 6
-                    color: dieEditorWorking.fontColor
-                    border.width: 1
-                    border.color: "#666666"
-                }
-                AppButton {
-                    text: "🎨"
-                    implicitWidth: 32
-                    implicitHeight: 24
-                    onClicked: openDieColorDialog("fontColor", "Выбор цвета шрифта", "#1F1F1F")
-                }
-                Item { Layout.fillWidth: true }
-            }
-
-            RowLayout {
-                Layout.fillWidth: true
-                spacing: 8
-                Label { text: "Цвет свечения текста"; color: textSecondary; font.pixelSize: 11 }
-                Rectangle {
-                    implicitWidth: 40
-                    implicitHeight: 20
-                    radius: 6
-                    color: dieEditorWorking.textStrokeColor
-                    border.width: 1
-                    border.color: "#666666"
-                }
-                AppButton {
-                    text: "🎨"
-                    implicitWidth: 32
-                    implicitHeight: 24
-                    onClicked: openDieColorDialog("textStrokeColor", "Выбор цвета свечения текста", "#EEEEEE")
-                }
-                Item { Layout.fillWidth: true }
-            }
-            Label { text: "Glow radius"; color: textSecondary; font.pixelSize: 11 }
-            SliderNumberControl {
-                minValue: 0
-                maxValue: 200
-                step: 1
-                decimals: 0
-                value: Number(dieEditorWorking.textGlowRadius !== undefined ? dieEditorWorking.textGlowRadius : 100)
-                onValueCommitted: updateEditorField("textGlowRadius", Math.round(value))
-            }
-            Label { text: "Glow opacity"; color: textSecondary; font.pixelSize: 11 }
-            SliderNumberControl {
-                minValue: 0
-                maxValue: 200
-                step: 1
-                decimals: 0
-                value: Number(dieEditorWorking.textGlowOpacity !== undefined ? dieEditorWorking.textGlowOpacity : 100)
-                onValueCommitted: updateEditorField("textGlowOpacity", Math.round(value))
-            }
-            RowLayout {
-                Layout.fillWidth: true
-                spacing: 8
-                Label { text: "Цвет ребер"; color: textSecondary; font.pixelSize: 11 }
-                Rectangle {
-                    implicitWidth: 40
-                    implicitHeight: 20
-                    radius: 6
-                    color: dieEditorWorking.edgeColor
-                    border.width: 1
-                    border.color: "#666666"
-                }
-                AppButton {
-                    text: "🎨"
-                    implicitWidth: 32
-                    implicitHeight: 24
-                    onClicked: openDieColorDialog("edgeColor", "Выбор цвета ребер", "#D4D4D4")
-                }
-                Item { Layout.fillWidth: true }
-            }
-
-            Label { text: "Толщина ребер"; color: textSecondary; font.pixelSize: 11 }
-            SliderNumberControl {
-                minValue: 0
-                maxValue: 5
-                step: 0.1
-                decimals: 1
-                value: Number(dieEditorWorking.edgeWidth !== undefined ? dieEditorWorking.edgeWidth : 0.0)
-                onValueCommitted: updateEditorField("edgeWidth", roundToDecimals(value, 1))
-            }
-            Item { Layout.fillHeight: true }
 
             RowLayout {
                 Layout.fillWidth: true
@@ -1790,7 +2251,22 @@ Window {
                 AppButton { Layout.fillWidth: true; text: "Сохранить"; accent: true; onClicked: saveDieEditor() }
             }
         }
-    }
+    }
+
+    Menu {
+        id: templateSlotContextMenu
+        MenuItem {
+            text: "Перезаписать ячейку"
+            enabled: templateContextIndex >= 0
+            onTriggered: overwriteTemplateContextSlot()
+        }
+        MenuItem {
+            text: "Удалить шаблон"
+            enabled: templateContextRow === "user" && templateContextIndex >= 0
+            onTriggered: deleteTemplateContextSlot()
+        }
+    }
+
     Popup {
         id: colorPickerPopup
         modal: true
@@ -1911,8 +2387,6 @@ Window {
                 }
             }
 
-            Item { Layout.fillHeight: true }
-
             RowLayout {
                 Layout.fillWidth: true
                 spacing: 8
@@ -1936,5 +2410,4 @@ Window {
         }
     }
 }
-
 
