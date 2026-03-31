@@ -1,8 +1,8 @@
-﻿import QtQuick
+import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
 import QtQuick.Window
-
+import QtWebEngine
 Window {
     id: diceWindow
     objectName: "diceWindow"
@@ -14,6 +14,11 @@ Window {
     color: "#111111"
     title: "DnD Maps - Дайсы"
 
+    TapHandler {
+        id: windowTapClearDiceVisuals
+        acceptedButtons: Qt.AllButtons
+        onTapped: diceController.request_clear_dice_visuals()
+    }
     property int resetToken: 0
 
     property int d20Count: 0
@@ -30,11 +35,71 @@ Window {
     property var d20Result: null
     property var standardResult: null
     property var d100Result: null
+    property bool waitingStandardPhysicsResult: false
+    property var pendingStandardFallbackResult: null
 
     property color textPrimary: "#EFEFF2"
     property color textSecondary: "#B0B0B0"
     property color panelColor: "#242424"
     property color panelBorder: "#4A4A4A"
+    property var dieStyles: ({})
+    property var dieStyleTemplates: ({"user": [], "damage": []})
+    property var damageTemplateIconNames: ([
+        "weapon.svg",
+        "fire.svg",
+        "sound.svg",
+        "radiant.svg",
+        "necrotic.svg",
+        "psychic.svg",
+        "force.svg",
+        "cold.svg",
+        "acid.svg",
+        "poison.svg"
+    ])
+    property string damageTemplateIconsBaseUrl: Qt.resolvedUrl("../../../app_data/icons/")
+    property var templateSnapshotCache: ({})
+    property var templateSnapshotQueue: ([])
+    property bool templateSnapshotBusy: false
+    property bool templateSnapshotWebReady: false
+    property var templateSnapshotCurrentTask: null
+    property var damageTemplateLabels: ([
+        "Оружие",
+        "Огонь",
+        "Звук",
+        "Излучение",
+        "Некротический",
+        "Психический",
+        "Силовое поле",
+        "Холод",
+        "Кислота",
+        "Яд"
+    ])
+    property string templateContextRow: "user"
+    property int templateContextIndex: -1
+    property string dieEditorDieKey: "d6"
+    property string pendingColorField: ""
+    property string pendingColorTitle: "Выбор цвета"
+    property var dieEditorWorking: ({
+        "scalePercent": 100,
+        "color": "#C9C9C9",
+        "gradientEnabled": false,
+        "gradientCenterColor": "#FFFFFF",
+        "gradientSharpness": 50,
+        "gradientOffset": 50,
+        "fontColor": "#1F1F1F",
+        "textStrokeColor": "#EEEEEE",
+        "textGlowRadius": 100,
+        "textGlowOpacity": 100,
+        "edgeColor": "#D4D4D4",
+        "edgeWidth": 0.0
+    })
+    property bool previewWebReady: false
+    property int pickerHue: 0
+    property int pickerSaturation: 0
+    property int pickerValue: 100
+    property string pickerHexText: "#FFFFFF"
+    property string pickerPreviewColor: "#FFFFFF"
+    property string pickerCurrentColor: "#FFFFFF"
 
     function effectiveCount(countValue) {
         return countValue > 0 ? countValue : 1
@@ -59,6 +124,9 @@ Window {
         d20Result = null
         standardResult = null
         d100Result = null
+        waitingStandardPhysicsResult = false
+        pendingStandardFallbackResult = null
+        physicsFallbackTimer.stop()
     }
 
     function canRollStandard() {
@@ -67,6 +135,11 @@ Window {
 
     function canRollAll() {
         return (d20Count > 0) || canRollStandard()
+    }
+
+    function isPhysicsStandardRequest(d4, d6, d8, d10, d12) {
+        return d4 === 0
+            && (d6 + d8 + d10 + d12) > 0
     }
 
     function setD20Mode(newMode) {
@@ -88,6 +161,14 @@ Window {
             return
         }
         clearResults()
+        waitingStandardPhysicsResult = isPhysicsStandardRequest(d4Count, d6Count, d8Count, d10Count, d12Count)
+            && diceController.is_map_window_open()
+        console.log("[dice-ui-debug] rollStandardOnly waiting=" + waitingStandardPhysicsResult
+            + " d4=" + d4Count + " d6=" + d6Count + " d8=" + d8Count + " d10=" + d10Count + " d12=" + d12Count
+            + " bonus=" + standardBonus)
+        if (waitingStandardPhysicsResult) {
+            physicsFallbackTimer.restart()
+        }
         diceController.request_roll_standard(d4Count, d6Count, d8Count, d10Count, d12Count, standardBonus)
     }
 
@@ -105,6 +186,14 @@ Window {
         else if (sides === 12) d12 = c
 
         clearResults()
+        waitingStandardPhysicsResult = isPhysicsStandardRequest(d4, d6, d8, d10, d12)
+            && diceController.is_map_window_open()
+        console.log("[dice-ui-debug] rollSingleStandardDie sides=" + sides + " configured=" + configuredCount
+            + " effective=" + c + " waiting=" + waitingStandardPhysicsResult
+            + " d4=" + d4 + " d6=" + d6 + " d8=" + d8 + " d10=" + d10 + " d12=" + d12 + " bonus=" + standardBonus)
+        if (waitingStandardPhysicsResult) {
+            physicsFallbackTimer.restart()
+        }
         diceController.request_roll_standard(d4, d6, d8, d10, d12, standardBonus)
     }
 
@@ -117,38 +206,802 @@ Window {
         if (!canRollAll()) {
             return
         }
+
+        var hasD20 = d20Count > 0
+        var hasStandard = canRollStandard()
+
         clearResults()
-        diceController.request_roll_all(
-            d20Count,
-            d20Mode,
-            d20Bonus,
-            d4Count,
-            d6Count,
-            d8Count,
-            d10Count,
-            d12Count,
-            standardBonus
-        )
+        waitingStandardPhysicsResult = hasStandard
+            && isPhysicsStandardRequest(d4Count, d6Count, d8Count, d10Count, d12Count)
+            && diceController.is_map_window_open()
+
+        console.log("[dice-ui-debug] rollAll split requests=" + (hasD20 || hasStandard)
+            + " d20=" + d20Count + " mode=" + d20Mode + " d20Bonus=" + d20Bonus
+            + " standard(d4/d6/d8/d10/d12)=" + d4Count + "/" + d6Count + "/" + d8Count + "/" + d10Count + "/" + d12Count
+            + " stdBonus=" + standardBonus + " waitingStandard=" + waitingStandardPhysicsResult)
+
+        if (waitingStandardPhysicsResult) {
+            physicsFallbackTimer.restart()
+        }
+
+        if (hasD20) {
+            diceController.request_roll_d20(effectiveCount(d20Count), d20Mode, d20Bonus)
+        }
+        if (hasStandard) {
+            diceController.request_roll_standard(d4Count, d6Count, d8Count, d10Count, d12Count, standardBonus)
+        }
     }
 
     function handleRollCompleted(payload) {
         if (!payload || !payload.kind) {
             return
         }
+        var resultTotal = payload.result && payload.result.total !== undefined ? payload.result.total : "-"
+        var resultRaw = payload.result && payload.result.raw_total !== undefined ? payload.result.raw_total : "-"
+        var firstRoll = (payload.result && payload.result.rolls && payload.result.rolls.length > 0)
+            ? payload.result.rolls[0].value : "-"
+        console.log("[dice-ui-debug] roll_completed kind=" + payload.kind
+            + " request_id=" + (payload.request_id !== undefined ? payload.request_id : "-")
+            + " mode=" + (payload.mode || "-")
+            + " requested_mode=" + (payload.requested_mode || "-")
+            + " waitingBefore=" + waitingStandardPhysicsResult
+            + " total=" + resultTotal + " raw=" + resultRaw + " firstRoll=" + firstRoll)
         if (payload.kind === "d20") {
             d20Result = payload.result
         } else if (payload.kind === "standard") {
+            var expectsPhysics = waitingStandardPhysicsResult
+                || payload.mode === "physics_fallback_random"
+                || payload.requested_mode === "physics"
+            if (expectsPhysics) {
+                if (payload.mode === "physics") {
+                    waitingStandardPhysicsResult = false
+                    pendingStandardFallbackResult = null
+                    physicsFallbackTimer.stop()
+                    standardResult = payload.result
+                    console.log("[dice-ui-debug] accepted physics result total=" + (standardResult ? standardResult.total : "-"))
+                } else if (payload.mode === "physics_fallback_random") {
+                    waitingStandardPhysicsResult = false
+                    pendingStandardFallbackResult = null
+                    physicsFallbackTimer.stop()
+                    standardResult = payload.result
+                    console.log("[dice-ui-debug] accepted physics timeout fallback total=" + (standardResult ? standardResult.total : "-"))
+                } else {
+                    waitingStandardPhysicsResult = true
+                    pendingStandardFallbackResult = payload.result
+                    console.log("[dice-ui-debug] hold fallback result mode=" + (payload.mode || "-")
+                        + " total=" + (pendingStandardFallbackResult ? pendingStandardFallbackResult.total : "-"))
+                }
+                return
+            }
             standardResult = payload.result
         } else if (payload.kind === "d100") {
             d100Result = payload.result
         } else if (payload.kind === "all") {
             d20Result = payload.result ? payload.result.d20 : null
+            if (waitingStandardPhysicsResult && payload.mode !== "physics") {
+                pendingStandardFallbackResult = payload.result ? payload.result.standard : null
+                console.log("[dice-ui-debug] hold all.standard fallback mode=" + (payload.mode || "-")
+                    + " total=" + (pendingStandardFallbackResult ? pendingStandardFallbackResult.total : "-"))
+                return
+            }
             standardResult = payload.result ? payload.result.standard : null
         }
     }
+    function d20CritColor(value) {
+        var v = Number(value || 0)
+        if (v === 20) return "#F3BF42"
+        if (v === 1) return "#8F2532"
+        return textPrimary
+    }
+
+    function d20PairDieColor(entry, which) {
+        if (!entry || entry.type !== "pair") {
+            return textPrimary
+        }
+        var first = Number(entry.first || 0)
+        var second = Number(entry.second || 0)
+        var picked = Number(entry.picked || 0)
+        var value = which === "first" ? first : second
+        if (value !== picked) {
+            return textPrimary
+        }
+        return d20CritColor(value)
+    }
+
+    function d20SingleDieColor(entry) {
+        if (!entry || entry.type !== "single") {
+            return textPrimary
+        }
+        return d20CritColor(Number(entry.value || 0))
+    }
+
+    function cloneStyle(style) {
+        var legacyGlow = Number(style && style.textShadowIntensity !== undefined ? style.textShadowIntensity : 100)
+        var glowRadius = Number(style && style.textGlowRadius !== undefined ? style.textGlowRadius : legacyGlow)
+        var glowOpacity = Number(style && style.textGlowOpacity !== undefined ? style.textGlowOpacity : legacyGlow)
+        return {
+            "scalePercent": Number(style && style.scalePercent !== undefined ? style.scalePercent : 100),
+            "color": String(style && style.color ? style.color : "#C9C9C9"),
+            "gradientEnabled": Boolean(style && style.gradientEnabled),
+            "gradientCenterColor": String(style && style.gradientCenterColor ? style.gradientCenterColor : "#FFFFFF"),
+            "gradientSharpness": Number(style && style.gradientSharpness !== undefined ? style.gradientSharpness : 50),
+            "gradientOffset": Number(style && style.gradientOffset !== undefined ? style.gradientOffset : 50),
+            "fontColor": String(style && style.fontColor ? style.fontColor : "#1F1F1F"),
+            "textStrokeColor": String(style && style.textStrokeColor ? style.textStrokeColor : "#EEEEEE"),
+            "textGlowRadius": Math.max(0, Math.min(200, glowRadius)),
+            "textGlowOpacity": Math.max(0, Math.min(200, glowOpacity)),
+            "edgeColor": String(style && style.edgeColor ? style.edgeColor : "#D4D4D4"),
+            "edgeWidth": Number(style && style.edgeWidth !== undefined ? style.edgeWidth : 0.0)
+        }
+    }
+    function ensureDieStyle(key) {
+        var k = String(key)
+        var bag = dieStyles || {}
+        if (!bag[k]) {
+            bag[k] = cloneStyle(null)
+            dieStyles = Object.assign({}, bag)
+        }
+        return bag[k]
+    }
+
+    function styleForDie(key) {
+        return cloneStyle(ensureDieStyle(key))
+    }
+
+    function loadDieStylesFromSettings() {
+        var source = {}
+        if (typeof appController !== "undefined" && appController && appController.diceStyles) {
+            source = appController.diceStyles
+        }
+        var keys = ["d4", "d6", "d8", "d10", "d12", "d20", "d100"]
+        var bag = {}
+        for (var i = 0; i < keys.length; i++) {
+            var key = keys[i]
+            bag[key] = cloneStyle(source && source[key] ? source[key] : null)
+        }
+        dieStyles = bag
+    }
+    function defaultDamageTemplateStyles() {
+        return [
+            { "scalePercent": 100, "color": "#C8C8C8", "gradientEnabled": true, "gradientCenterColor": "#F3F3F3", "gradientSharpness": 58, "gradientOffset": 50, "fontColor": "#1F2228", "textStrokeColor": "#F0F3FA", "textGlowRadius": 90, "textGlowOpacity": 85, "edgeColor": "#7A7E86", "edgeWidth": 1.2 },
+            { "scalePercent": 100, "color": "#D35A28", "gradientEnabled": true, "gradientCenterColor": "#FFD08C", "gradientSharpness": 64, "gradientOffset": 52, "fontColor": "#2A140C", "textStrokeColor": "#FFE3A8", "textGlowRadius": 110, "textGlowOpacity": 105, "edgeColor": "#7A2315", "edgeWidth": 1.4 },
+            { "scalePercent": 100, "color": "#5F6CE0", "gradientEnabled": true, "gradientCenterColor": "#C7D0FF", "gradientSharpness": 56, "gradientOffset": 50, "fontColor": "#151933", "textStrokeColor": "#D9E2FF", "textGlowRadius": 108, "textGlowOpacity": 96, "edgeColor": "#2E356E", "edgeWidth": 1.2 },
+            { "scalePercent": 100, "color": "#E4CE63", "gradientEnabled": true, "gradientCenterColor": "#FFF7BE", "gradientSharpness": 62, "gradientOffset": 48, "fontColor": "#2A240F", "textStrokeColor": "#FFF4B0", "textGlowRadius": 116, "textGlowOpacity": 108, "edgeColor": "#8B7422", "edgeWidth": 1.3 },
+            { "scalePercent": 100, "color": "#5C4A6A", "gradientEnabled": true, "gradientCenterColor": "#A296B8", "gradientSharpness": 60, "gradientOffset": 53, "fontColor": "#F0EAF8", "textStrokeColor": "#2B1F36", "textGlowRadius": 92, "textGlowOpacity": 78, "edgeColor": "#2D2236", "edgeWidth": 1.3 },
+            { "scalePercent": 100, "color": "#8A5FD6", "gradientEnabled": true, "gradientCenterColor": "#E1CCFF", "gradientSharpness": 57, "gradientOffset": 50, "fontColor": "#26173A", "textStrokeColor": "#F0E3FF", "textGlowRadius": 122, "textGlowOpacity": 110, "edgeColor": "#4B2F7B", "edgeWidth": 1.2 },
+            { "scalePercent": 100, "color": "#4D8DF0", "gradientEnabled": true, "gradientCenterColor": "#D8EBFF", "gradientSharpness": 58, "gradientOffset": 50, "fontColor": "#12243D", "textStrokeColor": "#E4F1FF", "textGlowRadius": 114, "textGlowOpacity": 102, "edgeColor": "#224D83", "edgeWidth": 1.3 },
+            { "scalePercent": 100, "color": "#8CCEF1", "gradientEnabled": true, "gradientCenterColor": "#E8F9FF", "gradientSharpness": 54, "gradientOffset": 48, "fontColor": "#163147", "textStrokeColor": "#F6FDFF", "textGlowRadius": 126, "textGlowOpacity": 116, "edgeColor": "#FFFFFF", "edgeWidth": 1.6 },
+            { "scalePercent": 100, "color": "#6FAF2C", "gradientEnabled": true, "gradientCenterColor": "#D8FF8A", "gradientSharpness": 63, "gradientOffset": 53, "fontColor": "#1A2D0D", "textStrokeColor": "#EDFFC8", "textGlowRadius": 118, "textGlowOpacity": 104, "edgeColor": "#2D5F15", "edgeWidth": 1.3 },
+            { "scalePercent": 100, "color": "#4A7A44", "gradientEnabled": true, "gradientCenterColor": "#98D08E", "gradientSharpness": 58, "gradientOffset": 52, "fontColor": "#102012", "textStrokeColor": "#D0F0C8", "textGlowRadius": 104, "textGlowOpacity": 94, "edgeColor": "#20391F", "edgeWidth": 1.2 }
+        ]
+    }
+
+    function cloneTemplateBag(payload) {
+        var source = payload && typeof payload === "object" ? payload : {}
+        var sourceUser = source.user && source.user.length ? source.user : []
+        var sourceDamage = source.damage && source.damage.length ? source.damage : []
+        var defaultDamage = defaultDamageTemplateStyles()
+
+        var user = []
+        var damage = []
+        for (var i = 0; i < 10; i++) {
+            var u = i < sourceUser.length ? sourceUser[i] : null
+            if (u && typeof u === "object") {
+                user.push(cloneStyle(u))
+            } else {
+                user.push(null)
+            }
+
+            var d = i < sourceDamage.length ? sourceDamage[i] : defaultDamage[i]
+            if (d && typeof d === "object") {
+                damage.push(cloneStyle(d))
+            } else {
+                damage.push(cloneStyle(defaultDamage[i]))
+            }
+        }
+
+        return {"user": user, "damage": damage}
+    }
+
+    function loadDieStyleTemplatesFromSettings() {
+        var source = {}
+        if (typeof appController !== "undefined" && appController && appController.diceStyleTemplates) {
+            source = appController.diceStyleTemplates
+        }
+        dieStyleTemplates = cloneTemplateBag(source)
+    }
+
+    function persistDieStyleTemplates() {
+        if (typeof appController !== "undefined" && appController && appController.update_dice_style_templates) {
+            appController.update_dice_style_templates(cloneTemplateBag(dieStyleTemplates))
+        }
+    }
+
+    function templateSlotList(rowKey) {
+        var bag = cloneTemplateBag(dieStyleTemplates)
+        return rowKey === "damage" ? bag.damage : bag.user
+    }
+
+    function templateStyle(rowKey, index) {
+        var list = templateSlotList(rowKey)
+        if (index < 0 || index >= list.length) {
+            return null
+        }
+        var item = list[index]
+        if (!item || typeof item !== "object") {
+            return null
+        }
+        return item
+    }
+
+    function hasTemplateStyle(rowKey, index) {
+        return templateStyle(rowKey, index) !== null
+    }
+
+    function applyTemplateSlot(rowKey, index) {
+        var style = templateStyle(rowKey, index)
+        if (!style) {
+            return
+        }
+        dieEditorWorking = cloneStyle(style)
+    }
+
+    function saveCurrentStyleToTemplateQueue() {
+        var next = cloneTemplateBag(dieStyleTemplates)
+        for (var i = 9; i > 0; i--) {
+            next.user[i] = next.user[i - 1] ? cloneStyle(next.user[i - 1]) : null
+        }
+        next.user[0] = cloneStyle(dieEditorWorking)
+        dieStyleTemplates = next
+        persistDieStyleTemplates()
+        refreshTemplateSnapshots("user", true)
+    }
+
+    function openTemplateContextMenu(rowKey, index, x, y) {
+        if (!hasTemplateStyle(rowKey, index)) {
+            return
+        }
+        templateContextRow = String(rowKey || "user")
+        templateContextIndex = Number(index)
+        templateSlotContextMenu.popup(x, y)
+    }
+
+    function overwriteTemplateContextSlot() {
+        if (templateContextIndex < 0 || !hasTemplateStyle(templateContextRow, templateContextIndex)) {
+            return
+        }
+        var next = cloneTemplateBag(dieStyleTemplates)
+        var row = templateContextRow === "damage" ? "damage" : "user"
+        next[row][templateContextIndex] = cloneStyle(dieEditorWorking)
+        dieStyleTemplates = next
+        persistDieStyleTemplates()
+        enqueueTemplateSnapshot(row, templateContextIndex, true)
+    }
+
+    function deleteTemplateContextSlot() {
+        if (templateContextRow !== "user" || templateContextIndex < 0) {
+            return
+        }
+        if (!hasTemplateStyle("user", templateContextIndex)) {
+            return
+        }
+        var next = cloneTemplateBag(dieStyleTemplates)
+        for (var i = templateContextIndex; i < 9; i++) {
+            next.user[i] = next.user[i + 1] ? cloneStyle(next.user[i + 1]) : null
+        }
+        next.user[9] = null
+        dieStyleTemplates = next
+        persistDieStyleTemplates()
+        refreshTemplateSnapshots("user", true)
+    }
+
+    function previewLabelForDieType(dieType) {
+        var key = String(dieType || "d6").toLowerCase()
+        if (key === "d100") return "00"
+        if (key === "d20") return "20"
+        if (key === "d12") return "12"
+        if (key === "d10") return "10"
+        if (key === "d8") return "8"
+        if (key === "d6") return "6"
+        if (key === "d4") return "4"
+        return "6"
+    }
+
+    function templateSlotSizeForWidth(availableWidth) {
+        var gap = 6
+        var width = Math.max(320, Number(availableWidth || 0))
+        var s = Math.floor((width - gap * 9) / 10)
+        return Math.max(30, Math.min(54, s))
+    }
+    function previewKindForDieType(dieType) {
+        var key = String(dieType || "d6").toLowerCase()
+        return key === "d100" ? "d10t" : key
+    }
+
+    function styleToWebPayload(styleObj) {
+        var src = styleObj && typeof styleObj === "object" ? styleObj : cloneStyle(null)
+        return {
+            "scalePercent": Number(src.scalePercent !== undefined ? src.scalePercent : 100),
+            "faceColor": String(src.color || "#C9C9C9"),
+            "gradientEnabled": Boolean(src.gradientEnabled),
+            "gradientCenterColor": String(src.gradientCenterColor || "#FFFFFF"),
+            "gradientSharpness": Math.max(0, Math.min(1, Number(src.gradientSharpness || 50) / 100.0)),
+            "gradientOffset": Math.max(0, Math.min(1, Number(src.gradientOffset || 50) / 100.0)),
+            "textColor": String(src.fontColor || "#1F1F1F"),
+            "textStrokeColor": String(src.textStrokeColor || "#EEEEEE"),
+            "textGlowRadius": Math.max(0, Math.min(2, Number(src.textGlowRadius !== undefined ? src.textGlowRadius : 100) / 100.0)),
+            "textGlowOpacity": Math.max(0, Math.min(2, Number(src.textGlowOpacity !== undefined ? src.textGlowOpacity : 100) / 100.0)),
+            "edgeColor": String(src.edgeColor || "#D4D4D4"),
+            "edgeWidth": Number(src.edgeWidth !== undefined ? src.edgeWidth : 0.0)
+        }
+    }
+
+    function styleToSnapshotPayload(styleObj) {
+        var payload = styleToWebPayload(styleObj)
+        payload.scalePercent = Number(payload.scalePercent || 100) * 2.25
+        return payload
+    }
+    function templateStyleHash(styleObj) {
+        var s = cloneStyle(styleObj)
+        return [
+            Number(s.scalePercent || 100).toFixed(3),
+            String(s.color || "#C9C9C9"),
+            s.gradientEnabled ? "1" : "0",
+            String(s.gradientCenterColor || "#FFFFFF"),
+            Number(s.gradientSharpness || 50).toFixed(3),
+            Number(s.gradientOffset || 50).toFixed(3),
+            String(s.fontColor || "#1F1F1F"),
+            String(s.textStrokeColor || "#EEEEEE"),
+            Number(s.textGlowRadius !== undefined ? s.textGlowRadius : 100).toFixed(3),
+            Number(s.textGlowOpacity !== undefined ? s.textGlowOpacity : 100).toFixed(3),
+            String(s.edgeColor || "#D4D4D4"),
+            Number(s.edgeWidth !== undefined ? s.edgeWidth : 0.0).toFixed(3)
+        ].join("|")
+    }
+
+    function templateSnapshotKey(dieType, rowKey, index, styleObj) {
+        return String(dieType || "d6") + "::" + String(rowKey || "user") + "::" + Number(index) + "::" + templateStyleHash(styleObj)
+    }
+
+    function templateSnapshotSource(rowKey, index) {
+        var style = templateStyle(rowKey, index)
+        if (!style) {
+            return ""
+        }
+        var key = templateSnapshotKey(dieEditorDieKey, rowKey, index, style)
+        var cache = templateSnapshotCache || {}
+        return cache[key] ? String(cache[key]) : ""
+    }
+
+    function resolveDamageIconSource(index) {
+        var i = Number(index)
+        if (!isFinite(i) || i < 0 || i >= damageTemplateIconNames.length) {
+            return ""
+        }
+        var base = String(damageTemplateIconsBaseUrl || "")
+        if (base.length <= 0) {
+            return ""
+        }
+        if (base[base.length - 1] !== "/") {
+            base += "/"
+        }
+        return base + encodeURIComponent(String(damageTemplateIconNames[i]))
+    }
+
+    function enqueueTemplateSnapshot(rowKey, index, forceRender) {
+        var style = templateStyle(rowKey, index)
+        if (!style) {
+            return
+        }
+        var key = templateSnapshotKey(dieEditorDieKey, rowKey, index, style)
+        var cache = templateSnapshotCache || {}
+        if (!forceRender && cache[key]) {
+            return
+        }
+
+        if (templateSnapshotBusy && templateSnapshotCurrentTask && templateSnapshotCurrentTask.key === key) {
+            return
+        }
+
+        var q = templateSnapshotQueue ? templateSnapshotQueue.slice(0) : []
+        for (var i = 0; i < q.length; i++) {
+            if (q[i] && q[i].key === key) {
+                return
+            }
+        }
+
+        q.push({
+            "key": key,
+            "rowKey": String(rowKey),
+            "index": Number(index),
+            "dieType": String(dieEditorDieKey || "d6"),
+            "previewKind": previewKindForDieType(dieEditorDieKey),
+            "payload": styleToSnapshotPayload(style)
+        })
+        templateSnapshotQueue = q
+        processTemplateSnapshotQueue()
+    }
+
+    function refreshTemplateSnapshots(rowKey, forceRender) {
+        var row = String(rowKey || "")
+        if (row !== "user" && row !== "damage") {
+            return
+        }
+        for (var i = 0; i < 10; i++) {
+            enqueueTemplateSnapshot(row, i, Boolean(forceRender))
+        }
+    }
+
+    function refreshAllTemplateSnapshots(forceRender) {
+        refreshTemplateSnapshots("user", forceRender)
+        refreshTemplateSnapshots("damage", forceRender)
+    }
+
+    function clearTemplateSnapshotQueue() {
+        templateSnapshotQueue = []
+        templateSnapshotBusy = false
+        templateSnapshotCurrentTask = null
+        templateSnapshotCaptureTimer.stop()
+    }
+
+    function processTemplateSnapshotQueue() {
+        if (!dieStylePopup || !dieStylePopup.visible) {
+            return
+        }
+        if (!templateSnapshotWebReady || templateSnapshotBusy) {
+            return
+        }
+        var q = templateSnapshotQueue ? templateSnapshotQueue.slice(0) : []
+        if (q.length <= 0) {
+            return
+        }
+        var task = q.shift()
+        templateSnapshotQueue = q
+        templateSnapshotCurrentTask = task
+        templateSnapshotBusy = true
+
+        if (!templateSnapshotWeb) {
+            templateSnapshotBusy = false
+            templateSnapshotCurrentTask = null
+            return
+        }
+
+        templateSnapshotWeb.runJavaScript("window.setPreviewStaticMode && window.setPreviewStaticMode(true);")
+        templateSnapshotWeb.runJavaScript("window.setStyleOverrides && window.setStyleOverrides(" + JSON.stringify(task.payload) + ");")
+        templateSnapshotWeb.runJavaScript("window.setPreviewDieKind && window.setPreviewDieKind('" + task.previewKind + "');")
+        templateSnapshotWeb.runJavaScript("window.startPreviewRoll && window.startPreviewRoll();")
+        templateSnapshotCaptureTimer.restart()
+    }
+
+    function handleTemplateSnapshotCaptured(result) {
+        var task = templateSnapshotCurrentTask
+        if (task && result && result.url) {
+            var cache = Object.assign({}, templateSnapshotCache || {})
+            cache[task.key] = result.url
+            templateSnapshotCache = cache
+        }
+        templateSnapshotBusy = false
+        templateSnapshotCurrentTask = null
+        processTemplateSnapshotQueue()
+    }
+
+    function captureTemplateSnapshotCurrentTask() {
+        if (!templateSnapshotBusy || !templateSnapshotCurrentTask || !templateSnapshotWeb) {
+            return
+        }
+        templateSnapshotWeb.grabToImage(function(result) {
+            diceWindow.handleTemplateSnapshotCaptured(result)
+        })
+    }
+    function updateEditorField(field, value) {
+        var next = cloneStyle(dieEditorWorking)
+        next[field] = value
+        dieEditorWorking = next
+    }
+
+    function saveDieEditor() {
+        var key = String(dieEditorDieKey)
+        var savedStyle = cloneStyle(dieEditorWorking)
+        var bag = Object.assign({}, dieStyles || {})
+        bag[key] = savedStyle
+        dieStyles = bag
+        if (typeof appController !== "undefined" && appController && appController.update_dice_style) {
+            appController.update_dice_style(key, savedStyle)
+        }
+        dieStylePopup.close()
+    }
+
+    function resetDieEditorToDefaults() {
+        dieEditorWorking = cloneStyle(null)
+    }
+
+    function clampNumber(value, minValue, maxValue) {
+        var n = Number(value)
+        if (!isFinite(n)) {
+            n = Number(minValue)
+        }
+        return Math.max(Number(minValue), Math.min(Number(maxValue), n))
+    }
+
+    function roundToDecimals(value, decimals) {
+        var d = Math.max(0, Number(decimals || 0))
+        var p = Math.pow(10, d)
+        return Math.round(Number(value) * p) / p
+    }
+
+    function clampAndRound(textValue, minValue, maxValue, decimals, fallbackValue) {
+        var parsed = Number(String(textValue || "").replace(",", "."))
+        if (!isFinite(parsed)) {
+            parsed = Number(fallbackValue)
+        }
+        var clamped = clampNumber(parsed, minValue, maxValue)
+        return roundToDecimals(clamped, decimals)
+    }
+
+    function formatSliderValue(value, decimals) {
+        var d = Math.max(0, Number(decimals || 0))
+        var n = Number(value)
+        if (!isFinite(n)) {
+            n = 0
+        }
+        if (d <= 0) {
+            return String(Math.round(n))
+        }
+        return Number(n).toFixed(d)
+    }
+
+    function byteToHex(value) {
+        var n = Math.max(0, Math.min(255, Math.round(Number(value) || 0)))
+        var h = n.toString(16).toUpperCase()
+        return h.length < 2 ? ("0" + h) : h
+    }
+
+    function rgbaToHex(r, g, b) {
+        return "#" + byteToHex(r) + byteToHex(g) + byteToHex(b)
+    }
+
+    function parseColorInput(raw, fallbackColor) {
+        var value = String(raw || "").trim()
+        if (value.length <= 0 && fallbackColor !== undefined) {
+            value = String(fallbackColor || "").trim()
+        }
+
+        var m = value.match(/^#([0-9a-fA-F]{3})$/)
+        if (m) {
+            var h3 = m[1]
+            return {
+                ok: true,
+                r: parseInt(h3[0] + h3[0], 16),
+                g: parseInt(h3[1] + h3[1], 16),
+                b: parseInt(h3[2] + h3[2], 16),
+                hex: "#" + (h3[0] + h3[0] + h3[1] + h3[1] + h3[2] + h3[2]).toUpperCase()
+            }
+        }
+
+        m = value.match(/^#([0-9a-fA-F]{6})$/)
+        if (m) {
+            var h6 = m[1].toUpperCase()
+            return {
+                ok: true,
+                r: parseInt(h6.slice(0, 2), 16),
+                g: parseInt(h6.slice(2, 4), 16),
+                b: parseInt(h6.slice(4, 6), 16),
+                hex: "#" + h6
+            }
+        }
+
+        m = value.match(/^#([0-9a-fA-F]{8})$/)
+        if (m) {
+            var h8 = m[1].toUpperCase()
+            var rgb = h8.slice(2)
+            return {
+                ok: true,
+                r: parseInt(rgb.slice(0, 2), 16),
+                g: parseInt(rgb.slice(2, 4), 16),
+                b: parseInt(rgb.slice(4, 6), 16),
+                hex: "#" + rgb
+            }
+        }
+
+        m = value.match(/^rgba?\(\s*([+-]?\d+(?:\.\d+)?)\s*,\s*([+-]?\d+(?:\.\d+)?)\s*,\s*([+-]?\d+(?:\.\d+)?)(?:\s*,\s*([+-]?\d*(?:\.\d+)?))?\s*\)$/i)
+        if (m) {
+            var rr = clampNumber(m[1], 0, 255)
+            var gg = clampNumber(m[2], 0, 255)
+            var bb = clampNumber(m[3], 0, 255)
+            return {
+                ok: true,
+                r: Math.round(rr),
+                g: Math.round(gg),
+                b: Math.round(bb),
+                hex: rgbaToHex(rr, gg, bb)
+            }
+        }
+
+        if (fallbackColor !== undefined && String(value) !== String(fallbackColor)) {
+            return parseColorInput(String(fallbackColor || "#FFFFFF"), "#FFFFFF")
+        }
+
+        return {
+            ok: false,
+            r: 255,
+            g: 255,
+            b: 255,
+            hex: "#FFFFFF"
+        }
+    }
+
+    function normalizePickerColor(raw, fallback) {
+        return parseColorInput(raw, fallback || "#FFFFFF").hex
+    }
+
+    function rgbToHsv(r, g, b) {
+        var rn = clampNumber(r, 0, 255) / 255.0
+        var gn = clampNumber(g, 0, 255) / 255.0
+        var bn = clampNumber(b, 0, 255) / 255.0
+        var maxc = Math.max(rn, gn, bn)
+        var minc = Math.min(rn, gn, bn)
+        var d = maxc - minc
+        var h = 0
+        if (d > 1e-6) {
+            if (maxc === rn) {
+                h = 60 * (((gn - bn) / d) % 6)
+            } else if (maxc === gn) {
+                h = 60 * (((bn - rn) / d) + 2)
+            } else {
+                h = 60 * (((rn - gn) / d) + 4)
+            }
+        }
+        if (h < 0) {
+            h += 360
+        }
+        var s = maxc <= 1e-6 ? 0 : (d / maxc)
+        var v = maxc
+        return {
+            h: Math.round(clampNumber(h, 0, 360)),
+            s: Math.round(clampNumber(s * 100, 0, 100)),
+            v: Math.round(clampNumber(v * 100, 0, 100))
+        }
+    }
+
+    function hsvToRgb(h, s, v) {
+        var hh = clampNumber(h, 0, 360)
+        var ss = clampNumber(s, 0, 100) / 100.0
+        var vv = clampNumber(v, 0, 100) / 100.0
+        if (ss <= 1e-6) {
+            var g = Math.round(vv * 255)
+            return { r: g, g: g, b: g }
+        }
+        if (hh >= 360) {
+            hh = 0
+        }
+        var c = vv * ss
+        var x = c * (1 - Math.abs(((hh / 60) % 2) - 1))
+        var m = vv - c
+        var rp = 0
+        var gp = 0
+        var bp = 0
+        if (hh < 60) {
+            rp = c; gp = x; bp = 0
+        } else if (hh < 120) {
+            rp = x; gp = c; bp = 0
+        } else if (hh < 180) {
+            rp = 0; gp = c; bp = x
+        } else if (hh < 240) {
+            rp = 0; gp = x; bp = c
+        } else if (hh < 300) {
+            rp = x; gp = 0; bp = c
+        } else {
+            rp = c; gp = 0; bp = x
+        }
+        return {
+            r: Math.round((rp + m) * 255),
+            g: Math.round((gp + m) * 255),
+            b: Math.round((bp + m) * 255)
+        }
+    }
+
+    function refreshPickerColorFromHSV(syncText) {
+        var rgb = hsvToRgb(pickerHue, pickerSaturation, pickerValue)
+        var hex = rgbaToHex(rgb.r, rgb.g, rgb.b)
+        pickerPreviewColor = hex
+        if (syncText) {
+            pickerHexText = hex
+            if (pickerHexInput && !pickerHexInput.activeFocus) {
+                pickerHexInput.text = hex
+            }
+        }
+    }
+
+    function setPickerFromColor(raw, fallbackColor) {
+        var parsed = parseColorInput(raw, fallbackColor || "#FFFFFF")
+        var hsv = rgbToHsv(parsed.r, parsed.g, parsed.b)
+        pickerHue = hsv.h
+        pickerSaturation = hsv.s
+        pickerValue = hsv.v
+        pickerCurrentColor = parsed.hex
+        pickerHexText = parsed.hex
+        pickerPreviewColor = parsed.hex
+        if (pickerHexInput) {
+            pickerHexInput.text = parsed.hex
+        }
+    }
+
+    function applyPickerTypedColor() {
+        var parsed = parseColorInput(pickerHexText, pickerPreviewColor)
+        var hsv = rgbToHsv(parsed.r, parsed.g, parsed.b)
+        pickerHue = hsv.h
+        pickerSaturation = hsv.s
+        pickerValue = hsv.v
+        pickerHexText = parsed.hex
+        pickerPreviewColor = parsed.hex
+        if (pickerHexInput) {
+            pickerHexInput.text = parsed.hex
+        }
+    }
+
+    function openDieColorDialog(field, titleText, fallbackColor) {
+        pendingColorField = String(field || "")
+        pendingColorTitle = String(titleText || "Выбор цвета")
+        var current = dieEditorWorking && pendingColorField.length > 0 ? dieEditorWorking[pendingColorField] : null
+        setPickerFromColor(current, fallbackColor || "#FFFFFF")
+        colorPickerPopup.open()
+    }
+
+
+    function openDieEditor(key) {
+        dieEditorDieKey = String(key)
+        dieEditorWorking = styleForDie(dieEditorDieKey)
+        dieStylePopup.open()
+    }
+
+    function pushPreviewStyle() {
+        if (!dieStylePopup || !dieStylePopup.visible) {
+            return
+        }
+        if (!previewWeb || !previewWeb.visible || !previewWebReady) {
+            return
+        }
+
+        var stylePayload = styleToWebPayload(dieEditorWorking)
+        previewWeb.runJavaScript("window.setPreviewStaticMode && window.setPreviewStaticMode(false);")
+        previewWeb.runJavaScript("window.setStyleOverrides && window.setStyleOverrides(" + JSON.stringify(stylePayload) + ");")
+        var previewKind = previewKindForDieType(dieEditorDieKey)
+        previewWeb.runJavaScript("window.setPreviewDieKind && window.setPreviewDieKind('" + previewKind + "');")
+    }
+
+    function startPreviewRollNow() {
+        if (!previewWeb || !previewWeb.visible || !previewWebReady) {
+            return
+        }
+        previewWeb.runJavaScript("window.setPreviewStaticMode && window.setPreviewStaticMode(false);")
+        previewWeb.runJavaScript("window.startPreviewRoll && window.startPreviewRoll();")
+    }
+
 
     onResetTokenChanged: resetState()
-    Component.onCompleted: resetState()
+    onDieEditorWorkingChanged: pushPreviewStyle()
+    onDieEditorDieKeyChanged: {
+        pushPreviewStyle()
+        startPreviewRollNow()
+        if (dieStylePopup && dieStylePopup.visible) {
+            refreshAllTemplateSnapshots(true)
+        }
+    }
+    Component.onCompleted: {
+        resetState()
+        loadDieStylesFromSettings()
+        loadDieStyleTemplatesFromSettings()
+    }
+
+    Connections {
+        target: appController
+        function onSettingsChanged() {
+            if (!dieStylePopup || !dieStylePopup.visible) {
+                loadDieStylesFromSettings()
+                loadDieStyleTemplatesFromSettings()
+            }
+        }
+    }
 
     Connections {
         target: diceController
@@ -271,7 +1124,7 @@ Window {
         value: 0
         focusPolicy: Qt.NoFocus
 
-        validator: IntValidator { bottom: control.from; top: control.to }
+        validator: RegularExpressionValidator { regularExpression: /[+-]?\d*/ }
 
         textFromValue: function(value, locale) {
             return Number(value).toLocaleString(locale, 'f', 0)
@@ -279,6 +1132,9 @@ Window {
 
         valueFromText: function(text, locale) {
             var n = Number.fromLocaleString(locale, text)
+            if (!isFinite(n)) {
+                n = Number(text)
+            }
             if (!isFinite(n)) {
                 return control.from
             }
@@ -295,20 +1151,15 @@ Window {
             font.pixelSize: 13
             validator: control.validator
             readOnly: !control.editable
-            onTextEdited: {
-                if (text.length === 0 || text === "-" || text === "+") {
-                    return
-                }
+            onEditingFinished: {
                 var parsed = control.valueFromText(text, control.locale)
                 if (!isFinite(parsed)) {
-                    return
+                    parsed = control.from
                 }
                 var bounded = Math.max(control.from, Math.min(control.to, parsed))
-                if (control.value !== bounded) {
-                    control.value = bounded
-                }
+                control.value = Math.round(bounded)
+                text = control.textFromValue(control.value, control.locale)
             }
-            onEditingFinished: control.value = control.valueFromText(text, control.locale)
         }
 
         background: Rectangle {
@@ -345,6 +1196,51 @@ Window {
         }
     }
 
+
+    component SliderNumberControl: RowLayout {
+        id: control
+        property real minValue: 0
+        property real maxValue: 100
+        property real step: 1
+        property int decimals: 0
+        property real value: 0
+        signal valueCommitted(real value)
+
+        Layout.fillWidth: true
+        spacing: 8
+
+        Slider {
+            id: slider
+            Layout.fillWidth: true
+            from: control.minValue
+            to: control.maxValue
+            stepSize: control.step
+            value: control.value
+            onMoved: control.valueCommitted(value)
+            onValueChanged: if (pressed) control.valueCommitted(value)
+        }
+
+        TextField {
+            id: valueInput
+            Layout.preferredWidth: 62
+            selectByMouse: true
+            inputMethodHints: Qt.ImhFormattedNumbersOnly
+            validator: RegularExpressionValidator { regularExpression: /[+-]?\d*(?:\.\d*)?/ }
+            text: formatSliderValue(control.value, control.decimals)
+
+            onEditingFinished: {
+                var v = clampAndRound(text, control.minValue, control.maxValue, control.decimals, control.value)
+                control.valueCommitted(v)
+                text = formatSliderValue(v, control.decimals)
+            }
+        }
+
+        onValueChanged: {
+            if (!valueInput.activeFocus) {
+                valueInput.text = formatSliderValue(control.value, control.decimals)
+            }
+        }
+    }
     component DieGlyph: Item {
         id: glyph
         property string dieType: "d6"
@@ -352,8 +1248,15 @@ Window {
         property color lineColor: "#E5E5E5"
         property color fillColor: "transparent"
         property color textColor: "#EFEFF2"
+        property string labelFontFamily: "Segoe UI"
+        property int labelFontWeight: Font.DemiBold
+        property int labelPixelSize: 12
         property real lineWidth: 1.4
         property real valueOpacity: 1.0
+
+        Behavior on valueOpacity {
+            NumberAnimation { duration: 190; easing.type: Easing.OutCubic }
+        }
 
         implicitWidth: 40
         implicitHeight: 40
@@ -457,8 +1360,9 @@ Window {
             anchors.centerIn: parent
             text: glyph.label
             color: glyph.textColor
-            font.pixelSize: 12
-            font.weight: Font.DemiBold
+            font.family: glyph.labelFontFamily
+            font.pixelSize: glyph.labelPixelSize
+            font.weight: glyph.labelFontWeight
             opacity: glyph.valueOpacity
         }
 
@@ -466,10 +1370,290 @@ Window {
         onFillColorChanged: canvas.requestPaint()
         onLineColorChanged: canvas.requestPaint()
         onLineWidthChanged: canvas.requestPaint()
+        onValueOpacityChanged: canvas.requestPaint()
         onWidthChanged: canvas.requestPaint()
         onHeightChanged: canvas.requestPaint()
         Component.onCompleted: canvas.requestPaint()
     }
+    component TemplateStylePreview: Item {
+        id: preview
+        property string dieType: "d6"
+        property var styleData: ({})
+        property string labelText: diceWindow.previewLabelForDieType(dieType)
+
+        Canvas {
+            id: templateCanvas
+            anchors.fill: parent
+            onPaint: {
+                var ctx = getContext("2d")
+                ctx.reset()
+                ctx.clearRect(0, 0, width, height)
+
+                var w = width
+                var h = height
+                var cx = w * 0.5
+                var cy = h * 0.5
+                var pad = Math.max(2, Math.round(Math.min(w, h) * 0.08))
+
+                var style = preview.styleData || {}
+                var faceColor = String(style.color || "#C9C9C9")
+                var centerColor = String(style.gradientCenterColor || "#FFFFFF")
+                var gradientEnabled = Boolean(style.gradientEnabled)
+                var sharpness = Math.max(0, Math.min(100, Number(style.gradientSharpness !== undefined ? style.gradientSharpness : 50)))
+                var offset = Math.max(0, Math.min(100, Number(style.gradientOffset !== undefined ? style.gradientOffset : 50)))
+                var textColor = String(style.fontColor || "#1F1F1F")
+                var glowColor = String(style.textStrokeColor || "#EEEEEE")
+                var glowRadius = Math.max(0, Math.min(200, Number(style.textGlowRadius !== undefined ? style.textGlowRadius : 100)))
+                var glowOpacity = Math.max(0, Math.min(200, Number(style.textGlowOpacity !== undefined ? style.textGlowOpacity : 100)))
+                var edgeColor = String(style.edgeColor || "#D4D4D4")
+                var edgeWidth = Math.max(0, Math.min(5, Number(style.edgeWidth !== undefined ? style.edgeWidth : 0)))
+
+                function hexToRgb(hex) {
+                    var s = String(hex || "").trim()
+                    var m3 = /^#([0-9a-fA-F]{3})$/.exec(s)
+                    if (m3) {
+                        return {
+                            r: parseInt(m3[1][0] + m3[1][0], 16),
+                            g: parseInt(m3[1][1] + m3[1][1], 16),
+                            b: parseInt(m3[1][2] + m3[1][2], 16)
+                        }
+                    }
+                    var m6 = /^#([0-9a-fA-F]{6})$/.exec(s)
+                    if (m6) {
+                        return {
+                            r: parseInt(m6[1].slice(0, 2), 16),
+                            g: parseInt(m6[1].slice(2, 4), 16),
+                            b: parseInt(m6[1].slice(4, 6), 16)
+                        }
+                    }
+                    return { r: 255, g: 255, b: 255 }
+                }
+
+                function rgba(hex, alpha) {
+                    var rgb = hexToRgb(hex)
+                    var a = Math.max(0, Math.min(1, Number(alpha || 0)))
+                    return "rgba(" + rgb.r + "," + rgb.g + "," + rgb.b + "," + a.toFixed(3) + ")"
+                }
+
+                function shapePoints(kind) {
+                    var t = String(kind || "d6").toLowerCase()
+                    if (t === "d4") {
+                        return [{x: cx, y: pad}, {x: w - pad, y: h - pad}, {x: pad, y: h - pad}]
+                    }
+                    if (t === "d6") {
+                        return [{x: pad, y: pad}, {x: w - pad, y: pad}, {x: w - pad, y: h - pad}, {x: pad, y: h - pad}]
+                    }
+                    if (t === "d8") {
+                        return [{x: cx, y: pad}, {x: w - pad, y: cy}, {x: cx, y: h - pad}, {x: pad, y: cy}]
+                    }
+                    if (t === "d10" || t === "d100") {
+                        return [{x: cx, y: pad}, {x: w - pad, y: cy}, {x: cx, y: h - pad}, {x: pad, y: cy}]
+                    }
+                    if (t === "d12") {
+                        var p12 = []
+                        var r12 = Math.min(w, h) * 0.43
+                        for (var i = 0; i < 10; i++) {
+                            var a12 = -Math.PI / 2 + (Math.PI * 2 * i / 10)
+                            p12.push({x: cx + Math.cos(a12) * r12, y: cy + Math.sin(a12) * r12})
+                        }
+                        return p12
+                    }
+                    if (t === "d20") {
+                        var p20 = []
+                        var r20 = Math.min(w, h) * 0.43
+                        for (var j = 0; j < 6; j++) {
+                            var a20 = -Math.PI / 2 + (Math.PI * 2 * j / 6)
+                            p20.push({x: cx + Math.cos(a20) * r20, y: cy + Math.sin(a20) * r20})
+                        }
+                        return p20
+                    }
+                    return [{x: pad, y: pad}, {x: w - pad, y: pad}, {x: w - pad, y: h - pad}, {x: pad, y: h - pad}]
+                }
+
+                function drawPolygon(points) {
+                    if (!points || points.length === 0) {
+                        return
+                    }
+                    ctx.beginPath()
+                    ctx.moveTo(points[0].x, points[0].y)
+                    for (var i = 1; i < points.length; i++) {
+                        ctx.lineTo(points[i].x, points[i].y)
+                    }
+                    ctx.closePath()
+
+                    if (gradientEnabled) {
+                        var rad = Math.max(6, Math.min(w, h) * (0.26 + offset * 0.0048))
+                        var grd = ctx.createRadialGradient(cx, cy, 0, cx, cy, rad)
+                        var stop = Math.max(0.05, Math.min(0.95, 0.20 + (100 - sharpness) * 0.0055))
+                        grd.addColorStop(0, centerColor)
+                        grd.addColorStop(stop, centerColor)
+                        grd.addColorStop(1, faceColor)
+                        ctx.fillStyle = grd
+                    } else {
+                        ctx.fillStyle = faceColor
+                    }
+                    ctx.fill()
+
+                    if (edgeWidth > 0.01) {
+                        ctx.lineWidth = Math.max(0.6, edgeWidth * 0.85)
+                        ctx.strokeStyle = edgeColor
+                        ctx.stroke()
+                    }
+                }
+
+                if (String(preview.dieType || "") === "d100") {
+                    var backPad = Math.max(3, pad + 1)
+                    ctx.beginPath()
+                    ctx.moveTo(cx + 2, backPad)
+                    ctx.lineTo(w - backPad + 2, cy)
+                    ctx.lineTo(cx + 2, h - backPad)
+                    ctx.lineTo(backPad + 2, cy)
+                    ctx.closePath()
+                    ctx.lineWidth = Math.max(0.6, edgeWidth * 0.7)
+                    ctx.strokeStyle = edgeColor
+                    ctx.stroke()
+                }
+
+                drawPolygon(shapePoints(preview.dieType))
+
+                var glowA = Math.max(0, Math.min(1, glowOpacity / 200.0))
+                var blur = Math.max(0, glowRadius / 200.0 * 7.5)
+                ctx.save()
+                ctx.textAlign = "center"
+                ctx.textBaseline = "middle"
+                ctx.font = "600 " + Math.max(8, Math.round(Math.min(w, h) * 0.34)) + "px Segoe UI"
+                if (glowA > 0.001) {
+                    ctx.shadowColor = rgba(glowColor, Math.min(0.95, 0.25 + glowA * 0.55))
+                    ctx.shadowBlur = blur
+                }
+                ctx.fillStyle = textColor
+                ctx.fillText(String(preview.labelText || ""), cx, cy)
+                if (glowA > 0.18) {
+                    ctx.shadowBlur = 0
+                    ctx.lineWidth = Math.max(0.35, glowRadius / 200.0 * 1.1)
+                    ctx.strokeStyle = rgba(glowColor, Math.min(1, glowA * 0.55))
+                    ctx.strokeText(String(preview.labelText || ""), cx, cy)
+                }
+                ctx.restore()
+            }
+        }
+
+        onDieTypeChanged: templateCanvas.requestPaint()
+        onStyleDataChanged: templateCanvas.requestPaint()
+        onLabelTextChanged: templateCanvas.requestPaint()
+        onWidthChanged: templateCanvas.requestPaint()
+        onHeightChanged: templateCanvas.requestPaint()
+        Component.onCompleted: templateCanvas.requestPaint()
+    }
+
+    component TemplateSlotButton: Item {
+        id: slot
+        property string rowKey: "user"
+        property int slotIndex: 0
+        property int slotSize: 34
+        property var slotStyle: null
+        property string snapshotSource: diceWindow.templateSnapshotSource(slot.rowKey, slot.slotIndex)
+        property string damageIconSource: slot.rowKey === "damage" ? diceWindow.resolveDamageIconSource(slot.slotIndex) : ""
+        property string damageTooltipText: {
+            if (slot.rowKey !== "damage") {
+                return ""
+            }
+            if (slot.slotIndex < 0 || slot.slotIndex >= diceWindow.damageTemplateLabels.length) {
+                return ""
+            }
+            var label = String(diceWindow.damageTemplateLabels[slot.slotIndex] || "")
+            if (label.length <= 0) {
+                return ""
+            }
+            return "\u0428\u0430\u0431\u043b\u043e\u043d \u0443\u0440\u043e\u043d\u0430: " + label.toLowerCase()
+        }
+
+        implicitWidth: slotSize
+        implicitHeight: slotSize
+
+        Rectangle {
+            anchors.fill: parent
+            radius: Math.max(6, slot.slotSize * 0.18)
+            color: slot.slotStyle ? "#151619" : "#111214"
+            border.width: 1
+            border.color: slot.slotStyle ? "#5B5D64" : "#3B3D43"
+        }
+
+        TemplateStylePreview {
+            anchors.centerIn: parent
+            width: Math.max(18, slot.slotSize - 8)
+            height: Math.max(18, slot.slotSize - 8)
+            visible: !!slot.slotStyle && (!slot.snapshotSource || slot.snapshotSource.length <= 0)
+            dieType: diceWindow.dieEditorDieKey
+            styleData: slot.slotStyle || ({})
+            labelText: diceWindow.previewLabelForDieType(diceWindow.dieEditorDieKey)
+        }
+
+        Image {
+            anchors.centerIn: parent
+            width: Math.max(18, slot.slotSize - 8)
+            height: Math.max(18, slot.slotSize - 8)
+            fillMode: Image.PreserveAspectFit
+            smooth: true
+            asynchronous: true
+            cache: false
+            source: slot.snapshotSource
+            visible: !!slot.slotStyle && slot.snapshotSource.length > 0 && status === Image.Ready
+        }
+
+
+        Rectangle {
+            id: damageIconFrame
+            width: Math.max(12, damageIcon.width + 4)
+            height: width
+            radius: Math.max(4, width * 0.18)
+            x: parent.width - width - 3
+            y: parent.height - height - 3
+            color: "#111214"
+            border.width: 1
+            border.color: "#3B3D43"
+            visible: damageIcon.visible
+            z: 3
+        }
+
+        Image {
+            id: damageIcon
+            width: Math.max(9, Math.round(slot.slotSize * 0.27))
+            height: width
+            anchors.centerIn: damageIconFrame
+            fillMode: Image.PreserveAspectFit
+            smooth: true
+            asynchronous: true
+            source: slot.damageIconSource
+            visible: slot.rowKey === "damage" && slot.damageIconSource.length > 0 && status === Image.Ready
+            z: 4
+        }
+
+        MouseArea {
+            id: slotHoverArea
+            anchors.fill: parent
+            hoverEnabled: true
+            acceptedButtons: Qt.LeftButton | Qt.RightButton
+            onClicked: function(mouse) {
+                if (mouse.button === Qt.LeftButton) {
+                    if (slot.slotStyle) {
+                        diceWindow.applyTemplateSlot(slot.rowKey, slot.slotIndex)
+                    }
+                    return
+                }
+                if (mouse.button === Qt.RightButton && slot.slotStyle) {
+                    var p = slot.mapToItem(dieStylePopup.contentItem, mouse.x, mouse.y)
+                    diceWindow.openTemplateContextMenu(slot.rowKey, slot.slotIndex, p.x, p.y)
+                }
+            }
+        }
+
+        ToolTip.visible: slotHoverArea.containsMouse && slot.damageTooltipText.length > 0
+        ToolTip.delay: 250
+        ToolTip.timeout: 3000
+        ToolTip.text: slot.damageTooltipText
+    }
+
 
     component CountStepper: RowLayout {
         id: stepper
@@ -524,7 +1708,7 @@ Window {
                 horizontalAlignment: Text.AlignHCenter
                 verticalAlignment: Text.AlignVCenter
                 font.pixelSize: 11
-                validator: IntValidator { bottom: stepper.from; top: stepper.to }
+                validator: RegularExpressionValidator { regularExpression: /[+-]?\d*/ }
                 selectByMouse: true
 
                 onEditingFinished: {
@@ -571,14 +1755,15 @@ Window {
     component StandardDieRow: RowLayout {
         id: root
         property int sides: 6
+        property string dieKey: "d" + String(sides)
         property alias countValue: qty.value
 
         Layout.fillWidth: true
         spacing: 8
 
         DieGlyph {
-            dieType: "d" + String(root.sides)
-            label: "d" + String(root.sides)
+            dieType: root.dieKey
+            label: root.dieKey
             implicitWidth: 38
             implicitHeight: 38
             MouseArea {
@@ -605,6 +1790,14 @@ Window {
             from: 0
             to: 20
             value: 0
+        }
+
+
+        AppButton {
+            text: "🖌"
+            implicitWidth: 26
+            implicitHeight: 22
+            onClicked: openDieEditor(root.dieKey)
         }
 
         Item { Layout.fillWidth: true }
@@ -660,7 +1853,9 @@ Window {
                                 border.color: "#373737"
                                 Text {
                                     anchors.centerIn: parent
-                                    text: "\u0411\u0440\u043e\u0441\u043a\u043e\u0432 \u043f\u043e\u043a\u0430 \u043d\u0435\u0442"
+                                    text: waitingStandardPhysicsResult
+                                        ? "\u041e\u0436\u0438\u0434\u0430\u043d\u0438\u0435 \u0440\u0435\u0437\u0443\u043b\u044c\u0442\u0430\u0442\u043e\u0432..."
+                                        : "\u0411\u0440\u043e\u0441\u043a\u043e\u0432 \u043f\u043e\u043a\u0430 \u043d\u0435\u0442"
                                     color: textSecondary
                                     font.pixelSize: 12
                                 }
@@ -686,7 +1881,7 @@ Window {
                                         anchors.margins: 5
                                         spacing: 3
                                         Label { text: String(d20Result ? d20Result.formula : "") + ":"; color: textSecondary; font.pixelSize: 10; wrapMode: Text.WordWrap; Layout.fillWidth: true }
-                                        Label { text: d20Result ? String(d20Result.total) : ""; color: textPrimary; font.pixelSize: 20; font.weight: Font.Bold }
+                                        Label { text: d20Result ? String(d20Result.total) : ""; color: (d20Result && d20Result.rolls && d20Result.rolls.length === 1 && d20Result.rolls[0].type === "single") ? d20CritColor(Number(d20Result.rolls[0].value || 0)) : textPrimary; font.pixelSize: 20; font.weight: Font.Bold }
                                         Flow {
                                             Layout.fillWidth: true
                                             spacing: 3
@@ -704,6 +1899,8 @@ Window {
                                                             implicitWidth: 27
                                                             implicitHeight: 27
                                                             valueOpacity: modelData.type === "pair" && modelData.first !== modelData.picked ? 0.35 : 1.0
+                                                            textColor: modelData.type === "pair" ? d20PairDieColor(modelData, "first") : d20SingleDieColor(modelData)
+                                                            lineColor: modelData.type === "pair" ? d20PairDieColor(modelData, "first") : d20SingleDieColor(modelData)
                                                         }
                                                         DieGlyph {
                                                             visible: modelData.type === "pair"
@@ -712,6 +1909,8 @@ Window {
                                                             implicitWidth: 27
                                                             implicitHeight: 27
                                                             valueOpacity: modelData.type === "pair" && modelData.second !== modelData.picked ? 0.35 : 1.0
+                                                            textColor: d20PairDieColor(modelData, "second")
+                                                            lineColor: d20PairDieColor(modelData, "second")
                                                         }
                                                     }
                                                 }
@@ -832,6 +2031,14 @@ Window {
                                 onValueChanged: d20Count = value
                             }
 
+
+                            AppButton {
+                                text: "🖌"
+                                implicitWidth: 26
+                                implicitHeight: 22
+                                onClicked: openDieEditor("d20")
+                            }
+
                             Label { text: "\u0411\u043e\u043d\u0443\u0441:"; color: textSecondary; font.pixelSize: 11 }
                             CountStepper {
                                 from: -20
@@ -896,6 +2103,18 @@ Window {
                             label: "d100"
                             implicitWidth: 42
                             implicitHeight: 42
+                            MouseArea {
+                                anchors.fill: parent
+                                cursorShape: Qt.PointingHandCursor
+                                onClicked: rollD100Only()
+                            }
+                        }
+
+                        AppButton {
+                            text: "🖌"
+                            implicitWidth: 26
+                            implicitHeight: 22
+                            onClicked: openDieEditor("d100")
                         }
 
                         AppButton {
@@ -914,6 +2133,572 @@ Window {
             accent: true
             enabled: canRollAll()
             onClicked: rollAll()
+        }
+    }
+
+
+    Timer {
+        id: physicsFallbackTimer
+        interval: 2300
+        repeat: false
+        onTriggered: {
+            if (waitingStandardPhysicsResult && pendingStandardFallbackResult) {
+                waitingStandardPhysicsResult = false
+                standardResult = pendingStandardFallbackResult
+                pendingStandardFallbackResult = null
+                console.log("[dice-ui-debug] fallback timer committed result total=" + (standardResult ? standardResult.total : "-"))
+            } else {
+                console.log("[dice-ui-debug] fallback timer fired without pending result")
+            }
+        }
+    }
+    Popup {
+        id: dieStylePopup
+        modal: true
+        focus: true
+        width: Math.min(460, diceWindow.width - 24)
+        height: Math.min(760, diceWindow.height - 24)
+        closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
+        anchors.centerIn: Overlay.overlay
+        padding: 0
+
+        onOpened: {
+            diceWindow.pushPreviewStyle()
+            diceWindow.startPreviewRollNow()
+            diceWindow.refreshAllTemplateSnapshots(false)
+            diceWindow.processTemplateSnapshotQueue()
+        }
+
+        onClosed: {
+            diceWindow.clearTemplateSnapshotQueue()
+        }
+
+        WebEngineView {
+            id: templateSnapshotWeb
+            x: -10000
+            y: -10000
+            width: 148
+            height: 148
+            visible: dieStylePopup.visible
+            enabled: visible
+            backgroundColor: "#121214"
+            url: Qt.resolvedUrl("../web/dice_physics.html")
+            onLoadingChanged: function(req) {
+                if (req.status === WebEngineView.LoadFailedStatus) {
+                    templateSnapshotWebReady = false
+                    return
+                }
+                if (req.status === WebEngineView.LoadSucceededStatus) {
+                    templateSnapshotWebReady = true
+                    diceWindow.processTemplateSnapshotQueue()
+                }
+            }
+        }
+
+        Timer {
+            id: templateSnapshotCaptureTimer
+            interval: 120
+            repeat: false
+            onTriggered: diceWindow.captureTemplateSnapshotCurrentTask()
+        }
+
+        background: Rectangle {
+            radius: 12
+            color: "#1E1E1F"
+            border.width: 1
+            border.color: "#4D4D4D"
+        }
+
+        ColumnLayout {
+            anchors.fill: parent
+            anchors.margins: 10
+            spacing: 8
+
+            Label {
+                Layout.fillWidth: true
+                text: "Кастомизация " + dieEditorDieKey
+                color: textPrimary
+                font.pixelSize: 14
+                font.weight: Font.DemiBold
+            }
+
+            Rectangle {
+                Layout.fillWidth: true
+                Layout.preferredHeight: 120
+                radius: 10
+                color: "#121214"
+                border.width: 1
+                border.color: "#353535"
+                clip: true
+
+                Item {
+                    id: previewStage
+                    anchors.fill: parent
+
+                    WebEngineView {
+                        id: previewWeb
+                        anchors.fill: parent
+                        visible: dieStylePopup.visible
+                        enabled: visible
+                        backgroundColor: "#121214"
+                        url: Qt.resolvedUrl("../web/dice_physics.html")
+                        onLoadingChanged: function(req) {
+                            if (req.status === WebEngineView.LoadFailedStatus) {
+                                previewWebReady = false
+                                return
+                            }
+                            if (req.status === WebEngineView.LoadSucceededStatus) {
+                                previewWebReady = true
+                                diceWindow.pushPreviewStyle()
+                                diceWindow.startPreviewRollNow()
+                            }
+                        }
+                        onVisibleChanged: {
+                            if (visible) {
+                                diceWindow.pushPreviewStyle()
+                                diceWindow.startPreviewRollNow()
+                            }
+                        }
+                        onJavaScriptConsoleMessage: function(level, message, lineNumber, sourceID) {
+                            console.log("[dice-preview-web]", String(message), String(sourceID) + ":" + String(lineNumber))
+                        }
+                    }
+
+                    Timer {
+                        id: previewRollTimer
+                        interval: 3200
+                        repeat: true
+                        running: false
+                        onTriggered: diceWindow.startPreviewRollNow()
+                    }
+                }
+            }
+
+            ScrollView {
+                id: styleEditorScroll
+                Layout.fillWidth: true
+                Layout.fillHeight: true
+                clip: true
+                ScrollBar.vertical.policy: ScrollBar.AsNeeded
+
+                ColumnLayout {
+                    id: styleEditorContent
+                    width: styleEditorScroll.availableWidth > 0 ? styleEditorScroll.availableWidth : styleEditorScroll.width
+                    spacing: 8
+
+                    Label { text: "Размер (50%..150%)"; color: textSecondary; font.pixelSize: 11 }
+                    SliderNumberControl {
+                        minValue: 50
+                        maxValue: 150
+                        step: 1
+                        decimals: 0
+                        value: Number(dieEditorWorking.scalePercent || 100)
+                        onValueCommitted: updateEditorField("scalePercent", Math.round(value))
+                    }
+
+                    RowLayout {
+                        Layout.fillWidth: true
+                        spacing: 8
+                        Label { text: "Цвет граней"; color: textSecondary; font.pixelSize: 11 }
+                        Rectangle {
+                            implicitWidth: 40
+                            implicitHeight: 20
+                            radius: 6
+                            color: dieEditorWorking.color
+                            border.width: 1
+                            border.color: "#666666"
+                        }
+                        AppButton {
+                            text: "🎨"
+                            implicitWidth: 32
+                            implicitHeight: 24
+                            onClicked: openDieColorDialog("color", "Выбор цвета граней", "#C9C9C9")
+                        }
+                        Item { Layout.fillWidth: true }
+                    }
+
+                    RowLayout {
+                        Layout.fillWidth: true
+                        spacing: 8
+                        Label { text: "Градиент"; color: textSecondary; font.pixelSize: 11 }
+                        Switch {
+                            checked: Boolean(dieEditorWorking.gradientEnabled)
+                            onToggled: updateEditorField("gradientEnabled", checked)
+                        }
+                        Item { Layout.fillWidth: true }
+                    }
+
+                    RowLayout {
+                        visible: Boolean(dieEditorWorking.gradientEnabled)
+                        Layout.fillWidth: true
+                        spacing: 8
+                        Label { text: "Цвет центра"; color: textSecondary; font.pixelSize: 11 }
+                        Rectangle {
+                            implicitWidth: 40
+                            implicitHeight: 20
+                            radius: 6
+                            color: dieEditorWorking.gradientCenterColor
+                            border.width: 1
+                            border.color: "#666666"
+                        }
+                        AppButton {
+                            text: "🎨"
+                            implicitWidth: 32
+                            implicitHeight: 24
+                            onClicked: openDieColorDialog("gradientCenterColor", "Выбор цвета центра градиента", "#FFFFFF")
+                        }
+                        Item { Layout.fillWidth: true }
+                    }
+
+                    Label {
+                        visible: Boolean(dieEditorWorking.gradientEnabled)
+                        text: "Резкость/плавность градиента"
+                        color: textSecondary
+                        font.pixelSize: 11
+                    }
+                    SliderNumberControl {
+                        visible: Boolean(dieEditorWorking.gradientEnabled)
+                        minValue: 0
+                        maxValue: 100
+                        step: 1
+                        decimals: 0
+                        value: Number(dieEditorWorking.gradientSharpness || 50)
+                        onValueCommitted: updateEditorField("gradientSharpness", Math.round(value))
+                    }
+
+                    Label {
+                        visible: Boolean(dieEditorWorking.gradientEnabled)
+                        text: "Смещение градиента"
+                        color: textSecondary
+                        font.pixelSize: 11
+                    }
+                    SliderNumberControl {
+                        visible: Boolean(dieEditorWorking.gradientEnabled)
+                        minValue: 0
+                        maxValue: 100
+                        step: 1
+                        decimals: 0
+                        value: Number(dieEditorWorking.gradientOffset || 50)
+                        onValueCommitted: updateEditorField("gradientOffset", Math.round(value))
+                    }
+
+                    RowLayout {
+                        Layout.fillWidth: true
+                        spacing: 8
+                        Label { text: "Цвет текста"; color: textSecondary; font.pixelSize: 11 }
+                        Rectangle {
+                            implicitWidth: 40
+                            implicitHeight: 20
+                            radius: 6
+                            color: dieEditorWorking.fontColor
+                            border.width: 1
+                            border.color: "#666666"
+                        }
+                        AppButton {
+                            text: "🎨"
+                            implicitWidth: 32
+                            implicitHeight: 24
+                            onClicked: openDieColorDialog("fontColor", "Выбор цвета шрифта", "#1F1F1F")
+                        }
+                        Item { Layout.fillWidth: true }
+                    }
+
+                    RowLayout {
+                        Layout.fillWidth: true
+                        spacing: 8
+                        Label { text: "Цвет свечения текста"; color: textSecondary; font.pixelSize: 11 }
+                        Rectangle {
+                            implicitWidth: 40
+                            implicitHeight: 20
+                            radius: 6
+                            color: dieEditorWorking.textStrokeColor
+                            border.width: 1
+                            border.color: "#666666"
+                        }
+                        AppButton {
+                            text: "🎨"
+                            implicitWidth: 32
+                            implicitHeight: 24
+                            onClicked: openDieColorDialog("textStrokeColor", "Выбор цвета свечения текста", "#EEEEEE")
+                        }
+                        Item { Layout.fillWidth: true }
+                    }
+
+                    Label { text: "\u0420\u0430\u0434\u0438\u0443\u0441 \u0441\u0432\u0435\u0447\u0435\u043d\u0438\u044f"; color: textSecondary; font.pixelSize: 11 }
+                    SliderNumberControl {
+                        minValue: 0
+                        maxValue: 200
+                        step: 1
+                        decimals: 0
+                        value: Number(dieEditorWorking.textGlowRadius !== undefined ? dieEditorWorking.textGlowRadius : 100)
+                        onValueCommitted: updateEditorField("textGlowRadius", Math.round(value))
+                    }
+
+                    Label { text: "\u0418\u043d\u0442\u0435\u043d\u0441\u0438\u0432\u043d\u043e\u0441\u0442\u044c \u0441\u0432\u0435\u0447\u0435\u043d\u0438\u044f"; color: textSecondary; font.pixelSize: 11 }
+                    SliderNumberControl {
+                        minValue: 0
+                        maxValue: 200
+                        step: 1
+                        decimals: 0
+                        value: Number(dieEditorWorking.textGlowOpacity !== undefined ? dieEditorWorking.textGlowOpacity : 100)
+                        onValueCommitted: updateEditorField("textGlowOpacity", Math.round(value))
+                    }
+
+                    RowLayout {
+                        Layout.fillWidth: true
+                        spacing: 8
+                        Label { text: "Цвет ребер"; color: textSecondary; font.pixelSize: 11 }
+                        Rectangle {
+                            implicitWidth: 40
+                            implicitHeight: 20
+                            radius: 6
+                            color: dieEditorWorking.edgeColor
+                            border.width: 1
+                            border.color: "#666666"
+                        }
+                        AppButton {
+                            text: "🎨"
+                            implicitWidth: 32
+                            implicitHeight: 24
+                            onClicked: openDieColorDialog("edgeColor", "Выбор цвета ребер", "#D4D4D4")
+                        }
+                        Item { Layout.fillWidth: true }
+                    }
+
+                    Label { text: "Толщина ребер"; color: textSecondary; font.pixelSize: 11 }
+                    SliderNumberControl {
+                        minValue: 0
+                        maxValue: 5
+                        step: 0.1
+                        decimals: 1
+                        value: Number(dieEditorWorking.edgeWidth !== undefined ? dieEditorWorking.edgeWidth : 0.0)
+                        onValueCommitted: updateEditorField("edgeWidth", roundToDecimals(value, 1))
+                    }
+
+                    Item { Layout.fillWidth: true; Layout.preferredHeight: 4 }
+
+                    Label { text: "Шаблоны стиля"; color: textSecondary; font.pixelSize: 11 }
+
+                    Label { text: "Пользовательские"; color: textSecondary; font.pixelSize: 10 }
+                    Item {
+                        Layout.fillWidth: true
+                        property int gap: 6
+                        property int slotSize: diceWindow.templateSlotSizeForWidth(width)
+                        implicitHeight: slotSize
+
+                        Row {
+                            anchors.horizontalCenter: parent.horizontalCenter
+                            spacing: parent.gap
+                            Repeater {
+                                model: 10
+                                delegate: TemplateSlotButton {
+                                    rowKey: "user"
+                                    slotIndex: index
+                                    slotSize: parent.parent.slotSize
+                                    slotStyle: diceWindow.templateStyle("user", index)
+                                }
+                            }
+                        }
+                    }
+
+                    Label { text: "Типы урона"; color: textSecondary; font.pixelSize: 10 }
+                    Item {
+                        Layout.fillWidth: true
+                        property int gap: 6
+                        property int slotSize: diceWindow.templateSlotSizeForWidth(width)
+                        implicitHeight: slotSize
+
+                        Row {
+                            anchors.horizontalCenter: parent.horizontalCenter
+                            spacing: parent.gap
+                            Repeater {
+                                model: 10
+                                delegate: TemplateSlotButton {
+                                    rowKey: "damage"
+                                    slotIndex: index
+                                    slotSize: parent.parent.slotSize
+                                    slotStyle: diceWindow.templateStyle("damage", index)
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            RowLayout {
+                Layout.fillWidth: true
+                spacing: 8
+                AppButton {
+                    Layout.fillWidth: true
+                    text: "Сохранить стиль"
+                    onClicked: saveCurrentStyleToTemplateQueue()
+                }
+            }
+
+            RowLayout {
+                Layout.fillWidth: true
+                spacing: 8
+                AppButton { Layout.fillWidth: true; text: "Отмена"; onClicked: dieStylePopup.close() }
+                AppButton { Layout.fillWidth: true; text: "По умолчанию"; onClicked: resetDieEditorToDefaults() }
+                AppButton { Layout.fillWidth: true; text: "Сохранить"; accent: true; onClicked: saveDieEditor() }
+            }
+        }
+    }
+
+    Menu {
+        id: templateSlotContextMenu
+        MenuItem {
+            text: "Перезаписать ячейку"
+            enabled: templateContextIndex >= 0
+            onTriggered: overwriteTemplateContextSlot()
+        }
+        MenuItem {
+            text: "Удалить шаблон"
+            enabled: templateContextRow === "user" && templateContextIndex >= 0
+            onTriggered: deleteTemplateContextSlot()
+        }
+    }
+
+    Popup {
+        id: colorPickerPopup
+        modal: true
+        focus: true
+        width: Math.min(420, diceWindow.width - 24)
+        height: 430
+        closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
+        anchors.centerIn: Overlay.overlay
+        padding: 0
+
+        background: Rectangle {
+            radius: 12
+            color: "#1E1E1F"
+            border.width: 1
+            border.color: "#4D4D4D"
+        }
+
+        ColumnLayout {
+            anchors.fill: parent
+            anchors.margins: 10
+            spacing: 8
+
+            Label {
+                Layout.fillWidth: true
+                text: pendingColorTitle
+                color: textPrimary
+                font.pixelSize: 14
+                font.weight: Font.DemiBold
+            }
+
+            RowLayout {
+                Layout.fillWidth: true
+                spacing: 10
+
+                Rectangle {
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: 42
+                    radius: 8
+                    color: pickerCurrentColor
+                    border.width: 1
+                    border.color: "#666666"
+                    Label {
+                        anchors.centerIn: parent
+                        text: "Текущий"
+                        color: "#202020"
+                        font.pixelSize: 11
+                        font.weight: Font.DemiBold
+                    }
+                }
+
+                Rectangle {
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: 42
+                    radius: 8
+                    color: pickerPreviewColor
+                    border.width: 1
+                    border.color: "#666666"
+                    Label {
+                        anchors.centerIn: parent
+                        text: "Новый"
+                        color: "#202020"
+                        font.pixelSize: 11
+                        font.weight: Font.DemiBold
+                    }
+                }
+            }
+
+            Label { text: "Тон"; color: textSecondary; font.pixelSize: 11 }
+            SliderNumberControl {
+                minValue: 0
+                maxValue: 360
+                step: 1
+                decimals: 0
+                value: pickerHue
+                onValueCommitted: {
+                    pickerHue = Math.round(value)
+                    refreshPickerColorFromHSV(true)
+                }
+            }
+
+            Label { text: "Насыщенность"; color: textSecondary; font.pixelSize: 11 }
+            SliderNumberControl {
+                minValue: 0
+                maxValue: 100
+                step: 1
+                decimals: 0
+                value: pickerSaturation
+                onValueCommitted: {
+                    pickerSaturation = Math.round(value)
+                    refreshPickerColorFromHSV(true)
+                }
+            }
+
+            Label { text: "Яркость"; color: textSecondary; font.pixelSize: 11 }
+            SliderNumberControl {
+                minValue: 0
+                maxValue: 100
+                step: 1
+                decimals: 0
+                value: pickerValue
+                onValueCommitted: {
+                    pickerValue = Math.round(value)
+                    refreshPickerColorFromHSV(true)
+                }
+            }
+
+            Label { text: "Код цвета (HEX / RGB(A))"; color: textSecondary; font.pixelSize: 11 }
+            TextField {
+                id: pickerHexInput
+                Layout.fillWidth: true
+                text: pickerHexText
+                placeholderText: "#RRGGBB или rgb(255,255,255)"
+                selectByMouse: true
+                onTextEdited: pickerHexText = text
+                onEditingFinished: {
+                    pickerHexText = text
+                    applyPickerTypedColor()
+                }
+            }
+
+            RowLayout {
+                Layout.fillWidth: true
+                spacing: 8
+                AppButton {
+                    Layout.fillWidth: true
+                    text: "Отмена"
+                    onClicked: colorPickerPopup.close()
+                }
+                AppButton {
+                    Layout.fillWidth: true
+                    text: "Применить"
+                    accent: true
+                    onClicked: {
+                        if (pendingColorField && pendingColorField.length > 0) {
+                            updateEditorField(pendingColorField, pickerPreviewColor)
+                        }
+                        colorPickerPopup.close()
+                    }
+                }
+            }
         }
     }
 }

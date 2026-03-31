@@ -10,6 +10,7 @@ from typing import Any
 from PySide6.QtCore import QObject, Property, Signal, Slot
 
 from app.core.event_bus import EventBus
+from app.domain.defaults import build_default_settings
 from app.services.adventure_service import AdventureService
 from app.services.media_service import MediaService
 from app.services.settings_service import SettingsService
@@ -223,6 +224,14 @@ class AppController(QObject):
     @Property(int, notify=settings_changed)
     def leftRevealZone(self) -> int:
         return int(self._settings["ui"].get("left_reveal_zone", 300))
+
+    @Property("QVariantMap", notify=settings_changed)
+    def diceStyles(self) -> dict[str, Any]:
+        return copy.deepcopy(self._dice_styles_ref())
+
+    @Property("QVariantMap", notify=settings_changed)
+    def diceStyleTemplates(self) -> dict[str, Any]:
+        return copy.deepcopy(self._dice_style_templates_ref())
 
     @Property(str, notify=status_changed)
     def statusMessage(self) -> str:
@@ -859,6 +868,47 @@ class AppController(QObject):
         reveal = max(width + 20, self._safe_int(reveal_zone, width + 40))
         self._settings["ui"]["left_panel_width"] = width
         self._settings["ui"]["left_reveal_zone"] = reveal
+        self._emit_settings_changed()
+
+    @Slot(str, "QVariantMap")
+    def update_dice_style(self, die_key: str, style: dict[str, Any]) -> None:
+        key = str(die_key or "").strip().lower()
+        if key not in {"d4", "d6", "d8", "d10", "d12", "d20", "d100"}:
+            return
+
+        incoming = dict(style or {})
+        styles = self._dice_styles_ref()
+        styles[key] = copy.deepcopy(incoming)
+        self._settings_service.save(self._settings)
+        self._emit_settings_changed()
+
+    @Slot("QVariantMap")
+    def update_dice_style_templates(self, payload: dict[str, Any]) -> None:
+        current = self._dice_style_templates_ref()
+        incoming = dict(payload or {}) if isinstance(payload, dict) else {}
+
+        user_source = incoming.get("user", current.get("user", []))
+        damage_source = incoming.get("damage", current.get("damage", []))
+
+        default_user = [None] * 10
+        default_damage = self._default_damage_style_templates()
+
+        normalized_user = self._normalize_dice_style_template_list(
+            user_source,
+            allow_none=True,
+            defaults=default_user,
+        )
+        normalized_damage = self._normalize_dice_style_template_list(
+            damage_source,
+            allow_none=False,
+            defaults=default_damage,
+        )
+
+        self._settings["dice_style_templates"] = {
+            "user": normalized_user,
+            "damage": normalized_damage,
+        }
+        self._settings_service.save(self._settings)
         self._emit_settings_changed()
 
     @Slot()
@@ -1652,6 +1702,129 @@ class AppController(QObject):
         if media_type == "image" and detected != "image":
             return f"Для {label} выбран файл неподдерживаемого формата изображения."
         return ""
+    def _dice_styles_ref(self) -> dict[str, Any]:
+        styles = self._settings.get("dice_styles")
+        if not isinstance(styles, dict):
+            styles = {}
+            self._settings["dice_styles"] = styles
+        return styles
+
+    def _default_dice_style_template(self) -> dict[str, Any]:
+        return {
+            "scalePercent": 100,
+            "color": "#C9C9C9",
+            "gradientEnabled": False,
+            "gradientCenterColor": "#FFFFFF",
+            "gradientSharpness": 50,
+            "gradientOffset": 50,
+            "fontColor": "#1F1F1F",
+            "textStrokeColor": "#EEEEEE",
+            "textGlowRadius": 100,
+            "textGlowOpacity": 100,
+            "edgeColor": "#D4D4D4",
+            "edgeWidth": 0.0,
+        }
+
+    def _default_damage_style_templates(self) -> list[dict[str, Any]]:
+        defaults_payload: dict[str, Any] = {}
+        adventures_root = str(self._settings.get("adventures_root", "")).strip()
+        if adventures_root:
+            try:
+                defaults_payload = build_default_settings(Path(adventures_root).parent)
+            except Exception:
+                defaults_payload = {}
+
+        templates = defaults_payload.get("dice_style_templates") if isinstance(defaults_payload, dict) else None
+        damage = templates.get("damage") if isinstance(templates, dict) else None
+        if isinstance(damage, list):
+            result: list[dict[str, Any]] = []
+            for item in damage[:10]:
+                if isinstance(item, dict):
+                    result.append(self._normalize_dice_style_template(item))
+            if len(result) == 10:
+                return result
+
+        base = self._default_dice_style_template()
+        return [copy.deepcopy(base) for _ in range(10)]
+
+    def _normalize_dice_style_template(self, style: Any) -> dict[str, Any]:
+        source = dict(style) if isinstance(style, dict) else {}
+        base = self._default_dice_style_template()
+
+        scale = max(50.0, min(150.0, self._safe_float(source.get("scalePercent"), base["scalePercent"])))
+        sharp = max(0.0, min(100.0, self._safe_float(source.get("gradientSharpness"), base["gradientSharpness"])))
+        offset = max(0.0, min(100.0, self._safe_float(source.get("gradientOffset"), base["gradientOffset"])))
+        glow_radius = max(0.0, min(200.0, self._safe_float(source.get("textGlowRadius"), base["textGlowRadius"])))
+        glow_opacity = max(0.0, min(200.0, self._safe_float(source.get("textGlowOpacity"), base["textGlowOpacity"])))
+        edge_width = max(0.0, min(5.0, self._safe_float(source.get("edgeWidth"), base["edgeWidth"])))
+
+        return {
+            "scalePercent": int(round(scale)),
+            "color": str(source.get("color") or base["color"]),
+            "gradientEnabled": bool(source.get("gradientEnabled", base["gradientEnabled"])),
+            "gradientCenterColor": str(source.get("gradientCenterColor") or base["gradientCenterColor"]),
+            "gradientSharpness": int(round(sharp)),
+            "gradientOffset": int(round(offset)),
+            "fontColor": str(source.get("fontColor") or base["fontColor"]),
+            "textStrokeColor": str(source.get("textStrokeColor") or base["textStrokeColor"]),
+            "textGlowRadius": int(round(glow_radius)),
+            "textGlowOpacity": int(round(glow_opacity)),
+            "edgeColor": str(source.get("edgeColor") or base["edgeColor"]),
+            "edgeWidth": round(edge_width, 2),
+        }
+
+    def _normalize_dice_style_template_list(
+        self,
+        values: Any,
+        *,
+        allow_none: bool,
+        defaults: list[Any],
+    ) -> list[Any]:
+        source = list(values) if isinstance(values, list) else []
+        result: list[Any] = []
+        for idx in range(10):
+            fallback = defaults[idx] if idx < len(defaults) else None
+            item = source[idx] if idx < len(source) else fallback
+            if allow_none and item is None:
+                result.append(None)
+                continue
+            if item is None:
+                item = fallback
+            if isinstance(item, dict):
+                result.append(self._normalize_dice_style_template(item))
+            elif isinstance(fallback, dict):
+                result.append(self._normalize_dice_style_template(fallback))
+            elif allow_none:
+                result.append(None)
+            else:
+                result.append(self._normalize_dice_style_template({}))
+        return result
+
+    def _dice_style_templates_ref(self) -> dict[str, Any]:
+        templates = self._settings.get("dice_style_templates")
+        if not isinstance(templates, dict):
+            templates = {}
+
+        default_user = [None] * 10
+        default_damage = self._default_damage_style_templates()
+
+        user = self._normalize_dice_style_template_list(
+            templates.get("user", default_user),
+            allow_none=True,
+            defaults=default_user,
+        )
+        damage = self._normalize_dice_style_template_list(
+            templates.get("damage", default_damage),
+            allow_none=False,
+            defaults=default_damage,
+        )
+
+        normalized = {
+            "user": user,
+            "damage": damage,
+        }
+        self._settings["dice_style_templates"] = normalized
+        return normalized
 
     def _build_default_runtime_scene(self) -> dict[str, Any]:
         defaults = self._settings["default_scene"]

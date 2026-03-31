@@ -1,0 +1,228 @@
+﻿<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>D6 Preview</title>
+  <style>
+    :root {
+      --face: #d9e1f0;
+      --edge: #8f9cb5;
+      --text: #212736;
+      --font: "Segoe UI", Arial, sans-serif;
+      --weight: 800;
+      --fontSize: 18px;
+      --size: 52px;
+      --radius: 8px;
+      --gloss: 0.35;
+      --shadow: 0.35;
+      --line: 2px;
+    }
+
+    html, body {
+      margin: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: transparent;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+
+    .scene {
+      position: absolute;
+      inset: 0;
+      perspective: 900px;
+      transform-style: preserve-3d;
+    }
+
+    .dice-wrap {
+      position: absolute;
+      left: 50%;
+      top: 54%;
+      width: calc(var(--size) * 2.4);
+      height: calc(var(--size) * 2.4);
+      transform: translate(-50%, -50%);
+      transform-style: preserve-3d;
+    }
+
+    .dice {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      width: var(--size);
+      height: var(--size);
+      transform-style: preserve-3d;
+      will-change: transform;
+      animation: roll 2800ms cubic-bezier(0.18, 0.62, 0.22, 1) infinite;
+    }
+
+    .face {
+      position: absolute;
+      width: var(--size);
+      height: var(--size);
+      border-radius: var(--radius);
+      border: var(--line) solid var(--edge);
+      box-sizing: border-box;
+      color: var(--text);
+      display: grid;
+      place-items: center;
+      font-family: var(--font);
+      font-size: var(--fontSize);
+      font-weight: var(--weight);
+      backface-visibility: hidden;
+      background: var(--face);
+      box-shadow:
+        inset 0 2px 10px rgba(255, 255, 255, var(--gloss)),
+        inset 0 -4px 10px rgba(0, 0, 0, 0.16);
+    }
+
+    .f1 { transform: rotateY(0deg) translateZ(calc(var(--size) / 2)); }
+    .f2 { transform: rotateY(90deg) translateZ(calc(var(--size) / 2)); }
+    .f3 { transform: rotateY(180deg) translateZ(calc(var(--size) / 2)); }
+    .f4 { transform: rotateY(-90deg) translateZ(calc(var(--size) / 2)); }
+    .f5 { transform: rotateX(90deg) translateZ(calc(var(--size) / 2)); }
+    .f6 { transform: rotateX(-90deg) translateZ(calc(var(--size) / 2)); }
+
+    .shadow {
+      position: absolute;
+      left: 50%;
+      top: 72%;
+      width: calc(var(--size) * 1.55);
+      height: calc(var(--size) * 0.30);
+      transform: translate(-50%, -50%);
+      border-radius: 999px;
+      background: rgba(0, 0, 0, var(--shadow));
+      filter: blur(6px);
+      will-change: transform, opacity;
+      animation: shadowPulse 2800ms ease-in-out infinite;
+    }
+
+    @keyframes roll {
+      0% {
+        transform: translate(-50%, -105%) rotateX(-170deg) rotateY(24deg) rotateZ(80deg);
+      }
+      42% {
+        transform: translate(-50%, -58%) rotateX(-20deg) rotateY(220deg) rotateZ(18deg);
+      }
+      68% {
+        transform: translate(-50%, -47%) rotateX(78deg) rotateY(330deg) rotateZ(6deg);
+      }
+      82% {
+        transform: translate(-50%, -51%) rotateX(92deg) rotateY(355deg) rotateZ(2deg);
+      }
+      100% {
+        transform: translate(-50%, -50%) rotateX(90deg) rotateY(360deg) rotateZ(0deg);
+      }
+    }
+
+    @keyframes shadowPulse {
+      0% { transform: translate(-50%, -50%) scale(0.82); opacity: 0.14; }
+      42% { transform: translate(-50%, -50%) scale(1.06); opacity: 0.32; }
+      68% { transform: translate(-50%, -50%) scale(1.12); opacity: 0.42; }
+      100% { transform: translate(-50%, -50%) scale(1.0); opacity: 0.30; }
+    }
+  </style>
+</head>
+<body>
+  <div class="scene">
+    <div class="shadow" id="shadow"></div>
+    <div class="dice-wrap">
+      <div class="dice" id="dice">
+        <div class="face f1">1</div>
+        <div class="face f2">2</div>
+        <div class="face f3">3</div>
+        <div class="face f4">4</div>
+        <div class="face f5">5</div>
+        <div class="face f6">6</div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    (function () {
+      const root = document.documentElement;
+      const dice = document.getElementById('dice');
+
+      function clamp(v, min, max) {
+        return Math.max(min, Math.min(max, v));
+      }
+
+      function setMaterial(material) {
+        switch (material) {
+          case 'Metal':
+            root.style.setProperty('--gloss', '0.55');
+            root.style.setProperty('--shadow', '0.42');
+            root.style.setProperty('--line', '2.2px');
+            break;
+          case 'Glass':
+            root.style.setProperty('--gloss', '0.72');
+            root.style.setProperty('--shadow', '0.28');
+            root.style.setProperty('--line', '1.6px');
+            break;
+          case 'Stone':
+            root.style.setProperty('--gloss', '0.12');
+            root.style.setProperty('--shadow', '0.48');
+            root.style.setProperty('--line', '2.4px');
+            break;
+          case 'Matte':
+            root.style.setProperty('--gloss', '0.08');
+            root.style.setProperty('--shadow', '0.36');
+            root.style.setProperty('--line', '2px');
+            break;
+          default:
+            root.style.setProperty('--gloss', '0.35');
+            root.style.setProperty('--shadow', '0.35');
+            root.style.setProperty('--line', '2px');
+            break;
+        }
+      }
+
+      window.setPreviewStyle = function setPreviewStyle(payload) {
+        if (!payload || typeof payload !== 'object') return;
+
+        const sizePercent = clamp(Number(payload.sizePercent || 100), 50, 150);
+        const px = Math.round(52 * (sizePercent / 100));
+        root.style.setProperty('--size', px + 'px');
+
+        root.style.setProperty('--face', String(payload.faceColor || '#d9e1f0'));
+        root.style.setProperty('--text', String(payload.textColor || '#212736'));
+
+        const fontMap = {
+          DemiBold: '"Segoe UI", Arial, sans-serif',
+          Bold: '"Segoe UI", Arial, sans-serif',
+          Black: '"Segoe UI", Arial, sans-serif',
+          Monospace: 'Consolas, "Courier New", monospace',
+          Serif: 'Georgia, "Times New Roman", serif',
+          Handwritten: '"Comic Sans MS", "Segoe UI", Arial, sans-serif'
+        };
+        const weightMap = {
+          DemiBold: '700',
+          Bold: '700',
+          Black: '900',
+          Monospace: '700',
+          Serif: '700',
+          Handwritten: '700'
+        };
+
+        const fontName = String(payload.fontName || 'DemiBold');
+        root.style.setProperty('--font', fontMap[fontName] || fontMap.DemiBold);
+        root.style.setProperty('--weight', weightMap[fontName] || '700');
+
+        const fontSize = clamp(Number(payload.fontSize || 12), 8, 26);
+        root.style.setProperty('--fontSize', Math.round(10 + fontSize * 0.65) + 'px');
+
+        setMaterial(String(payload.material || 'Classic'));
+      };
+
+      window.startD6PreviewRoll = function startD6PreviewRoll() {
+        const seed = (Math.random() * 1000).toFixed(3);
+        dice.style.animationName = 'none';
+        void dice.offsetWidth;
+        dice.style.animationName = 'roll';
+        dice.style.animationDelay = '-' + seed + 'ms';
+      };
+    })();
+  </script>
+</body>
+</html>
