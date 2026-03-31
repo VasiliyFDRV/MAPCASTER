@@ -1,4 +1,4 @@
-﻿import QtQuick
+import QtQuick
 import QtQuick.Controls
 import QtQuick.Dialogs
 import QtQuick.Layouts
@@ -12,7 +12,7 @@ Window {
     height: 720
     visible: true
     color: "#111316"
-    title: "DnD Maps - Карта"
+    title: "DnD Maps - \u041a\u0430\u0440\u0442\u0430"
 
     property bool panelExpanded: false
     property real panelHandleWidth: 22
@@ -1665,7 +1665,7 @@ Window {
         onErrorOccurred: function(error, errorString) {
             if (error !== MediaPlayer.NoError) {
                 stop()
-                console.warn("РћС€РёР±РєР° РІРёРґРµРѕ РєР°СЂС‚С‹:", errorString)
+                console.warn("Ошибка видео карты:", errorString)
             }
         }
         onMediaStatusChanged: {
@@ -2358,8 +2358,8 @@ Window {
         width: 240
         contentItem: ColumnLayout {
             spacing: 8
-            Label { text: "РџРµСЂРѕ"; color: mapWindow.uiTextPrimary; font.pixelSize: 14 }
-            Label { text: "Р¦РІРµС‚"; color: mapWindow.uiTextSecondary; font.pixelSize: 12 }
+            Label { text: "Перо"; color: mapWindow.uiTextPrimary; font.pixelSize: 14 }
+            Label { text: "Цвет"; color: mapWindow.uiTextSecondary; font.pixelSize: 12 }
             RowLayout {
                 spacing: 4
                 Repeater {
@@ -2384,7 +2384,7 @@ Window {
                 placeholderText: "#FFFFFF"
                 onEditingFinished: penColor = text
             }
-            Label { text: "Р Р°Р·РјРµСЂ (ft): " + Number(penSizeFt).toFixed(2); color: mapWindow.uiTextSecondary; font.pixelSize: 12 }
+            Label { text: "Размер (ft): " + Number(penSizeFt).toFixed(2); color: mapWindow.uiTextSecondary; font.pixelSize: 12 }
             Slider {
                 Layout.fillWidth: true
                 from: 1.0 / 6.0
@@ -2392,7 +2392,7 @@ Window {
                 value: penSizeFt
                 onMoved: penSizeFt = value
             }
-            Label { text: "РџСЂРѕР·СЂР°С‡РЅРѕСЃС‚СЊ: " + Number(penOpacity).toFixed(2); color: mapWindow.uiTextSecondary; font.pixelSize: 12 }
+            Label { text: "Прозрачность: " + Number(penOpacity).toFixed(2); color: mapWindow.uiTextSecondary; font.pixelSize: 12 }
             Slider {
                 Layout.fillWidth: true
                 from: 0.05
@@ -2410,8 +2410,8 @@ Window {
         width: 240
         contentItem: ColumnLayout {
             spacing: 8
-            Label { text: "Р—Р°Р»РёРІРєР°"; color: mapWindow.uiTextPrimary; font.pixelSize: 14 }
-            Label { text: "Р¦РІРµС‚"; color: mapWindow.uiTextSecondary; font.pixelSize: 12 }
+            Label { text: "Заливка"; color: mapWindow.uiTextPrimary; font.pixelSize: 14 }
+            Label { text: "Цвет"; color: mapWindow.uiTextSecondary; font.pixelSize: 12 }
             RowLayout {
                 spacing: 4
                 Repeater {
@@ -2436,7 +2436,7 @@ Window {
                 placeholderText: "#FFFFFF"
                 onEditingFinished: fillColor = text
             }
-            Label { text: "РџСЂРѕР·СЂР°С‡РЅРѕСЃС‚СЊ: " + Number(fillOpacity).toFixed(2); color: mapWindow.uiTextSecondary; font.pixelSize: 12 }
+            Label { text: "Прозрачность: " + Number(fillOpacity).toFixed(2); color: mapWindow.uiTextSecondary; font.pixelSize: 12 }
             Slider {
                 Layout.fillWidth: true
                 from: 0.05
@@ -2454,8 +2454,8 @@ Window {
         width: 240
         contentItem: ColumnLayout {
             spacing: 8
-            Label { text: "Р›Р°СЃС‚РёРє"; color: mapWindow.uiTextPrimary; font.pixelSize: 14 }
-            Label { text: "Р Р°Р·РјРµСЂ (ft): " + Number(eraserSizeFt).toFixed(2); color: mapWindow.uiTextSecondary; font.pixelSize: 12 }
+            Label { text: "Ластик"; color: mapWindow.uiTextPrimary; font.pixelSize: 14 }
+            Label { text: "Размер (ft): " + Number(eraserSizeFt).toFixed(2); color: mapWindow.uiTextSecondary; font.pixelSize: 12 }
             Slider {
                 Layout.fillWidth: true
                 from: 1.0 / 6.0
@@ -2463,7 +2463,7 @@ Window {
                 value: eraserSizeFt
                 onMoved: eraserSizeFt = value
             }
-            Label { text: "РњСЏРіРєРѕСЃС‚СЊ: " + Number(eraserSoftness).toFixed(2); color: mapWindow.uiTextSecondary; font.pixelSize: 12 }
+            Label { text: "Мягкость: " + Number(eraserSoftness).toFixed(2); color: mapWindow.uiTextSecondary; font.pixelSize: 12 }
             Slider {
                 Layout.fillWidth: true
                 from: 0.0
@@ -2481,8 +2481,8 @@ Window {
         width: 240
         contentItem: ColumnLayout {
             spacing: 8
-            Label { text: "Р’С‹РґРµР»РµРЅРёРµ РіРµРєСЃРѕРІ"; color: mapWindow.uiTextPrimary; font.pixelSize: 14 }
-            Label { text: "Р¦РІРµС‚"; color: mapWindow.uiTextSecondary; font.pixelSize: 12 }
+            Label { text: "Выделение гексов"; color: mapWindow.uiTextPrimary; font.pixelSize: 14 }
+            Label { text: "Цвет"; color: mapWindow.uiTextSecondary; font.pixelSize: 12 }
             RowLayout {
                 spacing: 4
                 Repeater {
@@ -2507,7 +2507,7 @@ Window {
                 placeholderText: "#FFFFFF"
                 onEditingFinished: hexColor = text
             }
-            Label { text: "РџСЂРѕР·СЂР°С‡РЅРѕСЃС‚СЊ Р·Р°Р»РёРІРєРё: " + Number(hexFillOpacity).toFixed(2); color: mapWindow.uiTextSecondary; font.pixelSize: 12 }
+            Label { text: "Прозрачность заливки: " + Number(hexFillOpacity).toFixed(2); color: mapWindow.uiTextSecondary; font.pixelSize: 12 }
             Slider {
                 Layout.fillWidth: true
                 from: 0.05
@@ -2515,7 +2515,7 @@ Window {
                 value: hexFillOpacity
                 onMoved: hexFillOpacity = value
             }
-            Label { text: "РџСЂРѕР·СЂР°С‡РЅРѕСЃС‚СЊ РєРѕРЅС‚СѓСЂР°: " + Number(hexOutlineOpacity).toFixed(2); color: mapWindow.uiTextSecondary; font.pixelSize: 12 }
+            Label { text: "Прозрачность контура: " + Number(hexOutlineOpacity).toFixed(2); color: mapWindow.uiTextSecondary; font.pixelSize: 12 }
             Slider {
                 Layout.fillWidth: true
                 from: 0.05
@@ -2532,7 +2532,7 @@ Window {
         y: 80
         width: 200
         contentItem: Label {
-            text: "Р”Р»СЏ РєСѓСЂСЃРѕСЂР° РЅРµС‚ РЅР°СЃС‚СЂРѕРµРє."
+            text: "Для курсора нет настроек."
             color: mapWindow.uiTextPrimary
             wrapMode: Text.WordWrap
         }
@@ -2544,7 +2544,7 @@ Window {
         y: 432
         width: 220
         contentItem: Label {
-            text: "РњР°СЃС€С‚Р°Р± С„РёРєСЃРёСЂРѕРІР°РЅ: 1 РіРµРєСЃ = 5 ft."
+            text: "Масштаб фиксирован: 1 гекс = 5 ft."
             color: mapWindow.uiTextPrimary
             wrapMode: Text.WordWrap
         }
@@ -2558,18 +2558,18 @@ Window {
         contentItem: ColumnLayout {
             spacing: 8
             Label {
-                text: "РќР°РІРёРіР°С†РёСЏ РєР°СЂС‚С‹"
+                text: "Навигация карты"
                 color: mapWindow.uiTextPrimary
                 font.pixelSize: 14
             }
             Label {
-                text: "РљРѕР»РµСЃРѕ РјС‹С€Рё вЂ” РјР°СЃС€С‚Р°Р±, Р›РљРњ вЂ” РїРµСЂРµРјРµС‰РµРЅРёРµ."
+                text: "Колесо мыши — масштаб, ЛКМ — перемещение."
                 color: mapWindow.uiTextSecondary
                 wrapMode: Text.WordWrap
                 Layout.fillWidth: true
             }
             ToolButton {
-                text: "РЎР±СЂРѕСЃРёС‚СЊ РІРёРґ"
+                text: "Сбросить вид"
                 accent: true
                 Layout.fillWidth: true
                 onClicked: resetMapView()
@@ -2590,7 +2590,7 @@ Window {
                 spacing: 8
 
                 Label {
-                    text: "Р РµРґР°РєС‚РёСЂРѕРІР°РЅРёРµ СЃС†РµРЅС‹"
+                    text: "Редактирование сцены"
                     color: mapWindow.uiTextPrimary
                     font.pixelSize: 18
                     font.weight: Font.DemiBold
@@ -2599,7 +2599,7 @@ Window {
                 ToolField {
                     id: sceneEditName
                     Layout.fillWidth: true
-                    placeholderText: "РќР°Р·РІР°РЅРёРµ СЃС†РµРЅС‹"
+                    placeholderText: "Название сцены"
                 }
                 ToolField {
                     id: sceneEditOriginalName
@@ -2607,7 +2607,7 @@ Window {
                 }
 
                 Rectangle { Layout.fillWidth: true; Layout.preferredHeight: 1; color: "#4C515C" }
-                Label { text: "РљР°СЂС‚Р°"; color: mapWindow.uiTextPrimary; font.pixelSize: 14 }
+                Label { text: "Карта"; color: mapWindow.uiTextPrimary; font.pixelSize: 14 }
                 ComboBox {
                     id: sceneEditMapType
                     model: ["color", "image", "video"]
@@ -2618,7 +2618,7 @@ Window {
                     mediaType: sceneEditMapType.currentText
                     previewValue: sceneEditMapValue.text
                     fallbackColor: "#2E2E2E"
-                    placeholderText: "РџРµСЂРµС‚Р°С‰РёС‚Рµ С„Р°Р№Р», Ctrl+V РёР»Рё РґРІРѕР№РЅРѕР№ РєР»РёРє"
+                    placeholderText: "Перетащите файл, Ctrl+V или двойной клик"
                     onDropValue: function(value) {
                         sceneEditMapValue.text = value
                         applyDetectedMediaType(value, sceneEditMapType)
@@ -2636,17 +2636,17 @@ Window {
                 ToolField {
                     id: sceneEditMapValue
                     Layout.fillWidth: true
-                    placeholderText: sceneEditMapType.currentText === "color" ? "#2E2E2E" : "РџСѓС‚СЊ / URL"
+                    placeholderText: sceneEditMapType.currentText === "color" ? "#2E2E2E" : "Путь / URL"
                 }
                 RowLayout {
                     Layout.fillWidth: true
-                    CheckBox { id: sceneEditMapAutoplay; text: "РђРІС‚Рѕ"; checked: true }
-                    CheckBox { id: sceneEditMapLoop; text: "Р¦РёРєР»"; checked: true }
-                    CheckBox { id: sceneEditMapMute; text: "Р‘РµР· Р·РІСѓРєР°"; checked: true }
+                    CheckBox { id: sceneEditMapAutoplay; text: "Авто"; checked: true }
+                    CheckBox { id: sceneEditMapLoop; text: "Цикл"; checked: true }
+                    CheckBox { id: sceneEditMapMute; text: "Без звука"; checked: true }
                 }
 
                 Rectangle { Layout.fillWidth: true; Layout.preferredHeight: 1; color: "#4C515C" }
-                Label { text: "Р¤РѕРЅ"; color: mapWindow.uiTextPrimary; font.pixelSize: 14 }
+                Label { text: "Фон"; color: mapWindow.uiTextPrimary; font.pixelSize: 14 }
                 ComboBox {
                     id: sceneEditBgType
                     model: ["color", "image", "video"]
@@ -2657,7 +2657,7 @@ Window {
                     mediaType: sceneEditBgType.currentText
                     previewValue: sceneEditBgValue.text
                     fallbackColor: "#1F1F1F"
-                    placeholderText: "РџРµСЂРµС‚Р°С‰РёС‚Рµ С„Р°Р№Р», Ctrl+V РёР»Рё РґРІРѕР№РЅРѕР№ РєР»РёРє"
+                    placeholderText: "Перетащите файл, Ctrl+V или двойной клик"
                     onDropValue: function(value) {
                         sceneEditBgValue.text = value
                         applyDetectedMediaType(value, sceneEditBgType)
@@ -2675,35 +2675,35 @@ Window {
                 ToolField {
                     id: sceneEditBgValue
                     Layout.fillWidth: true
-                    placeholderText: sceneEditBgType.currentText === "color" ? "#1F1F1F" : "РџСѓС‚СЊ / URL"
+                    placeholderText: sceneEditBgType.currentText === "color" ? "#1F1F1F" : "Путь / URL"
                 }
                 RowLayout {
                     Layout.fillWidth: true
-                    CheckBox { id: sceneEditBgAutoplay; text: "РђРІС‚Рѕ"; checked: true }
-                    CheckBox { id: sceneEditBgLoop; text: "Р¦РёРєР»"; checked: true }
-                    CheckBox { id: sceneEditBgMute; text: "Р‘РµР· Р·РІСѓРєР°"; checked: true }
+                    CheckBox { id: sceneEditBgAutoplay; text: "Авто"; checked: true }
+                    CheckBox { id: sceneEditBgLoop; text: "Цикл"; checked: true }
+                    CheckBox { id: sceneEditBgMute; text: "Без звука"; checked: true }
                 }
 
                 Rectangle { Layout.fillWidth: true; Layout.preferredHeight: 1; color: "#4C515C" }
-                Label { text: "РЎРµС‚РєР°"; color: mapWindow.uiTextPrimary; font.pixelSize: 14 }
-                Label { text: "Р Р°Р·РјРµСЂ РєР»РµС‚РєРё (ft)"; color: mapWindow.uiTextSecondary; font.pixelSize: 12 }
+                Label { text: "Сетка"; color: mapWindow.uiTextPrimary; font.pixelSize: 14 }
+                Label { text: "Размер клетки (ft)"; color: mapWindow.uiTextSecondary; font.pixelSize: 12 }
                 ToolField { id: sceneEditGridSize; Layout.fillWidth: true; text: "5.00" }
-                Label { text: "РўРѕР»С‰РёРЅР° Р»РёРЅРёРё (px)"; color: mapWindow.uiTextSecondary; font.pixelSize: 12 }
+                Label { text: "Толщина линии (px)"; color: mapWindow.uiTextSecondary; font.pixelSize: 12 }
                 ToolField { id: sceneEditGridThickness; Layout.fillWidth: true; text: "1.50" }
-                Label { text: "РџСЂРѕР·СЂР°С‡РЅРѕСЃС‚СЊ (0..1)"; color: mapWindow.uiTextSecondary; font.pixelSize: 12 }
+                Label { text: "Прозрачность (0..1)"; color: mapWindow.uiTextSecondary; font.pixelSize: 12 }
                 ToolField { id: sceneEditGridOpacity; Layout.fillWidth: true; text: "0.45" }
-                Label { text: "Р¦РІРµС‚"; color: mapWindow.uiTextSecondary; font.pixelSize: 12 }
+                Label { text: "Цвет"; color: mapWindow.uiTextSecondary; font.pixelSize: 12 }
                 ToolField { id: sceneEditGridColor; Layout.fillWidth: true; text: "#9DA6B0" }
 
                 RowLayout {
                     Layout.fillWidth: true
                     ToolButton {
-                        text: "РћС‚РјРµРЅР°"
+                        text: "Отмена"
                         Layout.fillWidth: true
                         onClicked: sceneEditPopup.close()
                     }
                     ToolButton {
-                        text: "РЎРѕС…СЂР°РЅРёС‚СЊ"
+                        text: "Сохранить"
                         accent: true
                         Layout.fillWidth: true
                         onClicked: applySceneEditorDraft()
@@ -2715,11 +2715,11 @@ Window {
 
     FileDialog {
         id: sceneEditFileDialog
-        title: "Р’С‹Р±РµСЂРёС‚Рµ РјРµРґРёР°С„Р°Р№Р»"
+        title: "Выберите медиафайл"
         fileMode: FileDialog.OpenFile
         nameFilters: [
-            "РњРµРґРёР°С„Р°Р№Р»С‹ (*.png *.jpg *.jpeg *.webp *.bmp *.gif *.mp4 *.webm *.mkv *.avi *.mov *.wmv *.m4v)",
-            "Р’СЃРµ С„Р°Р№Р»С‹ (*.*)"
+            "Медиафайлы (*.png *.jpg *.jpeg *.webp *.bmp *.gif *.mp4 *.webm *.mkv *.avi *.mov *.wmv *.m4v)",
+            "Все файлы (*.*)"
         ]
         onAccepted: {
             var selected = selectedFile.toString()
@@ -2827,7 +2827,7 @@ Window {
                 Layout.alignment: Qt.AlignHCenter
                 iconSource: "icons/cursor.svg"
                 selectedState: currentTool === "cursor"
-                hintText: "РљСѓСЂСЃРѕСЂ. Р”РІРѕР№РЅРѕР№ РєР»РёРє Р›РљРњ вЂ” РЅР°СЃС‚СЂРѕР№РєРё."
+                hintText: "Курсор. Двойной клик ЛКМ — настройки."
                 onClicked: handleToolButtonClick("cursor", cursorSettingsPopup, cursorToolButton)
             }
 
@@ -2836,7 +2836,7 @@ Window {
                 Layout.alignment: Qt.AlignHCenter
                 iconSource: "icons/pen.svg"
                 selectedState: currentTool === "pen"
-                hintText: "РџРµСЂРѕ. Р”РІРѕР№РЅРѕР№ РєР»РёРє Р›РљРњ вЂ” РЅР°СЃС‚СЂРѕР№РєРё."
+                hintText: "Перо. Двойной клик ЛКМ — настройки."
                 onClicked: handleToolButtonClick("pen", penSettingsPopup, penToolButton)
             }
 
@@ -2845,7 +2845,7 @@ Window {
                 Layout.alignment: Qt.AlignHCenter
                 iconSource: "icons/fill.svg"
                 selectedState: currentTool === "fill"
-                hintText: "Р—Р°Р»РёРІРєР°. Р”РІРѕР№РЅРѕР№ РєР»РёРє Р›РљРњ вЂ” РЅР°СЃС‚СЂРѕР№РєРё."
+                hintText: "Заливка. Двойной клик ЛКМ — настройки."
                 onClicked: handleToolButtonClick("fill", fillSettingsPopup, fillToolButton)
             }
 
@@ -2854,7 +2854,7 @@ Window {
                 Layout.alignment: Qt.AlignHCenter
                 iconSource: "icons/eraser.svg"
                 selectedState: currentTool === "eraser"
-                hintText: "Р›Р°СЃС‚РёРє. Р”РІРѕР№РЅРѕР№ РєР»РёРє Р›РљРњ вЂ” РЅР°СЃС‚СЂРѕР№РєРё."
+                hintText: "Ластик. Двойной клик ЛКМ — настройки."
                 onClicked: handleToolButtonClick("eraser", eraserSettingsPopup, eraserToolButton)
             }
 
@@ -2863,7 +2863,7 @@ Window {
                 Layout.alignment: Qt.AlignHCenter
                 iconSource: "icons/hex.svg"
                 selectedState: currentTool === "hex_select"
-                hintText: "Р’С‹Р±РѕСЂ РіРµРєСЃРѕРІ. Р”РІРѕР№РЅРѕР№ РєР»РёРє Р›РљРњ вЂ” РЅР°СЃС‚СЂРѕР№РєРё."
+                hintText: "Выбор гексов. Двойной клик ЛКМ — настройки."
                 onClicked: handleToolButtonClick("hex_select", hexSettingsPopup, hexToolButton)
             }
 
@@ -2872,7 +2872,7 @@ Window {
                 Layout.alignment: Qt.AlignHCenter
                 iconSource: "icons/measure.svg"
                 selectedState: currentTool === "measure"
-                hintText: "РР·РјРµСЂРµРЅРёРµ. Р”РІРѕР№РЅРѕР№ РєР»РёРє Р›РљРњ вЂ” РЅР°СЃС‚СЂРѕР№РєРё."
+                hintText: "Измерение. Двойной клик ЛКМ — настройки."
                 onClicked: handleToolButtonClick("measure", measureSettingsPopup, measureToolButton)
             }
 
@@ -2881,7 +2881,7 @@ Window {
                 Layout.alignment: Qt.AlignHCenter
                 iconSource: "icons/pan.svg"
                 selectedState: currentTool === "pan_zoom"
-                hintText: "РќР°РІРёРіР°С†РёСЏ РєР°СЂС‚С‹. Р”РІРѕР№РЅРѕР№ РєР»РёРє Р›РљРњ вЂ” РЅР°СЃС‚СЂРѕР№РєРё."
+                hintText: "Навигация карты. Двойной клик ЛКМ — настройки."
                 onClicked: handleToolButtonClick("pan_zoom", panSettingsPopup, panToolButton)
             }
 
@@ -2889,7 +2889,7 @@ Window {
                 id: fullscreenToolButton
                 Layout.alignment: Qt.AlignHCenter
                 iconSource: "icons/fullscreen.svg"
-                hintText: "РџРѕР»РЅРѕСЌРєСЂР°РЅРЅС‹Р№ СЂРµР¶РёРј."
+                hintText: "Полноэкранный режим."
                 onClicked: toggleFullscreenMode()
             }
 
@@ -2897,7 +2897,7 @@ Window {
                 id: sceneEditToolButton
                 Layout.alignment: Qt.AlignHCenter
                 iconSource: "icons/scene_edit.svg"
-                hintText: "Р РµРґР°РєС‚РёСЂРѕРІР°С‚СЊ СЃС†РµРЅСѓ."
+                hintText: "Редактировать сцену."
                 onClicked: openSceneEditor(sceneEditToolButton)
             }
 
@@ -2915,14 +2915,14 @@ Window {
                 iconSource: "icons/undo.svg"
                 Layout.alignment: Qt.AlignHCenter
                 enabled: appController.canUndoSceneAction
-                hintText: "РћС‚РјРµРЅРёС‚СЊ РїРѕСЃР»РµРґРЅРµРµ РґРµР№СЃС‚РІРёРµ."
+                hintText: "Отменить последнее действие."
                 onClicked: appController.request_undo()
             }
 
             IconSquareButton {
                 iconSource: "icons/clear.svg"
                 Layout.alignment: Qt.AlignHCenter
-                hintText: "РћС‡РёСЃС‚РёС‚СЊ РІСЃРµ СЃР»РѕРё."
+                hintText: "Очистить все слои."
                 onClicked: {
                     clearAllVisualLayersLocal()
                     appController.clear_all_visual_layers()
@@ -2932,14 +2932,14 @@ Window {
             IconSquareButton {
                 iconSource: "icons/save.svg"
                 Layout.alignment: Qt.AlignHCenter
-                hintText: "РЎРѕС…СЂР°РЅРёС‚СЊ СЃС†РµРЅСѓ."
+                hintText: "Сохранить сцену."
                 onClicked: appController.request_manual_save()
             }
 
             IconSquareButton {
                 iconSource: "icons/back.svg"
                 Layout.alignment: Qt.AlignHCenter
-                hintText: "РќР°Р·Р°Рґ РІ Р»Р°СѓРЅС‡РµСЂ."
+                hintText: "Назад в лаунчер."
                 onClicked: appController.request_back()
             }
         }

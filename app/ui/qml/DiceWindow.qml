@@ -44,6 +44,24 @@ Window {
     property color panelBorder: "#4A4A4A"
     property var dieStyles: ({})
     property var dieStyleTemplates: ({"user": [], "damage": []})
+    property var damageTemplateIconNames: ([
+        "weapon.svg",
+        "fire.svg",
+        "sound.svg",
+        "radiant.svg",
+        "necrotic.svg",
+        "psychic.svg",
+        "force.svg",
+        "cold.svg",
+        "acid.svg",
+        "poison.svg"
+    ])
+    property string damageTemplateIconsBaseUrl: Qt.resolvedUrl("../../../app_data/icons/")
+    property var templateSnapshotCache: ({})
+    property var templateSnapshotQueue: ([])
+    property bool templateSnapshotBusy: false
+    property bool templateSnapshotWebReady: false
+    property var templateSnapshotCurrentTask: null
     property var damageTemplateLabels: ([
         "Оружие",
         "Огонь",
@@ -188,28 +206,30 @@ Window {
         if (!canRollAll()) {
             return
         }
+
+        var hasD20 = d20Count > 0
+        var hasStandard = canRollStandard()
+
         clearResults()
-        waitingStandardPhysicsResult = d20Count === 0
+        waitingStandardPhysicsResult = hasStandard
             && isPhysicsStandardRequest(d4Count, d6Count, d8Count, d10Count, d12Count)
             && diceController.is_map_window_open()
-        console.log("[dice-ui-debug] rollAll waiting=" + waitingStandardPhysicsResult
+
+        console.log("[dice-ui-debug] rollAll split requests=" + (hasD20 || hasStandard)
             + " d20=" + d20Count + " mode=" + d20Mode + " d20Bonus=" + d20Bonus
             + " standard(d4/d6/d8/d10/d12)=" + d4Count + "/" + d6Count + "/" + d8Count + "/" + d10Count + "/" + d12Count
-            + " stdBonus=" + standardBonus)
+            + " stdBonus=" + standardBonus + " waitingStandard=" + waitingStandardPhysicsResult)
+
         if (waitingStandardPhysicsResult) {
             physicsFallbackTimer.restart()
         }
-        diceController.request_roll_all(
-            d20Count,
-            d20Mode,
-            d20Bonus,
-            d4Count,
-            d6Count,
-            d8Count,
-            d10Count,
-            d12Count,
-            standardBonus
-        )
+
+        if (hasD20) {
+            diceController.request_roll_d20(effectiveCount(d20Count), d20Mode, d20Bonus)
+        }
+        if (hasStandard) {
+            diceController.request_roll_standard(d4Count, d6Count, d8Count, d10Count, d12Count, standardBonus)
+        }
     }
 
     function handleRollCompleted(payload) {
@@ -434,6 +454,7 @@ Window {
         next.user[0] = cloneStyle(dieEditorWorking)
         dieStyleTemplates = next
         persistDieStyleTemplates()
+        refreshTemplateSnapshots("user", true)
     }
 
     function openTemplateContextMenu(rowKey, index, x, y) {
@@ -454,6 +475,7 @@ Window {
         next[row][templateContextIndex] = cloneStyle(dieEditorWorking)
         dieStyleTemplates = next
         persistDieStyleTemplates()
+        enqueueTemplateSnapshot(row, templateContextIndex, true)
     }
 
     function deleteTemplateContextSlot() {
@@ -464,9 +486,13 @@ Window {
             return
         }
         var next = cloneTemplateBag(dieStyleTemplates)
-        next.user[templateContextIndex] = null
+        for (var i = templateContextIndex; i < 9; i++) {
+            next.user[i] = next.user[i + 1] ? cloneStyle(next.user[i + 1]) : null
+        }
+        next.user[9] = null
         dieStyleTemplates = next
         persistDieStyleTemplates()
+        refreshTemplateSnapshots("user", true)
     }
 
     function previewLabelForDieType(dieType) {
@@ -486,6 +512,186 @@ Window {
         var width = Math.max(320, Number(availableWidth || 0))
         var s = Math.floor((width - gap * 9) / 10)
         return Math.max(30, Math.min(54, s))
+    }
+    function previewKindForDieType(dieType) {
+        var key = String(dieType || "d6").toLowerCase()
+        return key === "d100" ? "d10t" : key
+    }
+
+    function styleToWebPayload(styleObj) {
+        var src = styleObj && typeof styleObj === "object" ? styleObj : cloneStyle(null)
+        return {
+            "scalePercent": Number(src.scalePercent !== undefined ? src.scalePercent : 100),
+            "faceColor": String(src.color || "#C9C9C9"),
+            "gradientEnabled": Boolean(src.gradientEnabled),
+            "gradientCenterColor": String(src.gradientCenterColor || "#FFFFFF"),
+            "gradientSharpness": Math.max(0, Math.min(1, Number(src.gradientSharpness || 50) / 100.0)),
+            "gradientOffset": Math.max(0, Math.min(1, Number(src.gradientOffset || 50) / 100.0)),
+            "textColor": String(src.fontColor || "#1F1F1F"),
+            "textStrokeColor": String(src.textStrokeColor || "#EEEEEE"),
+            "textGlowRadius": Math.max(0, Math.min(2, Number(src.textGlowRadius !== undefined ? src.textGlowRadius : 100) / 100.0)),
+            "textGlowOpacity": Math.max(0, Math.min(2, Number(src.textGlowOpacity !== undefined ? src.textGlowOpacity : 100) / 100.0)),
+            "edgeColor": String(src.edgeColor || "#D4D4D4"),
+            "edgeWidth": Number(src.edgeWidth !== undefined ? src.edgeWidth : 0.0)
+        }
+    }
+
+    function styleToSnapshotPayload(styleObj) {
+        var payload = styleToWebPayload(styleObj)
+        payload.scalePercent = Number(payload.scalePercent || 100) * 2.25
+        return payload
+    }
+    function templateStyleHash(styleObj) {
+        var s = cloneStyle(styleObj)
+        return [
+            Number(s.scalePercent || 100).toFixed(3),
+            String(s.color || "#C9C9C9"),
+            s.gradientEnabled ? "1" : "0",
+            String(s.gradientCenterColor || "#FFFFFF"),
+            Number(s.gradientSharpness || 50).toFixed(3),
+            Number(s.gradientOffset || 50).toFixed(3),
+            String(s.fontColor || "#1F1F1F"),
+            String(s.textStrokeColor || "#EEEEEE"),
+            Number(s.textGlowRadius !== undefined ? s.textGlowRadius : 100).toFixed(3),
+            Number(s.textGlowOpacity !== undefined ? s.textGlowOpacity : 100).toFixed(3),
+            String(s.edgeColor || "#D4D4D4"),
+            Number(s.edgeWidth !== undefined ? s.edgeWidth : 0.0).toFixed(3)
+        ].join("|")
+    }
+
+    function templateSnapshotKey(dieType, rowKey, index, styleObj) {
+        return String(dieType || "d6") + "::" + String(rowKey || "user") + "::" + Number(index) + "::" + templateStyleHash(styleObj)
+    }
+
+    function templateSnapshotSource(rowKey, index) {
+        var style = templateStyle(rowKey, index)
+        if (!style) {
+            return ""
+        }
+        var key = templateSnapshotKey(dieEditorDieKey, rowKey, index, style)
+        var cache = templateSnapshotCache || {}
+        return cache[key] ? String(cache[key]) : ""
+    }
+
+    function resolveDamageIconSource(index) {
+        var i = Number(index)
+        if (!isFinite(i) || i < 0 || i >= damageTemplateIconNames.length) {
+            return ""
+        }
+        var base = String(damageTemplateIconsBaseUrl || "")
+        if (base.length <= 0) {
+            return ""
+        }
+        if (base[base.length - 1] !== "/") {
+            base += "/"
+        }
+        return base + encodeURIComponent(String(damageTemplateIconNames[i]))
+    }
+
+    function enqueueTemplateSnapshot(rowKey, index, forceRender) {
+        var style = templateStyle(rowKey, index)
+        if (!style) {
+            return
+        }
+        var key = templateSnapshotKey(dieEditorDieKey, rowKey, index, style)
+        var cache = templateSnapshotCache || {}
+        if (!forceRender && cache[key]) {
+            return
+        }
+
+        if (templateSnapshotBusy && templateSnapshotCurrentTask && templateSnapshotCurrentTask.key === key) {
+            return
+        }
+
+        var q = templateSnapshotQueue ? templateSnapshotQueue.slice(0) : []
+        for (var i = 0; i < q.length; i++) {
+            if (q[i] && q[i].key === key) {
+                return
+            }
+        }
+
+        q.push({
+            "key": key,
+            "rowKey": String(rowKey),
+            "index": Number(index),
+            "dieType": String(dieEditorDieKey || "d6"),
+            "previewKind": previewKindForDieType(dieEditorDieKey),
+            "payload": styleToSnapshotPayload(style)
+        })
+        templateSnapshotQueue = q
+        processTemplateSnapshotQueue()
+    }
+
+    function refreshTemplateSnapshots(rowKey, forceRender) {
+        var row = String(rowKey || "")
+        if (row !== "user" && row !== "damage") {
+            return
+        }
+        for (var i = 0; i < 10; i++) {
+            enqueueTemplateSnapshot(row, i, Boolean(forceRender))
+        }
+    }
+
+    function refreshAllTemplateSnapshots(forceRender) {
+        refreshTemplateSnapshots("user", forceRender)
+        refreshTemplateSnapshots("damage", forceRender)
+    }
+
+    function clearTemplateSnapshotQueue() {
+        templateSnapshotQueue = []
+        templateSnapshotBusy = false
+        templateSnapshotCurrentTask = null
+        templateSnapshotCaptureTimer.stop()
+    }
+
+    function processTemplateSnapshotQueue() {
+        if (!dieStylePopup || !dieStylePopup.visible) {
+            return
+        }
+        if (!templateSnapshotWebReady || templateSnapshotBusy) {
+            return
+        }
+        var q = templateSnapshotQueue ? templateSnapshotQueue.slice(0) : []
+        if (q.length <= 0) {
+            return
+        }
+        var task = q.shift()
+        templateSnapshotQueue = q
+        templateSnapshotCurrentTask = task
+        templateSnapshotBusy = true
+
+        if (!templateSnapshotWeb) {
+            templateSnapshotBusy = false
+            templateSnapshotCurrentTask = null
+            return
+        }
+
+        templateSnapshotWeb.runJavaScript("window.setPreviewStaticMode && window.setPreviewStaticMode(true);")
+        templateSnapshotWeb.runJavaScript("window.setStyleOverrides && window.setStyleOverrides(" + JSON.stringify(task.payload) + ");")
+        templateSnapshotWeb.runJavaScript("window.setPreviewDieKind && window.setPreviewDieKind('" + task.previewKind + "');")
+        templateSnapshotWeb.runJavaScript("window.startPreviewRoll && window.startPreviewRoll();")
+        templateSnapshotCaptureTimer.restart()
+    }
+
+    function handleTemplateSnapshotCaptured(result) {
+        var task = templateSnapshotCurrentTask
+        if (task && result && result.url) {
+            var cache = Object.assign({}, templateSnapshotCache || {})
+            cache[task.key] = result.url
+            templateSnapshotCache = cache
+        }
+        templateSnapshotBusy = false
+        templateSnapshotCurrentTask = null
+        processTemplateSnapshotQueue()
+    }
+
+    function captureTemplateSnapshotCurrentTask() {
+        if (!templateSnapshotBusy || !templateSnapshotCurrentTask || !templateSnapshotWeb) {
+            return
+        }
+        templateSnapshotWeb.grabToImage(function(result) {
+            diceWindow.handleTemplateSnapshotCaptured(result)
+        })
     }
     function updateEditorField(field, value) {
         var next = cloneStyle(dieEditorWorking)
@@ -756,25 +962,10 @@ Window {
             return
         }
 
-        var stylePayload = {
-            "scalePercent": Number(dieEditorWorking.scalePercent !== undefined ? dieEditorWorking.scalePercent : 100),
-            "faceColor": String(dieEditorWorking.color || "#C9C9C9"),
-            "gradientEnabled": Boolean(dieEditorWorking.gradientEnabled),
-            "gradientCenterColor": String(dieEditorWorking.gradientCenterColor || "#FFFFFF"),
-            "gradientSharpness": Math.max(0, Math.min(1, Number(dieEditorWorking.gradientSharpness || 50) / 100.0)),
-            "gradientOffset": Math.max(0, Math.min(1, Number(dieEditorWorking.gradientOffset || 50) / 100.0)),
-            "textColor": String(dieEditorWorking.fontColor || "#1F1F1F"),
-            "textStrokeColor": String(dieEditorWorking.textStrokeColor || "#EEEEEE"),
-            "textGlowRadius": Math.max(0, Math.min(2, Number(dieEditorWorking.textGlowRadius !== undefined ? dieEditorWorking.textGlowRadius : 100) / 100.0)),
-            "textGlowOpacity": Math.max(0, Math.min(2, Number(dieEditorWorking.textGlowOpacity !== undefined ? dieEditorWorking.textGlowOpacity : 100) / 100.0)),
-            "edgeColor": String(dieEditorWorking.edgeColor || "#D4D4D4"),
-            "edgeWidth": Number(dieEditorWorking.edgeWidth !== undefined ? dieEditorWorking.edgeWidth : 0.0)
-        }
+        var stylePayload = styleToWebPayload(dieEditorWorking)
+        previewWeb.runJavaScript("window.setPreviewStaticMode && window.setPreviewStaticMode(false);")
         previewWeb.runJavaScript("window.setStyleOverrides && window.setStyleOverrides(" + JSON.stringify(stylePayload) + ");")
-        var previewKind = String(dieEditorDieKey || "d6")
-        if (previewKind === "d100") {
-            previewKind = "d10t"
-        }
+        var previewKind = previewKindForDieType(dieEditorDieKey)
         previewWeb.runJavaScript("window.setPreviewDieKind && window.setPreviewDieKind('" + previewKind + "');")
     }
 
@@ -782,6 +973,7 @@ Window {
         if (!previewWeb || !previewWeb.visible || !previewWebReady) {
             return
         }
+        previewWeb.runJavaScript("window.setPreviewStaticMode && window.setPreviewStaticMode(false);")
         previewWeb.runJavaScript("window.startPreviewRoll && window.startPreviewRoll();")
     }
 
@@ -791,6 +983,9 @@ Window {
     onDieEditorDieKeyChanged: {
         pushPreviewStyle()
         startPreviewRollNow()
+        if (dieStylePopup && dieStylePopup.visible) {
+            refreshAllTemplateSnapshots(true)
+        }
     }
     Component.onCompleted: {
         resetState()
@@ -1357,6 +1552,21 @@ Window {
         property int slotIndex: 0
         property int slotSize: 34
         property var slotStyle: null
+        property string snapshotSource: diceWindow.templateSnapshotSource(slot.rowKey, slot.slotIndex)
+        property string damageIconSource: slot.rowKey === "damage" ? diceWindow.resolveDamageIconSource(slot.slotIndex) : ""
+        property string damageTooltipText: {
+            if (slot.rowKey !== "damage") {
+                return ""
+            }
+            if (slot.slotIndex < 0 || slot.slotIndex >= diceWindow.damageTemplateLabels.length) {
+                return ""
+            }
+            var label = String(diceWindow.damageTemplateLabels[slot.slotIndex] || "")
+            if (label.length <= 0) {
+                return ""
+            }
+            return "\u0428\u0430\u0431\u043b\u043e\u043d \u0443\u0440\u043e\u043d\u0430: " + label.toLowerCase()
+        }
 
         implicitWidth: slotSize
         implicitHeight: slotSize
@@ -1373,13 +1583,54 @@ Window {
             anchors.centerIn: parent
             width: Math.max(18, slot.slotSize - 8)
             height: Math.max(18, slot.slotSize - 8)
-            visible: !!slot.slotStyle
+            visible: !!slot.slotStyle && (!slot.snapshotSource || slot.snapshotSource.length <= 0)
             dieType: diceWindow.dieEditorDieKey
             styleData: slot.slotStyle || ({})
             labelText: diceWindow.previewLabelForDieType(diceWindow.dieEditorDieKey)
         }
 
+        Image {
+            anchors.centerIn: parent
+            width: Math.max(18, slot.slotSize - 8)
+            height: Math.max(18, slot.slotSize - 8)
+            fillMode: Image.PreserveAspectFit
+            smooth: true
+            asynchronous: true
+            cache: false
+            source: slot.snapshotSource
+            visible: !!slot.slotStyle && slot.snapshotSource.length > 0 && status === Image.Ready
+        }
+
+
+        Rectangle {
+            id: damageIconFrame
+            width: Math.max(12, damageIcon.width + 4)
+            height: width
+            radius: Math.max(4, width * 0.18)
+            x: parent.width - width - 3
+            y: parent.height - height - 3
+            color: "#111214"
+            border.width: 1
+            border.color: "#3B3D43"
+            visible: damageIcon.visible
+            z: 3
+        }
+
+        Image {
+            id: damageIcon
+            width: Math.max(9, Math.round(slot.slotSize * 0.27))
+            height: width
+            anchors.centerIn: damageIconFrame
+            fillMode: Image.PreserveAspectFit
+            smooth: true
+            asynchronous: true
+            source: slot.damageIconSource
+            visible: slot.rowKey === "damage" && slot.damageIconSource.length > 0 && status === Image.Ready
+            z: 4
+        }
+
         MouseArea {
+            id: slotHoverArea
             anchors.fill: parent
             hoverEnabled: true
             acceptedButtons: Qt.LeftButton | Qt.RightButton
@@ -1396,7 +1647,13 @@ Window {
                 }
             }
         }
+
+        ToolTip.visible: slotHoverArea.containsMouse && slot.damageTooltipText.length > 0
+        ToolTip.delay: 250
+        ToolTip.timeout: 3000
+        ToolTip.text: slot.damageTooltipText
     }
+
 
     component CountStepper: RowLayout {
         id: stepper
@@ -1908,6 +2165,41 @@ Window {
         onOpened: {
             diceWindow.pushPreviewStyle()
             diceWindow.startPreviewRollNow()
+            diceWindow.refreshAllTemplateSnapshots(false)
+            diceWindow.processTemplateSnapshotQueue()
+        }
+
+        onClosed: {
+            diceWindow.clearTemplateSnapshotQueue()
+        }
+
+        WebEngineView {
+            id: templateSnapshotWeb
+            x: -10000
+            y: -10000
+            width: 148
+            height: 148
+            visible: dieStylePopup.visible
+            enabled: visible
+            backgroundColor: "#121214"
+            url: Qt.resolvedUrl("../web/dice_physics.html")
+            onLoadingChanged: function(req) {
+                if (req.status === WebEngineView.LoadFailedStatus) {
+                    templateSnapshotWebReady = false
+                    return
+                }
+                if (req.status === WebEngineView.LoadSucceededStatus) {
+                    templateSnapshotWebReady = true
+                    diceWindow.processTemplateSnapshotQueue()
+                }
+            }
+        }
+
+        Timer {
+            id: templateSnapshotCaptureTimer
+            interval: 120
+            repeat: false
+            onTriggered: diceWindow.captureTemplateSnapshotCurrentTask()
         }
 
         background: Rectangle {
@@ -2132,7 +2424,7 @@ Window {
                         Item { Layout.fillWidth: true }
                     }
 
-                    Label { text: "Glow radius"; color: textSecondary; font.pixelSize: 11 }
+                    Label { text: "\u0420\u0430\u0434\u0438\u0443\u0441 \u0441\u0432\u0435\u0447\u0435\u043d\u0438\u044f"; color: textSecondary; font.pixelSize: 11 }
                     SliderNumberControl {
                         minValue: 0
                         maxValue: 200
@@ -2142,7 +2434,7 @@ Window {
                         onValueCommitted: updateEditorField("textGlowRadius", Math.round(value))
                     }
 
-                    Label { text: "Glow opacity"; color: textSecondary; font.pixelSize: 11 }
+                    Label { text: "\u0418\u043d\u0442\u0435\u043d\u0441\u0438\u0432\u043d\u043e\u0441\u0442\u044c \u0441\u0432\u0435\u0447\u0435\u043d\u0438\u044f"; color: textSecondary; font.pixelSize: 11 }
                     SliderNumberControl {
                         minValue: 0
                         maxValue: 200
@@ -2410,4 +2702,3 @@ Window {
         }
     }
 }
-

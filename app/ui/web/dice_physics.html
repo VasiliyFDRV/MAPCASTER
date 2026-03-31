@@ -650,6 +650,7 @@
       const activeRollStates = new Map();
       const d20RequestMeta = new Map();
       let previewDieKind = "d6";
+      let previewStaticMode = false;
       let styleOverrides = {
         scalePercent: 100,
         faceColor: "#c9c9c9",
@@ -3023,7 +3024,7 @@
         const zNorm = clamp(state.z / 260, 0, 1);
         const cx = state.px;
         const cy = state.py - state.z * 0.55;
-        const previewScale = clamp(Number(styleOverrides.scalePercent || 100) / 100, 0.5, 1.5);
+        const previewScale = clamp(Number(styleOverrides.scalePercent || 100) / 100, 0.5, 2.25);
         const scale = state.previewMode ? previewScale : (0.78 + (1 - zNorm) * 0.22);
 
         state.wrap.style.opacity = String(clamp(state.alpha, 0, 1));
@@ -3060,7 +3061,7 @@
           : (styleOverrides.textGlowOpacity !== undefined ? styleOverrides.textGlowOpacity : legacyGlow);
 
         styleOverrides = {
-          scalePercent: clamp(Number(p.scalePercent !== undefined ? p.scalePercent : styleOverrides.scalePercent), 50, 150),
+          scalePercent: clamp(Number(p.scalePercent !== undefined ? p.scalePercent : styleOverrides.scalePercent), 50, 225),
           faceColor: normalizeColor(p.faceColor, styleOverrides.faceColor),
           gradientEnabled: Boolean(p.gradientEnabled),
           gradientCenterColor: normalizeColor(p.gradientCenterColor, styleOverrides.gradientCenterColor),
@@ -3098,8 +3099,22 @@
           edgeWidth: 0.0,
         };
       };
+      function getPreviewStaticPose(kind) {
+        const k = String(kind || "d6").toLowerCase();
+        if (k === "d20") return { rx: -28, ry: 36, rz: 14 };
+        if (k === "d12") return { rx: -24, ry: 30, rz: 12 };
+        if (k === "d10" || k === "d10t") return { rx: -18, ry: 34, rz: 10 };
+        if (k === "d8") return { rx: -22, ry: 22, rz: 14 };
+        if (k === "d4") return { rx: -14, ry: 26, rz: 8 };
+        return { rx: -16, ry: 34, rz: 10 };
+      }
+
       window.setPreviewDieKind = function setPreviewDieKind(kind) {
         previewDieKind = String(kind || "d6").toLowerCase();
+      };
+
+      window.setPreviewStaticMode = function setPreviewStaticMode(flag) {
+        previewStaticMode = Boolean(flag);
       };
 
       window.startPreviewRoll = function startPreviewRoll() {
@@ -3151,6 +3166,8 @@
         const previewIndex = Number(slotIndex || 0);
         const previewTotal = Math.max(1, Number(totalCount || 1));
         const previewOffset = (previewIndex - (previewTotal - 1) * 0.5) * 56;
+        const previewStatic = previewMode && previewStaticMode;
+        const staticPose = previewStatic ? getPreviewStaticPose(modelKind) : null;
 
         const throwPower = previewMode ? 0 : random(0.72, 1.35);
         const spinPower = previewMode ? 0 : random(0.95, 1.90);
@@ -3167,12 +3184,12 @@
           z: previewMode ? 0 : random(190, 280),
           vz: previewMode ? 0 : (random(20, 95) * throwPower),
 
-          rx: random(0, 360),
-          ry: random(0, 360),
-          rz: random(0, 360),
-          vrx: previewMode ? random(12, 24) * (Math.random() < 0.5 ? -1 : 1) : (random(124, 428) * spinPower),
-          vry: previewMode ? random(18, 30) * (Math.random() < 0.5 ? -1 : 1) : (random(145, 483) * spinPower),
-          vrz: previewMode ? random(6, 14) * (Math.random() < 0.5 ? -1 : 1) : (random(76, 290) * spinPower),
+          rx: previewStatic ? staticPose.rx : random(0, 360),
+          ry: previewStatic ? staticPose.ry : random(0, 360),
+          rz: previewStatic ? staticPose.rz : random(0, 360),
+          vrx: previewMode ? (previewStatic ? 0 : random(12, 24) * (Math.random() < 0.5 ? -1 : 1)) : (random(124, 428) * spinPower),
+          vry: previewMode ? (previewStatic ? 0 : random(18, 30) * (Math.random() < 0.5 ? -1 : 1)) : (random(145, 483) * spinPower),
+          vrz: previewMode ? (previewStatic ? 0 : random(6, 14) * (Math.random() < 0.5 ? -1 : 1)) : (random(76, 290) * spinPower),
           baseVrx: 0,
           baseVry: 0,
           baseVrz: 0,
@@ -3181,7 +3198,7 @@
           bounces: 0,
           settledFor: 0,
           alpha: 1,
-          phase: previewMode ? 'preview' : 'rolling',
+          phase: previewMode ? (previewStatic ? 'preview_static' : 'preview') : 'rolling',
           phaseTime: 0,
           alignTarget: null,
           alignReady: false,
@@ -3265,16 +3282,18 @@
           const dt = Math.min(0.033, (ts - lastTs) / 1000);
           lastTs = ts;
 
-          if (state.phase === 'preview') {
+          if (state.phase === 'preview' || state.phase === 'preview_static') {
             const pw = window.innerWidth;
             const ph = window.innerHeight;
             const pOffset = (Number(state.previewSlot || 0) - (Number(state.previewTotal || 1) - 1) * 0.5) * 56;
             state.px = pw * 0.5 + pOffset;
             state.py = ph * 0.5;
             state.z = 0;
-            state.rx = normalizeAngle(state.rx + state.vrx * dt);
-            state.ry = normalizeAngle(state.ry + state.vry * dt);
-            state.rz = normalizeAngle(state.rz + state.vrz * dt);
+            if (state.phase === 'preview') {
+              state.rx = normalizeAngle(state.rx + state.vrx * dt);
+              state.ry = normalizeAngle(state.ry + state.vry * dt);
+              state.rz = normalizeAngle(state.rz + state.vrz * dt);
+            }
             render(state);
             raf = requestAnimationFrame(frame);
             return;
@@ -3510,35 +3529,3 @@
   </script>
 </body>
 </html>
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
