@@ -279,6 +279,18 @@ Window {
         property string glyph: ""
         property string toolTip: ""
         property int fontSize: 14
+        property real buttonSize: Math.max(width, height)
+        property bool largeButton: buttonSize >= 40
+        property bool mediumButton: buttonSize >= 30 && buttonSize < 40
+        property real outerOffset: largeButton ? 6 : (mediumButton ? 4 : 2)
+        property real outerRadius: largeButton ? 12 : (mediumButton ? 8.5 : 4.5)
+        property int outerSamples: largeButton ? 25 : (mediumButton ? 21 : 15)
+        property real innerOffset: largeButton ? 3 : (mediumButton ? 2 : 1.2)
+        property real innerRadius: largeButton ? 7 : (mediumButton ? 5 : 3.2)
+        property int innerSamples: largeButton ? 21 : (mediumButton ? 17 : 11)
+        property color outerDarkColor: largeButton ? "#B8151618" : (mediumButton ? "#99151618" : "#70151618")
+        property color outerLightColor: largeButton ? "#8A3B3C40" : (mediumButton ? "#703B3C40" : "#523B3C40")
+        property color innerDarkColor: largeButton ? "#C0151618" : (mediumButton ? "#A6151618" : "#7A151618")
         property real tipX: 0
         property real tipY: 0
         signal clicked()
@@ -301,28 +313,28 @@ Window {
         Rectangle {
             id: bg
             anchors.fill: parent
-            radius: width > 30 ? 12 : 8
+            radius: largeButton ? 12 : (mediumButton ? 9 : 7)
             color: hitArea.pressed ? "#252629" : (hitArea.containsMouse ? "#2C2D30" : "#28292C")
 
             layer.enabled: true
             layer.effect: DropShadow {
                 transparentBorder: true
-                horizontalOffset: hitArea.pressed ? 0 : 6
-                verticalOffset: hitArea.pressed ? 0 : 6
-                radius: 12
-                samples: 25
-                color: "#151618"
+                horizontalOffset: hitArea.pressed ? 0 : iconRoot.outerOffset
+                verticalOffset: hitArea.pressed ? 0 : iconRoot.outerOffset
+                radius: iconRoot.outerRadius
+                samples: iconRoot.outerSamples
+                color: iconRoot.outerDarkColor
             }
         }
 
         DropShadow {
             anchors.fill: bg
             source: bg
-            horizontalOffset: hitArea.pressed ? 0 : -6
-            verticalOffset: hitArea.pressed ? 0 : -6
-            radius: 12
-            samples: 25
-            color: "#3B3C40"
+            horizontalOffset: hitArea.pressed ? 0 : -iconRoot.outerOffset
+            verticalOffset: hitArea.pressed ? 0 : -iconRoot.outerOffset
+            radius: iconRoot.outerRadius
+            samples: iconRoot.outerSamples
+            color: iconRoot.outerLightColor
             visible: !hitArea.pressed
             z: -1
         }
@@ -330,11 +342,11 @@ Window {
         InnerShadow {
             anchors.fill: bg
             source: bg
-            horizontalOffset: 3
-            verticalOffset: 3
-            radius: 7
-            samples: 21
-            color: "#151618"
+            horizontalOffset: iconRoot.innerOffset
+            verticalOffset: iconRoot.innerOffset
+            radius: iconRoot.innerRadius
+            samples: iconRoot.innerSamples
+            color: iconRoot.innerDarkColor
             visible: hitArea.pressed
         }
 
@@ -403,7 +415,6 @@ Window {
             onClicked: iconRoot.clicked()
         }
     }
-
     component NeumoPanel: Item {
         id: panel
         property string title: ""
@@ -421,25 +432,25 @@ Window {
         }
 
         InnerShadow {
+            id: insetDark
             anchors.fill: panelBase
             source: panelBase
-            horizontalOffset: 4
-            verticalOffset: 4
-            radius: 10
-            samples: 24
-            color: "#151618"
+            horizontalOffset: 6
+            verticalOffset: 6
+            radius: 12
+            samples: 31
+            color: "#CC151618"
         }
 
         InnerShadow {
             anchors.fill: panelBase
-            source: panelBase
-            horizontalOffset: -4
-            verticalOffset: -4
+            source: insetDark
+            horizontalOffset: -6
+            verticalOffset: -6
             radius: 10
-            samples: 24
-            color: "#33353A"
+            samples: 25
+            color: "#663B3C40"
         }
-
         ColumnLayout {
             anchors.fill: parent
             anchors.margins: 20
@@ -475,7 +486,6 @@ Window {
             }
         }
     }
-
     component NeumoRowCard: Item {
         id: rowCard
         property string title: ""
@@ -494,22 +504,24 @@ Window {
             layer.enabled: true
             layer.effect: DropShadow {
                 transparentBorder: true
-                horizontalOffset: 4
-                verticalOffset: 4
-                radius: 8
-                samples: 17
-                color: "#151618"
+                horizontalOffset: 3.5
+                verticalOffset: 3.5
+                radius: 7
+                samples: 19
+                color: "#B0151618"
             }
         }
 
         DropShadow {
             anchors.fill: rowBase
+            anchors.margins: -10
             source: rowBase
-            horizontalOffset: -4
-            verticalOffset: -4
-            radius: 8
-            samples: 17
-            color: "#3B3C40"
+            transparentBorder: true
+            horizontalOffset: -3.5
+            verticalOffset: -3.5
+            radius: 7
+            samples: 19
+            color: "#663B3C40"
             z: -1
         }
 
@@ -518,7 +530,6 @@ Window {
             anchors.fill: parent
         }
     }
-
     Rectangle {
         anchors.fill: parent
         color: launcherWindow.bgBase
@@ -570,7 +581,6 @@ Window {
                     }
                 }
             }
-
             RowLayout {
                 Layout.fillHeight: true
                 Layout.fillWidth: true
@@ -585,23 +595,32 @@ Window {
                     ListView {
                         id: adventuresView
                         anchors.fill: parent
-                        anchors.margins: 2
-                        spacing: 12
+                        anchors.margins: 12
+                        spacing: 4
                         clip: true
                         boundsBehavior: Flickable.StopAtBounds
+                        property real shadowBleedX: 12
+                        property real shadowBleedY: 8
+                        property real rowHeight: 48
+                        topMargin: shadowBleedY
+                        bottomMargin: shadowBleedY
                         model: appController.adventuresModel
                         currentIndex: launcherWindow.selectedAdventureIndex
                         ScrollBar.vertical: AppScrollBar {}
+                        ScrollBar.horizontal: AppScrollBar {}
 
                         delegate: Item {
                             id: adventureDelegate
-                            width: adventuresView.width
-                            height: 48
+                            x: adventuresView.shadowBleedX
+                            width: Math.max(0, adventuresView.width - adventuresView.shadowBleedX * 2)
+                            height: adventuresView.rowHeight + adventuresView.shadowBleedY * 2
                             property bool hovered: hoverHandler.hovered
 
                             NeumoRowCard {
-                                anchors.fill: parent
-                                anchors.margins: 1
+                                anchors.left: parent.left
+                                anchors.right: parent.right
+                                y: adventuresView.shadowBleedY
+                                height: adventuresView.rowHeight
                                 active: ListView.isCurrentItem
                                 hovered: adventureDelegate.hovered
 
@@ -672,18 +691,25 @@ Window {
                     ListView {
                         id: scenesView
                         anchors.fill: parent
-                        anchors.margins: 2
-                        spacing: 12
+                        anchors.margins: 12
+                        spacing: 4
                         clip: true
                         boundsBehavior: Flickable.StopAtBounds
+                        property real shadowBleedX: 12
+                        property real shadowBleedY: 8
+                        property real rowHeight: 48
+                        topMargin: shadowBleedY
+                        bottomMargin: shadowBleedY
                         model: appController.scenesModel
                         currentIndex: launcherWindow.selectedSceneIndex
                         ScrollBar.vertical: AppScrollBar {}
+                        ScrollBar.horizontal: AppScrollBar {}
 
                         delegate: Item {
                             id: sceneDelegate
-                            width: scenesView.width
-                            height: 48
+                            x: scenesView.shadowBleedX
+                            width: Math.max(0, scenesView.width - scenesView.shadowBleedX * 2)
+                            height: scenesView.rowHeight + scenesView.shadowBleedY * 2
                             property bool hovered: hoverHandler.hovered
                             property real dragY: 0
                             property real dragDeltaY: 0
@@ -696,8 +722,10 @@ Window {
                             z: dragHandler.active ? 20 : 1
 
                             NeumoRowCard {
-                                anchors.fill: parent
-                                anchors.margins: 1
+                                anchors.left: parent.left
+                                anchors.right: parent.right
+                                y: scenesView.shadowBleedY
+                                height: scenesView.rowHeight
                                 active: ListView.isCurrentItem
                                 hovered: sceneDelegate.hovered
 
@@ -848,13 +876,8 @@ Window {
             id: sceneDialogScroll
             clip: true
             padding: 12
-            ScrollBar.vertical: ScrollBar {
-                policy: ScrollBar.AlwaysOff
-                visible: false
-                implicitWidth: 0
-                implicitHeight: 0
-            }
-            ScrollBar.horizontal.policy: ScrollBar.AlwaysOff
+            ScrollBar.vertical: AppScrollBar {}
+            ScrollBar.horizontal: AppScrollBar {}
             ColumnLayout {
                 id: sceneDialogContent
                 width: sceneDialogScroll.availableWidth
@@ -1194,34 +1217,26 @@ Window {
 
     component AppScrollBar: ScrollBar {
         id: control
-        policy: ScrollBar.AsNeeded
-        active: hovered || pressed || visualSize < 1.0
-        hoverEnabled: true
-        implicitWidth: 10
-        implicitHeight: 10
-        minimumSize: 0.08
+        policy: ScrollBar.AlwaysOff
+        active: false
+        visible: false
+        hoverEnabled: false
+        implicitWidth: 0
+        implicitHeight: 0
 
         contentItem: Rectangle {
-            implicitWidth: 6
-            implicitHeight: 6
-            radius: 3
-            color: control.pressed
-                ? "#AEAEAE"
-                : (control.hovered ? "#979797" : "#747474")
-            opacity: control.active ? 0.95 : 0.65
-            Behavior on color { ColorAnimation { duration: 110 } }
-            Behavior on opacity { NumberAnimation { duration: 110 } }
+            implicitWidth: 0
+            implicitHeight: 0
+            opacity: 0.0
+            color: "transparent"
         }
 
         background: Rectangle {
-            implicitWidth: 10
-            implicitHeight: 10
-            radius: 5
-            color: "#202020"
-            border.width: 1
-            border.color: "#3F3F3F"
-            opacity: control.active ? 0.9 : 0.55
-            Behavior on opacity { NumberAnimation { duration: 110 } }
+            implicitWidth: 0
+            implicitHeight: 0
+            opacity: 0.0
+            color: "transparent"
+            border.width: 0
         }
     }
 
@@ -1304,6 +1319,7 @@ Window {
                 model: control.popup.visible ? control.delegateModel : null
                 currentIndex: control.highlightedIndex
                 ScrollBar.vertical: AppScrollBar {}
+                ScrollBar.horizontal: AppScrollBar {}
             }
         }
     }
@@ -1376,13 +1392,8 @@ Window {
             anchors.fill: parent
             clip: true
             padding: 12
-            ScrollBar.vertical: ScrollBar {
-                policy: ScrollBar.AlwaysOff
-                visible: false
-                implicitWidth: 0
-                implicitHeight: 0
-            }
-            ScrollBar.horizontal.policy: ScrollBar.AlwaysOff
+            ScrollBar.vertical: AppScrollBar {}
+            ScrollBar.horizontal: AppScrollBar {}
 
             ColumnLayout {
                 width: settingsScroll.availableWidth
@@ -1485,6 +1496,3 @@ Window {
         }
     }
 }
-
-
-
