@@ -12,7 +12,7 @@ Window {
     minimumWidth: 450
     minimumHeight: 370
     visible: true
-    color: "#111111"
+    color: "#2D2D2D"
     title: "DnD Maps - Лаунчер"
 
     onClosing: function(close) {
@@ -30,15 +30,15 @@ Window {
     property string sceneBgTypeValue: "color"
     property string sceneMapValueText: "#000000"
     property string sceneBgValueText: "#000000"
-    property color bgBase: "#161616"
-    property color bgDeep: "#1B1B1B"
-    property color bgCard: "#262626"
-    property color bgCardSoft: "#2E2E2E"
-    property color lineColor: "#4A4A4A"
-    property color textPrimary: "#EFEFF2"
-    property color textSecondary: "#B0B0B0"
-    property color accentColor: "#8E8E8E"
-    property color accentStrong: "#777777"
+    property color bgBase: "#2D2D2D"
+    property color bgDeep: "#292929"
+    property color bgCard: "#2D2D2D"
+    property color bgCardSoft: "#313131"
+    property color lineColor: "#3B3B3B"
+    property color textPrimary: "#D0D0D0"
+    property color textSecondary: "#909090"
+    property color accentColor: "#B6B6B6"
+    property color accentStrong: "#9C9C9C"
     property string adventureDialogMode: "create"
     property string adventureOriginalName: ""
 
@@ -199,7 +199,6 @@ Window {
             }
         }
     }
-
     component AppButton: AbstractButton {
         id: control
         property bool accent: false
@@ -272,7 +271,6 @@ Window {
             }
         }
     }
-
     component IconButton: Item {
         id: iconRoot
         property string iconSource: ""
@@ -299,11 +297,32 @@ Window {
 
         Rectangle {
             anchors.fill: parent
-            radius: 6
-            color: hitArea.pressed ? "#646464" : (hitArea.containsMouse ? "#555555" : "transparent")
-            border.width: hitArea.containsMouse ? 1 : 0
-            border.color: "#969696"
+            radius: 8
+            color: hitArea.pressed ? "#292929" : (hitArea.containsMouse ? "#313131" : "#2D2D2D")
+            border.width: 0
             Behavior on color { ColorAnimation { duration: 90 } }
+
+            Rectangle {
+                anchors.fill: parent
+                anchors.margins: 1
+                radius: parent.radius - 1
+                color: "transparent"
+                border.width: 1
+                border.color: "#383838"
+                opacity: hitArea.pressed ? 0.15 : 0.75
+            }
+            Rectangle {
+                anchors.fill: parent
+                anchors.leftMargin: 1
+                anchors.topMargin: 1
+                anchors.rightMargin: -1
+                anchors.bottomMargin: -1
+                radius: parent.radius
+                color: "transparent"
+                border.width: 1
+                border.color: "#1F1F1F"
+                opacity: hitArea.pressed ? 0.75 : 0.5
+            }
         }
 
         Image {
@@ -321,7 +340,7 @@ Window {
             anchors.centerIn: parent
             visible: iconRoot.iconSource.length === 0 && iconRoot.glyph.length > 0
             text: iconRoot.glyph
-            color: "#E8E8E8"
+            color: "#D0D0D0"
             font.pixelSize: 16
             font.weight: Font.DemiBold
         }
@@ -370,59 +389,9 @@ Window {
             onClicked: iconRoot.clicked()
         }
     }
-
     Rectangle {
         anchors.fill: parent
-        gradient: Gradient {
-            orientation: Gradient.Vertical
-            GradientStop { position: 0.0; color: launcherWindow.bgDeep }
-            GradientStop { position: 0.6; color: launcherWindow.bgBase }
-            GradientStop { position: 1.0; color: "#121212" }
-        }
-
-        Rectangle {
-            id: orbTop
-            width: 420
-            height: 420
-            radius: 210
-            x: -140
-            y: -170
-            color: "#4A4A4A"
-            opacity: 0.18
-
-            SequentialAnimation on x {
-                loops: Animation.Infinite
-                NumberAnimation { to: -90; duration: 4200; easing.type: Easing.InOutSine }
-                NumberAnimation { to: -140; duration: 4200; easing.type: Easing.InOutSine }
-            }
-            SequentialAnimation on y {
-                loops: Animation.Infinite
-                NumberAnimation { to: -130; duration: 3600; easing.type: Easing.InOutSine }
-                NumberAnimation { to: -170; duration: 3600; easing.type: Easing.InOutSine }
-            }
-        }
-
-        Rectangle {
-            id: orbBottom
-            width: 480
-            height: 480
-            radius: 240
-            x: launcherWindow.width - width + 130
-            y: launcherWindow.height - height + 180
-            color: "#5A5A5A"
-            opacity: 0.14
-
-            SequentialAnimation on x {
-                loops: Animation.Infinite
-                NumberAnimation { to: launcherWindow.width - width + 80; duration: 4800; easing.type: Easing.InOutSine }
-                NumberAnimation { to: launcherWindow.width - width + 130; duration: 4800; easing.type: Easing.InOutSine }
-            }
-            SequentialAnimation on y {
-                loops: Animation.Infinite
-                NumberAnimation { to: launcherWindow.height - height + 130; duration: 5000; easing.type: Easing.InOutSine }
-                NumberAnimation { to: launcherWindow.height - height + 180; duration: 5000; easing.type: Easing.InOutSine }
-            }
-        }
+        color: launcherWindow.bgBase
 
         ColumnLayout {
             anchors.fill: parent
@@ -438,7 +407,7 @@ Window {
                     Label {
                         text: "Лаунчер DnD Maps"
                         color: launcherWindow.textPrimary
-                        font.pixelSize: 28
+                        font.pixelSize: 30
                         font.weight: Font.DemiBold
                         Layout.fillWidth: true
                     }
@@ -451,7 +420,7 @@ Window {
                 }
 
                 RowLayout {
-                    spacing: 8
+                    spacing: 10
 
                     IconButton {
                         width: 36
@@ -474,30 +443,64 @@ Window {
             Rectangle {
                 Layout.fillWidth: true
                 Layout.fillHeight: true
-                radius: 14
-                color: launcherWindow.bgCard
-                border.color: launcherWindow.lineColor
-                border.width: 1
-                opacity: 0.98
+                radius: 16
+                color: "#2A2A2A"
+                border.width: 0
 
-                gradient: Gradient {
-                    orientation: Gradient.Vertical
-                    GradientStop { position: 0.0; color: launcherWindow.bgCardSoft }
-                    GradientStop { position: 1.0; color: launcherWindow.bgCard }
+                Rectangle {
+                    anchors.fill: parent
+                    anchors.margins: 1
+                    radius: parent.radius - 1
+                    color: "transparent"
+                    border.width: 1
+                    border.color: "#333333"
+                }
+                Rectangle {
+                    anchors.fill: parent
+                    anchors.leftMargin: 1
+                    anchors.topMargin: 1
+                    anchors.rightMargin: -1
+                    anchors.bottomMargin: -1
+                    radius: parent.radius
+                    color: "transparent"
+                    border.width: 1
+                    border.color: "#1F1F1F"
+                    opacity: 0.85
                 }
 
                 RowLayout {
+                    id: listsRow
                     anchors.fill: parent
                     anchors.margins: 12
                     spacing: 12
 
                     Rectangle {
                         Layout.fillHeight: true
-                        Layout.preferredWidth: parent.width * 0.42
-                        color: "#222222"
-                        radius: 12
-                        border.color: "#4F4F4F"
-                        border.width: 1
+                        Layout.preferredWidth: Math.max(176, listsRow.width * 0.42)
+                        color: launcherWindow.bgCard
+                        radius: 14
+                        border.width: 0
+
+                        Rectangle {
+                            anchors.fill: parent
+                            anchors.margins: 1
+                            radius: parent.radius - 1
+                            color: "transparent"
+                            border.width: 1
+                            border.color: "#383838"
+                        }
+                        Rectangle {
+                            anchors.fill: parent
+                            anchors.leftMargin: 1
+                            anchors.topMargin: 1
+                            anchors.rightMargin: -1
+                            anchors.bottomMargin: -1
+                            radius: parent.radius
+                            color: "transparent"
+                            border.width: 1
+                            border.color: "#1F1F1F"
+                            opacity: 0.7
+                        }
 
                         ColumnLayout {
                             anchors.fill: parent
@@ -510,6 +513,7 @@ Window {
                                     text: "Приключения"
                                     color: launcherWindow.textPrimary
                                     font.pixelSize: 18
+                                    font.weight: Font.DemiBold
                                     Layout.fillWidth: true
                                 }
                                 IconButton {
@@ -524,25 +528,44 @@ Window {
                                 Layout.fillWidth: true
                                 Layout.fillHeight: true
                                 clip: true
-                                spacing: 4
+                                spacing: 8
                                 boundsBehavior: Flickable.StopAtBounds
                                 model: appController.adventuresModel
                                 currentIndex: launcherWindow.selectedAdventureIndex
                                 ScrollBar.vertical: AppScrollBar {}
+
                                 delegate: Item {
                                     id: adventureDelegate
                                     width: adventuresView.width
-                                    height: 38
+                                    height: 40
                                     property bool hovered: hoverHandler.hovered
 
                                     Rectangle {
                                         anchors.fill: parent
-                                        radius: 9
-                                        color: ListView.isCurrentItem
-                                            ? "#4A4A4A"
-                                            : (adventureDelegate.hovered ? "#373737" : "transparent")
-                                        border.width: ListView.isCurrentItem ? 1 : 0
-                                        border.color: "#A7A7A7"
+                                        radius: 11
+                                        color: ListView.isCurrentItem ? "#343434" : (adventureDelegate.hovered ? "#323232" : "#2F2F2F")
+                                        border.width: 0
+
+                                        Rectangle {
+                                            anchors.fill: parent
+                                            anchors.margins: 1
+                                            radius: parent.radius - 1
+                                            color: "transparent"
+                                            border.width: 1
+                                            border.color: ListView.isCurrentItem ? "#4A4A4A" : "#3B3B3B"
+                                        }
+                                        Rectangle {
+                                            anchors.fill: parent
+                                            anchors.leftMargin: 1
+                                            anchors.topMargin: 1
+                                            anchors.rightMargin: -1
+                                            anchors.bottomMargin: -1
+                                            radius: parent.radius
+                                            color: "transparent"
+                                            border.width: 1
+                                            border.color: "#1F1F1F"
+                                            opacity: ListView.isCurrentItem ? 0.85 : 0.65
+                                        }
                                         Behavior on color { ColorAnimation { duration: 120 } }
                                     }
 
@@ -555,34 +578,30 @@ Window {
                                         Label {
                                             Layout.fillWidth: true
                                             text: modelData.name
-                                            color: ListView.isCurrentItem ? "#F2F2F4" : "#CFCFCF"
+                                            color: ListView.isCurrentItem ? "#DADADA" : "#BFBFBF"
                                             font.pixelSize: 14
                                             font.weight: ListView.isCurrentItem ? Font.DemiBold : Font.Normal
                                             elide: Text.ElideRight
                                             verticalAlignment: Text.AlignVCenter
                                         }
 
-                                        Item {
-                                            Layout.preferredWidth: 54
-                                            Layout.fillHeight: true
-                                            visible: adventureDelegate.hovered || ListView.isCurrentItem
+                                        Row {
+                                            anchors.verticalCenter: parent.verticalCenter
+                                            spacing: 4
+                                            visible: true
 
-                                            Row {
-                                                anchors.centerIn: parent
-                                                spacing: 4
-                                                IconButton {
-                                                    iconSource: "icons/scene_edit.svg"
-                                                    toolTip: "Переименовать"
-                                                    onClicked: launcherWindow.openEditAdventureDialog(index)
-                                                }
-                                                IconButton {
-                                                    iconSource: "icons/clear.svg"
-                                                    toolTip: "Удалить"
-                                                    onClicked: {
-                                                        appController.delete_adventure(modelData.name)
-                                                        launcherWindow.selectedAdventureIndex = -1
-                                                        launcherWindow.selectedSceneIndex = -1
-                                                    }
+                                            IconButton {
+                                                iconSource: "icons/scene_edit.svg"
+                                                toolTip: "Переименовать"
+                                                onClicked: launcherWindow.openEditAdventureDialog(index)
+                                            }
+                                            IconButton {
+                                                iconSource: "icons/clear.svg"
+                                                toolTip: "Удалить"
+                                                onClicked: {
+                                                    appController.delete_adventure(modelData.name)
+                                                    launcherWindow.selectedAdventureIndex = -1
+                                                    launcherWindow.selectedSceneIndex = -1
                                                 }
                                             }
                                         }
@@ -600,51 +619,36 @@ Window {
                                     }
                                 }
                             }
-
-                            AppTextField {
-                                id: newAdventureField
-                                visible: false
-                                Layout.fillWidth: true
-                                placeholderText: "Название нового приключения"
-                            }
-
-                            RowLayout {
-                                Layout.fillWidth: true
-                                visible: false
-                                AppButton {
-                                    text: "Создать"
-                                    accent: true
-                                    Layout.fillWidth: true
-                                    onClicked: {
-                                        appController.create_adventure(newAdventureField.text)
-                                        newAdventureField.text = ""
-                                        launcherWindow.selectedAdventureIndex = -1
-                                    }
-                                }
-                                AppButton {
-                                    text: "Удалить"
-                                    Layout.fillWidth: true
-                                    enabled: launcherWindow.selectedAdventureIndex >= 0
-                                    onClicked: {
-                                        var item = appController.adventuresModel[launcherWindow.selectedAdventureIndex]
-                                        if (item) {
-                                            appController.delete_adventure(item.name)
-                                            launcherWindow.selectedAdventureIndex = -1
-                                            launcherWindow.selectedSceneIndex = -1
-                                        }
-                                    }
-                                }
-                            }
                         }
                     }
 
                     Rectangle {
                         Layout.fillHeight: true
                         Layout.fillWidth: true
-                        color: "#222222"
-                        radius: 12
-                        border.color: "#4F4F4F"
-                        border.width: 1
+                        color: launcherWindow.bgCard
+                        radius: 14
+                        border.width: 0
+
+                        Rectangle {
+                            anchors.fill: parent
+                            anchors.margins: 1
+                            radius: parent.radius - 1
+                            color: "transparent"
+                            border.width: 1
+                            border.color: "#383838"
+                        }
+                        Rectangle {
+                            anchors.fill: parent
+                            anchors.leftMargin: 1
+                            anchors.topMargin: 1
+                            anchors.rightMargin: -1
+                            anchors.bottomMargin: -1
+                            radius: parent.radius
+                            color: "transparent"
+                            border.width: 1
+                            border.color: "#1F1F1F"
+                            opacity: 0.7
+                        }
 
                         ColumnLayout {
                             anchors.fill: parent
@@ -657,6 +661,7 @@ Window {
                                     text: appController.currentAdventure ? ("Сцены: " + appController.currentAdventure) : "Сцены"
                                     color: launcherWindow.textPrimary
                                     font.pixelSize: 18
+                                    font.weight: Font.DemiBold
                                     Layout.fillWidth: true
                                 }
                                 IconButton {
@@ -673,27 +678,46 @@ Window {
                                 Layout.fillWidth: true
                                 Layout.fillHeight: true
                                 clip: true
-                                spacing: 4
+                                spacing: 8
                                 boundsBehavior: Flickable.StopAtBounds
                                 model: appController.scenesModel
                                 currentIndex: launcherWindow.selectedSceneIndex
                                 ScrollBar.vertical: AppScrollBar {}
+
                                 delegate: Item {
                                     id: sceneDelegate
                                     width: scenesView.width
-                                    height: 38
+                                    height: 40
                                     property bool hovered: hoverHandler.hovered
                                     property real dragY: 0
                                     property real dragDeltaY: 0
 
                                     Rectangle {
                                         anchors.fill: parent
-                                        radius: 9
-                                        color: ListView.isCurrentItem
-                                            ? "#535353"
-                                            : (sceneDelegate.hovered ? "#3B3B3B" : "transparent")
-                                        border.width: ListView.isCurrentItem ? 1 : 0
-                                        border.color: "#B8B8B8"
+                                        radius: 11
+                                        color: ListView.isCurrentItem ? "#353535" : (sceneDelegate.hovered ? "#333333" : "#2F2F2F")
+                                        border.width: 0
+
+                                        Rectangle {
+                                            anchors.fill: parent
+                                            anchors.margins: 1
+                                            radius: parent.radius - 1
+                                            color: "transparent"
+                                            border.width: 1
+                                            border.color: ListView.isCurrentItem ? "#4F4F4F" : "#3B3B3B"
+                                        }
+                                        Rectangle {
+                                            anchors.fill: parent
+                                            anchors.leftMargin: 1
+                                            anchors.topMargin: 1
+                                            anchors.rightMargin: -1
+                                            anchors.bottomMargin: -1
+                                            radius: parent.radius
+                                            color: "transparent"
+                                            border.width: 1
+                                            border.color: "#1F1F1F"
+                                            opacity: ListView.isCurrentItem ? 0.85 : 0.65
+                                        }
                                         Behavior on color { ColorAnimation { duration: 120 } }
                                     }
 
@@ -713,36 +737,32 @@ Window {
                                         Label {
                                             Layout.fillWidth: true
                                             text: modelData.name
-                                            color: ListView.isCurrentItem ? "#F2F2F4" : "#CFCFCF"
+                                            color: ListView.isCurrentItem ? "#DADADA" : "#BFBFBF"
                                             font.pixelSize: 14
                                             font.weight: ListView.isCurrentItem ? Font.DemiBold : Font.Normal
                                             elide: Text.ElideRight
                                             verticalAlignment: Text.AlignVCenter
                                         }
 
-                                        Item {
-                                            Layout.preferredWidth: 54
-                                            Layout.fillHeight: true
-                                            visible: sceneDelegate.hovered || ListView.isCurrentItem
+                                        Row {
+                                            anchors.verticalCenter: parent.verticalCenter
+                                            spacing: 4
+                                            visible: true
 
-                                            Row {
-                                                anchors.centerIn: parent
-                                                spacing: 4
-                                                IconButton {
-                                                    iconSource: "icons/scene_edit.svg"
-                                                    toolTip: "Изменить сцену"
-                                                    onClicked: {
-                                                        launcherWindow.selectedSceneIndex = index
-                                                        launcherWindow.openEditSceneDialog()
-                                                    }
+                                            IconButton {
+                                                iconSource: "icons/scene_edit.svg"
+                                                toolTip: "Изменить сцену"
+                                                onClicked: {
+                                                    launcherWindow.selectedSceneIndex = index
+                                                    launcherWindow.openEditSceneDialog()
                                                 }
-                                                IconButton {
-                                                    iconSource: "icons/clear.svg"
-                                                    toolTip: "Удалить сцену"
-                                                    onClicked: {
-                                                        appController.delete_scene(modelData.name)
-                                                        launcherWindow.selectedSceneIndex = -1
-                                                    }
+                                            }
+                                            IconButton {
+                                                iconSource: "icons/clear.svg"
+                                                toolTip: "Удалить сцену"
+                                                onClicked: {
+                                                    appController.delete_scene(modelData.name)
+                                                    launcherWindow.selectedSceneIndex = -1
                                                 }
                                             }
                                         }
@@ -759,8 +779,6 @@ Window {
                                                 sceneDelegate.dragDeltaY = 0
                                                 return
                                             }
-                                            // Compute target index from visual center of dragged row.
-                                            // This is more stable than indexAt/mapToItem with translated delegates.
                                             var rowExtent = sceneDelegate.height + scenesView.spacing
                                             var centerY = sceneDelegate.y + sceneDelegate.dragDeltaY + (sceneDelegate.height / 2)
                                             var rawIndex = Math.floor(centerY / Math.max(1, rowExtent))
@@ -791,84 +809,12 @@ Window {
                                     }
                                 }
                             }
-
-                            RowLayout {
-                                Layout.fillWidth: true
-                                visible: false
-                                AppButton {
-                                    text: "Новая"
-                                    accent: true
-                                    Layout.fillWidth: true
-                                    enabled: appController.currentAdventure.length > 0
-                                    onClicked: launcherWindow.openCreateSceneDialog()
-                                }
-                                AppButton {
-                                    text: "Изменить"
-                                    Layout.fillWidth: true
-                                    enabled: launcherWindow.selectedSceneIndex >= 0
-                                    onClicked: launcherWindow.openEditSceneDialog()
-                                }
-                                AppButton {
-                                    text: "Удалить"
-                                    Layout.fillWidth: true
-                                    enabled: launcherWindow.selectedSceneIndex >= 0
-                                    onClicked: {
-                                        var item = appController.scenesModel[launcherWindow.selectedSceneIndex]
-                                        if (item) {
-                                            appController.delete_scene(item.name)
-                                            launcherWindow.selectedSceneIndex = -1
-                                        }
-                                    }
-                                }
-                            }
-
-                            RowLayout {
-                                Layout.fillWidth: true
-                                visible: false
-                                AppButton {
-                                    text: "Вверх"
-                                    Layout.fillWidth: true
-                                    enabled: launcherWindow.selectedSceneIndex > 0
-                                    onClicked: {
-                                        var item = appController.scenesModel[launcherWindow.selectedSceneIndex]
-                                        if (item) {
-                                            appController.move_scene(item.name, -1)
-                                            launcherWindow.selectedSceneIndex = Math.max(0, launcherWindow.selectedSceneIndex - 1)
-                                        }
-                                    }
-                                }
-                                AppButton {
-                                    text: "Вниз"
-                                    Layout.fillWidth: true
-                                    enabled: launcherWindow.selectedSceneIndex >= 0 && launcherWindow.selectedSceneIndex < appController.scenesModel.length - 1
-                                    onClicked: {
-                                        var item = appController.scenesModel[launcherWindow.selectedSceneIndex]
-                                        if (item) {
-                                            appController.move_scene(item.name, 1)
-                                            launcherWindow.selectedSceneIndex = Math.min(appController.scenesModel.length - 1, launcherWindow.selectedSceneIndex + 1)
-                                        }
-                                    }
-                                }
-                                AppButton {
-                                    text: "Открыть"
-                                    accent: true
-                                    Layout.fillWidth: true
-                                    enabled: launcherWindow.selectedSceneIndex >= 0
-                                    onClicked: {
-                                        var item = appController.scenesModel[launcherWindow.selectedSceneIndex]
-                                        if (item) {
-                                            appController.open_scene(item.name)
-                                        }
-                                    }
-                                }
-                            }
                         }
                     }
                 }
             }
         }
     }
-
     Component.onCompleted: appController.refresh_library()
 
     Connections {
@@ -1562,4 +1508,10 @@ Window {
         }
     }
 }
+
+
+
+
+
+
 
