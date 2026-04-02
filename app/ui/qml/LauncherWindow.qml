@@ -3,6 +3,8 @@ import QtQuick.Controls
 import QtQuick.Dialogs
 import QtQuick.Layouts
 import QtQuick.Window
+import QtQuick.Effects
+import Qt5Compat.GraphicalEffects
 import "components"
 
 Window {
@@ -296,33 +298,56 @@ Window {
         }
 
         Rectangle {
+            id: iconButtonMask
             anchors.fill: parent
             radius: 8
-            color: hitArea.pressed ? "#292929" : (hitArea.containsMouse ? "#313131" : "#2D2D2D")
-            border.width: 0
-            Behavior on color { ColorAnimation { duration: 90 } }
+            color: hitArea.pressed ? "#2A2A2A" : (hitArea.containsMouse ? "#313131" : "#2D2D2D")
+        }
 
-            Rectangle {
-                anchors.fill: parent
-                anchors.margins: 1
-                radius: parent.radius - 1
-                color: "transparent"
-                border.width: 1
-                border.color: "#383838"
-                opacity: hitArea.pressed ? 0.15 : 0.75
-            }
-            Rectangle {
-                anchors.fill: parent
-                anchors.leftMargin: 1
-                anchors.topMargin: 1
-                anchors.rightMargin: -1
-                anchors.bottomMargin: -1
-                radius: parent.radius
-                color: "transparent"
-                border.width: 1
-                border.color: "#1F1F1F"
-                opacity: hitArea.pressed ? 0.75 : 0.5
-            }
+        RectangularShadow {
+            anchors.fill: iconButtonMask
+            visible: !hitArea.pressed
+            radius: iconButtonMask.radius
+            color: "#1A1A1A"
+            blur: 22
+            spread: 0
+            offset.x: 5
+            offset.y: 5
+            cached: true
+        }
+        RectangularShadow {
+            anchors.fill: iconButtonMask
+            visible: !hitArea.pressed
+            radius: iconButtonMask.radius
+            color: "#3A3A3A"
+            blur: 20
+            spread: 0
+            offset.x: -5
+            offset.y: -5
+            cached: true
+        }
+
+        InnerShadow {
+            anchors.fill: iconButtonMask
+            source: iconButtonMask
+            horizontalOffset: 3
+            verticalOffset: 3
+            radius: 9
+            samples: 25
+            color: "#1D1D1D"
+            visible: hitArea.pressed
+            cached: true
+        }
+        InnerShadow {
+            anchors.fill: iconButtonMask
+            source: iconButtonMask
+            horizontalOffset: -3
+            verticalOffset: -3
+            radius: 9
+            samples: 25
+            color: "#3B3B3B"
+            visible: hitArea.pressed
+            cached: true
         }
 
         Image {
@@ -334,13 +359,14 @@ Window {
             fillMode: Image.PreserveAspectFit
             smooth: true
             mipmap: true
+            opacity: iconRoot.enabled ? 0.92 : 0.45
         }
 
         Text {
             anchors.centerIn: parent
             visible: iconRoot.iconSource.length === 0 && iconRoot.glyph.length > 0
             text: iconRoot.glyph
-            color: "#D0D0D0"
+            color: iconRoot.enabled ? "#CFCFCF" : "#7A7A7A"
             font.pixelSize: 16
             font.weight: Font.DemiBold
         }
@@ -389,50 +415,148 @@ Window {
             onClicked: iconRoot.clicked()
         }
     }
+
+    component NeumoRaisedSurface: Item {
+        id: raisedSurface
+        property real radius: 14
+        property color fillColor: "#2D2D2D"
+        property color shadowDarkColor: "#1A1A1A"
+        property color shadowLightColor: "#3A3A3A"
+        property real shadowOffset: 5
+        property real shadowBlur: 20
+        property real contentPadding: 0
+        default property alias contentData: contentItem.data
+
+        RectangularShadow {
+            anchors.fill: base
+            radius: raisedSurface.radius
+            color: raisedSurface.shadowDarkColor
+            blur: raisedSurface.shadowBlur
+            spread: 0
+            offset.x: raisedSurface.shadowOffset
+            offset.y: raisedSurface.shadowOffset
+            cached: true
+        }
+        RectangularShadow {
+            anchors.fill: base
+            radius: raisedSurface.radius
+            color: raisedSurface.shadowLightColor
+            blur: raisedSurface.shadowBlur
+            spread: 0
+            offset.x: -raisedSurface.shadowOffset
+            offset.y: -raisedSurface.shadowOffset
+            cached: true
+        }
+
+        Rectangle {
+            id: base
+            anchors.fill: parent
+            radius: raisedSurface.radius
+            color: raisedSurface.fillColor
+        }
+
+        Item {
+            id: contentItem
+            anchors.fill: parent
+            anchors.margins: raisedSurface.contentPadding
+        }
+    }
+
+    component NeumoInsetSurface: Item {
+        id: insetSurface
+        property real radius: 16
+        property color fillColor: "#2D2D2D"
+        property color shadowDarkColor: "#1A1A1A"
+        property color shadowLightColor: "#3A3A3A"
+        property real insetOffset: 4
+        property real insetRadius: 10
+        property real contentPadding: 0
+        default property alias contentData: contentItem.data
+
+        Rectangle {
+            id: insetBase
+            anchors.fill: parent
+            radius: insetSurface.radius
+            color: insetSurface.fillColor
+        }
+
+        InnerShadow {
+            anchors.fill: insetBase
+            source: insetBase
+            horizontalOffset: insetSurface.insetOffset
+            verticalOffset: insetSurface.insetOffset
+            radius: insetSurface.insetRadius
+            samples: 29
+            color: insetSurface.shadowDarkColor
+            cached: true
+        }
+        InnerShadow {
+            anchors.fill: insetBase
+            source: insetBase
+            horizontalOffset: -insetSurface.insetOffset
+            verticalOffset: -insetSurface.insetOffset
+            radius: insetSurface.insetRadius
+            samples: 29
+            color: insetSurface.shadowLightColor
+            cached: true
+        }
+
+        Item {
+            id: contentItem
+            anchors.fill: parent
+            anchors.margins: insetSurface.contentPadding
+        }
+    }
+
     Rectangle {
         anchors.fill: parent
         color: launcherWindow.bgBase
 
         ColumnLayout {
             anchors.fill: parent
-            anchors.margins: 20
-            spacing: 14
+            anchors.margins: 14
+            spacing: 12
 
             RowLayout {
                 Layout.fillWidth: true
 
                 ColumnLayout {
                     Layout.fillWidth: true
+                    spacing: 2
 
                     Label {
                         text: "Лаунчер DnD Maps"
-                        color: launcherWindow.textPrimary
-                        font.pixelSize: 30
+                        color: "#DBDBDB"
+                        font.pixelSize: 50
                         font.weight: Font.DemiBold
                         Layout.fillWidth: true
+                        fontSizeMode: Text.Fit
+                        minimumPixelSize: 26
                     }
                     Label {
                         text: "Приключения, сцены и настройки по умолчанию"
-                        color: launcherWindow.textSecondary
-                        font.pixelSize: 13
+                        color: "#9C9C9C"
+                        font.pixelSize: 16
                         Layout.fillWidth: true
+                        fontSizeMode: Text.Fit
+                        minimumPixelSize: 12
                     }
                 }
 
                 RowLayout {
-                    spacing: 10
+                    spacing: 12
 
                     IconButton {
-                        width: 36
-                        height: 36
+                        width: 44
+                        height: 44
                         iconSource: "icons/dice.svg"
                         toolTip: "Дайсы"
                         onClicked: appController.request_open_dice()
                     }
 
                     IconButton {
-                        width: 36
-                        height: 36
+                        width: 44
+                        height: 44
                         iconSource: "icons/settings.svg"
                         toolTip: "Настройки"
                         onClicked: settingsDrawer.open()
@@ -440,162 +564,102 @@ Window {
                 }
             }
 
-            Rectangle {
+            RowLayout {
+                id: listsRow
                 Layout.fillWidth: true
                 Layout.fillHeight: true
-                radius: 16
-                color: "#2A2A2A"
-                border.width: 0
+                spacing: 18
 
-                Rectangle {
-                    anchors.fill: parent
-                    anchors.margins: 1
-                    radius: parent.radius - 1
-                    color: "transparent"
-                    border.width: 1
-                    border.color: "#333333"
-                }
-                Rectangle {
-                    anchors.fill: parent
-                    anchors.leftMargin: 1
-                    anchors.topMargin: 1
-                    anchors.rightMargin: -1
-                    anchors.bottomMargin: -1
-                    radius: parent.radius
-                    color: "transparent"
-                    border.width: 1
-                    border.color: "#1F1F1F"
-                    opacity: 0.85
-                }
+                NeumoInsetSurface {
+                    Layout.fillWidth: true
+                    Layout.fillHeight: true
+                    Layout.preferredWidth: 1
+                    radius: 18
+                    fillColor: "#2D2D2D"
+                    insetOffset: 4
+                    insetRadius: 11
+                    contentPadding: 14
 
-                RowLayout {
-                    id: listsRow
-                    anchors.fill: parent
-                    anchors.margins: 12
-                    spacing: 12
+                    ColumnLayout {
+                        anchors.fill: parent
+                        spacing: 10
 
-                    Rectangle {
-                        Layout.fillHeight: true
-                        Layout.preferredWidth: Math.max(176, listsRow.width * 0.42)
-                        color: launcherWindow.bgCard
-                        radius: 14
-                        border.width: 0
-
-                        Rectangle {
-                            anchors.fill: parent
-                            anchors.margins: 1
-                            radius: parent.radius - 1
-                            color: "transparent"
-                            border.width: 1
-                            border.color: "#383838"
-                        }
-                        Rectangle {
-                            anchors.fill: parent
-                            anchors.leftMargin: 1
-                            anchors.topMargin: 1
-                            anchors.rightMargin: -1
-                            anchors.bottomMargin: -1
-                            radius: parent.radius
-                            color: "transparent"
-                            border.width: 1
-                            border.color: "#1F1F1F"
-                            opacity: 0.7
-                        }
-
-                        ColumnLayout {
-                            anchors.fill: parent
-                            anchors.margins: 10
-                            spacing: 8
-
-                            RowLayout {
+                        RowLayout {
+                            Layout.fillWidth: true
+                            Label {
+                                text: "Приключения"
+                                color: "#DEDEDE"
+                                font.pixelSize: 22
+                                font.weight: Font.DemiBold
                                 Layout.fillWidth: true
-                                Label {
-                                    text: "Приключения"
-                                    color: launcherWindow.textPrimary
-                                    font.pixelSize: 18
-                                    font.weight: Font.DemiBold
-                                    Layout.fillWidth: true
-                                }
-                                IconButton {
-                                    glyph: "+"
-                                    toolTip: "Создать приключение"
-                                    onClicked: launcherWindow.openCreateAdventureDialog()
-                                }
+                                fontSizeMode: Text.Fit
+                                minimumPixelSize: 16
                             }
+                            IconButton {
+                                width: 34
+                                height: 34
+                                glyph: "+"
+                                toolTip: "Создать приключение"
+                                onClicked: launcherWindow.openCreateAdventureDialog()
+                            }
+                        }
 
-                            ListView {
-                                id: adventuresView
-                                Layout.fillWidth: true
-                                Layout.fillHeight: true
-                                clip: true
-                                spacing: 8
-                                boundsBehavior: Flickable.StopAtBounds
-                                model: appController.adventuresModel
-                                currentIndex: launcherWindow.selectedAdventureIndex
-                                ScrollBar.vertical: AppScrollBar {}
+                        ListView {
+                            id: adventuresView
+                            Layout.fillWidth: true
+                            Layout.fillHeight: true
+                            clip: true
+                            spacing: 10
+                            boundsBehavior: Flickable.StopAtBounds
+                            model: appController.adventuresModel
+                            currentIndex: launcherWindow.selectedAdventureIndex
+                            ScrollBar.vertical: AppScrollBar {}
 
-                                delegate: Item {
-                                    id: adventureDelegate
-                                    width: adventuresView.width
-                                    height: 40
-                                    property bool hovered: hoverHandler.hovered
+                            delegate: Item {
+                                id: adventureDelegate
+                                width: adventuresView.width
+                                height: 58
+                                property bool hovered: hoverHandler.hovered
 
-                                    Rectangle {
-                                        anchors.fill: parent
-                                        radius: 11
-                                        color: ListView.isCurrentItem ? "#343434" : (adventureDelegate.hovered ? "#323232" : "#2F2F2F")
-                                        border.width: 0
-
-                                        Rectangle {
-                                            anchors.fill: parent
-                                            anchors.margins: 1
-                                            radius: parent.radius - 1
-                                            color: "transparent"
-                                            border.width: 1
-                                            border.color: ListView.isCurrentItem ? "#4A4A4A" : "#3B3B3B"
-                                        }
-                                        Rectangle {
-                                            anchors.fill: parent
-                                            anchors.leftMargin: 1
-                                            anchors.topMargin: 1
-                                            anchors.rightMargin: -1
-                                            anchors.bottomMargin: -1
-                                            radius: parent.radius
-                                            color: "transparent"
-                                            border.width: 1
-                                            border.color: "#1F1F1F"
-                                            opacity: ListView.isCurrentItem ? 0.85 : 0.65
-                                        }
-                                        Behavior on color { ColorAnimation { duration: 120 } }
-                                    }
+                                NeumoRaisedSurface {
+                                    anchors.fill: parent
+                                    anchors.margins: 2
+                                    radius: 14
+                                    fillColor: ListView.isCurrentItem ? "#353535" : (adventureDelegate.hovered ? "#333333" : "#2F2F2F")
+                                    shadowOffset: ListView.isCurrentItem ? 5.5 : (adventureDelegate.hovered ? 5 : 4)
+                                    shadowBlur: 18
 
                                     RowLayout {
                                         anchors.fill: parent
-                                        anchors.leftMargin: 10
-                                        anchors.rightMargin: 8
-                                        spacing: 6
+                                        anchors.leftMargin: 14
+                                        anchors.rightMargin: 10
+                                        spacing: 8
 
                                         Label {
                                             Layout.fillWidth: true
                                             text: modelData.name
-                                            color: ListView.isCurrentItem ? "#DADADA" : "#BFBFBF"
+                                            color: ListView.isCurrentItem ? "#DCDCDC" : "#C4C4C4"
                                             font.pixelSize: 14
-                                            font.weight: ListView.isCurrentItem ? Font.DemiBold : Font.Normal
+                                            font.weight: ListView.isCurrentItem ? Font.DemiBold : Font.Medium
                                             elide: Text.ElideRight
                                             verticalAlignment: Text.AlignVCenter
                                         }
 
                                         Row {
                                             anchors.verticalCenter: parent.verticalCenter
-                                            spacing: 4
+                                            spacing: 6
                                             visible: true
 
                                             IconButton {
+                                                width: 22
+                                                height: 22
                                                 iconSource: "icons/scene_edit.svg"
                                                 toolTip: "Переименовать"
                                                 onClicked: launcherWindow.openEditAdventureDialog(index)
                                             }
                                             IconButton {
+                                                width: 22
+                                                height: 22
                                                 iconSource: "icons/clear.svg"
                                                 toolTip: "Удалить"
                                                 onClicked: {
@@ -606,150 +670,117 @@ Window {
                                             }
                                         }
                                     }
+                                }
 
-                                    HoverHandler { id: hoverHandler }
-                                    TapHandler {
-                                        acceptedButtons: Qt.LeftButton
-                                        gesturePolicy: TapHandler.ReleaseWithinBounds
-                                        onTapped: {
-                                            launcherWindow.selectedAdventureIndex = index
-                                            launcherWindow.selectedSceneIndex = -1
-                                            appController.select_adventure(modelData.name)
-                                        }
+                                HoverHandler { id: hoverHandler }
+                                TapHandler {
+                                    acceptedButtons: Qt.LeftButton
+                                    gesturePolicy: TapHandler.ReleaseWithinBounds
+                                    onTapped: {
+                                        launcherWindow.selectedAdventureIndex = index
+                                        launcherWindow.selectedSceneIndex = -1
+                                        appController.select_adventure(modelData.name)
                                     }
                                 }
                             }
                         }
                     }
+                }
 
-                    Rectangle {
-                        Layout.fillHeight: true
-                        Layout.fillWidth: true
-                        color: launcherWindow.bgCard
-                        radius: 14
-                        border.width: 0
+                NeumoInsetSurface {
+                    Layout.fillWidth: true
+                    Layout.fillHeight: true
+                    Layout.preferredWidth: 1
+                    radius: 18
+                    fillColor: "#2D2D2D"
+                    insetOffset: 4
+                    insetRadius: 11
+                    contentPadding: 14
 
-                        Rectangle {
-                            anchors.fill: parent
-                            anchors.margins: 1
-                            radius: parent.radius - 1
-                            color: "transparent"
-                            border.width: 1
-                            border.color: "#383838"
-                        }
-                        Rectangle {
-                            anchors.fill: parent
-                            anchors.leftMargin: 1
-                            anchors.topMargin: 1
-                            anchors.rightMargin: -1
-                            anchors.bottomMargin: -1
-                            radius: parent.radius
-                            color: "transparent"
-                            border.width: 1
-                            border.color: "#1F1F1F"
-                            opacity: 0.7
-                        }
+                    ColumnLayout {
+                        anchors.fill: parent
+                        spacing: 10
 
-                        ColumnLayout {
-                            anchors.fill: parent
-                            anchors.margins: 10
-                            spacing: 8
-
-                            RowLayout {
+                        RowLayout {
+                            Layout.fillWidth: true
+                            Label {
+                                text: appController.currentAdventure ? ("Сцены: " + appController.currentAdventure) : "Сцены"
+                                color: "#DEDEDE"
+                                font.pixelSize: 22
+                                font.weight: Font.DemiBold
                                 Layout.fillWidth: true
-                                Label {
-                                    text: appController.currentAdventure ? ("Сцены: " + appController.currentAdventure) : "Сцены"
-                                    color: launcherWindow.textPrimary
-                                    font.pixelSize: 18
-                                    font.weight: Font.DemiBold
-                                    Layout.fillWidth: true
-                                }
-                                IconButton {
-                                    glyph: "+"
-                                    toolTip: "Создать сцену"
-                                    enabled: appController.currentAdventure.length > 0
-                                    opacity: enabled ? 1.0 : 0.45
-                                    onClicked: launcherWindow.openCreateSceneDialog()
-                                }
+                                fontSizeMode: Text.Fit
+                                minimumPixelSize: 16
                             }
+                            IconButton {
+                                width: 34
+                                height: 34
+                                glyph: "+"
+                                toolTip: "Создать сцену"
+                                enabled: appController.currentAdventure.length > 0
+                                opacity: enabled ? 1.0 : 0.45
+                                onClicked: launcherWindow.openCreateSceneDialog()
+                            }
+                        }
 
-                            ListView {
-                                id: scenesView
-                                Layout.fillWidth: true
-                                Layout.fillHeight: true
-                                clip: true
-                                spacing: 8
-                                boundsBehavior: Flickable.StopAtBounds
-                                model: appController.scenesModel
-                                currentIndex: launcherWindow.selectedSceneIndex
-                                ScrollBar.vertical: AppScrollBar {}
+                        ListView {
+                            id: scenesView
+                            Layout.fillWidth: true
+                            Layout.fillHeight: true
+                            clip: true
+                            spacing: 10
+                            boundsBehavior: Flickable.StopAtBounds
+                            model: appController.scenesModel
+                            currentIndex: launcherWindow.selectedSceneIndex
+                            ScrollBar.vertical: AppScrollBar {}
 
-                                delegate: Item {
-                                    id: sceneDelegate
-                                    width: scenesView.width
-                                    height: 40
-                                    property bool hovered: hoverHandler.hovered
-                                    property real dragY: 0
-                                    property real dragDeltaY: 0
+                            delegate: Item {
+                                id: sceneDelegate
+                                width: scenesView.width
+                                height: 58
+                                property bool hovered: hoverHandler.hovered
+                                property real dragY: 0
+                                property real dragDeltaY: 0
 
-                                    Rectangle {
-                                        anchors.fill: parent
-                                        radius: 11
-                                        color: ListView.isCurrentItem ? "#353535" : (sceneDelegate.hovered ? "#333333" : "#2F2F2F")
-                                        border.width: 0
+                                Translate {
+                                    id: dragTranslate
+                                    y: sceneDelegate.dragY
+                                }
+                                transform: [dragTranslate]
+                                z: dragHandler.active ? 20 : 1
 
-                                        Rectangle {
-                                            anchors.fill: parent
-                                            anchors.margins: 1
-                                            radius: parent.radius - 1
-                                            color: "transparent"
-                                            border.width: 1
-                                            border.color: ListView.isCurrentItem ? "#4F4F4F" : "#3B3B3B"
-                                        }
-                                        Rectangle {
-                                            anchors.fill: parent
-                                            anchors.leftMargin: 1
-                                            anchors.topMargin: 1
-                                            anchors.rightMargin: -1
-                                            anchors.bottomMargin: -1
-                                            radius: parent.radius
-                                            color: "transparent"
-                                            border.width: 1
-                                            border.color: "#1F1F1F"
-                                            opacity: ListView.isCurrentItem ? 0.85 : 0.65
-                                        }
-                                        Behavior on color { ColorAnimation { duration: 120 } }
-                                    }
-
-                                    Translate {
-                                        id: dragTranslate
-                                        y: sceneDelegate.dragY
-                                    }
-                                    transform: [dragTranslate]
-                                    z: dragHandler.active ? 20 : 1
+                                NeumoRaisedSurface {
+                                    anchors.fill: parent
+                                    anchors.margins: 2
+                                    radius: 14
+                                    fillColor: ListView.isCurrentItem ? "#363636" : (sceneDelegate.hovered ? "#343434" : "#2F2F2F")
+                                    shadowOffset: ListView.isCurrentItem ? 5.5 : (sceneDelegate.hovered ? 5 : 4)
+                                    shadowBlur: 18
 
                                     RowLayout {
                                         anchors.fill: parent
-                                        anchors.leftMargin: 10
-                                        anchors.rightMargin: 8
-                                        spacing: 6
+                                        anchors.leftMargin: 14
+                                        anchors.rightMargin: 10
+                                        spacing: 8
 
                                         Label {
                                             Layout.fillWidth: true
                                             text: modelData.name
-                                            color: ListView.isCurrentItem ? "#DADADA" : "#BFBFBF"
+                                            color: ListView.isCurrentItem ? "#DCDCDC" : "#C4C4C4"
                                             font.pixelSize: 14
-                                            font.weight: ListView.isCurrentItem ? Font.DemiBold : Font.Normal
+                                            font.weight: ListView.isCurrentItem ? Font.DemiBold : Font.Medium
                                             elide: Text.ElideRight
                                             verticalAlignment: Text.AlignVCenter
                                         }
 
                                         Row {
                                             anchors.verticalCenter: parent.verticalCenter
-                                            spacing: 4
+                                            spacing: 6
                                             visible: true
 
                                             IconButton {
+                                                width: 22
+                                                height: 22
                                                 iconSource: "icons/scene_edit.svg"
                                                 toolTip: "Изменить сцену"
                                                 onClicked: {
@@ -758,6 +789,8 @@ Window {
                                                 }
                                             }
                                             IconButton {
+                                                width: 22
+                                                height: 22
                                                 iconSource: "icons/clear.svg"
                                                 toolTip: "Удалить сцену"
                                                 onClicked: {
@@ -767,44 +800,44 @@ Window {
                                             }
                                         }
                                     }
+                                }
 
-                                    HoverHandler { id: hoverHandler }
+                                HoverHandler { id: hoverHandler }
 
-                                    DragHandler {
-                                        id: dragHandler
-                                        target: null
-                                        onActiveChanged: {
-                                            if (active) {
-                                                launcherWindow.selectedSceneIndex = index
-                                                sceneDelegate.dragDeltaY = 0
-                                                return
-                                            }
-                                            var rowExtent = sceneDelegate.height + scenesView.spacing
-                                            var centerY = sceneDelegate.y + sceneDelegate.dragDeltaY + (sceneDelegate.height / 2)
-                                            var rawIndex = Math.floor(centerY / Math.max(1, rowExtent))
-                                            var toIndex = Math.max(0, Math.min(appController.scenesModel.length - 1, rawIndex))
-                                            if (toIndex !== index) {
-                                                launcherWindow.moveSceneTo(modelData.name, toIndex)
-                                            }
-                                            sceneDelegate.dragY = 0
-                                            sceneDelegate.dragDeltaY = 0
-                                        }
-                                        onTranslationChanged: {
-                                            sceneDelegate.dragY = translation.y
-                                            sceneDelegate.dragDeltaY = translation.y
-                                        }
-                                    }
-
-                                    TapHandler {
-                                        acceptedButtons: Qt.LeftButton
-                                        gesturePolicy: TapHandler.ReleaseWithinBounds
-                                        onTapped: launcherWindow.selectedSceneIndex = index
-                                        onDoubleTapped: {
+                                DragHandler {
+                                    id: dragHandler
+                                    target: null
+                                    onActiveChanged: {
+                                        if (active) {
                                             launcherWindow.selectedSceneIndex = index
-                                            var item = appController.scenesModel[index]
-                                            if (item) {
-                                                appController.open_scene(item.name)
-                                            }
+                                            sceneDelegate.dragDeltaY = 0
+                                            return
+                                        }
+                                        var rowExtent = sceneDelegate.height + scenesView.spacing
+                                        var centerY = sceneDelegate.y + sceneDelegate.dragDeltaY + (sceneDelegate.height / 2)
+                                        var rawIndex = Math.floor(centerY / Math.max(1, rowExtent))
+                                        var toIndex = Math.max(0, Math.min(appController.scenesModel.length - 1, rawIndex))
+                                        if (toIndex !== index) {
+                                            launcherWindow.moveSceneTo(modelData.name, toIndex)
+                                        }
+                                        sceneDelegate.dragY = 0
+                                        sceneDelegate.dragDeltaY = 0
+                                    }
+                                    onTranslationChanged: {
+                                        sceneDelegate.dragY = translation.y
+                                        sceneDelegate.dragDeltaY = translation.y
+                                    }
+                                }
+
+                                TapHandler {
+                                    acceptedButtons: Qt.LeftButton
+                                    gesturePolicy: TapHandler.ReleaseWithinBounds
+                                    onTapped: launcherWindow.selectedSceneIndex = index
+                                    onDoubleTapped: {
+                                        launcherWindow.selectedSceneIndex = index
+                                        var item = appController.scenesModel[index]
+                                        if (item) {
+                                            appController.open_scene(item.name)
                                         }
                                     }
                                 }
@@ -815,6 +848,7 @@ Window {
             }
         }
     }
+
     Component.onCompleted: appController.refresh_library()
 
     Connections {
@@ -1508,10 +1542,4 @@ Window {
         }
     }
 }
-
-
-
-
-
-
 
