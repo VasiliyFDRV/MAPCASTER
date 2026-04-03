@@ -22,18 +22,15 @@ Item {
         id: insetBase
         anchors.fill: parent
         radius: root.radius
-        gradient: Gradient {
-            GradientStop { position: 0.0; color: root.theme ? root.theme.baseTopColor : root.fillColor }
-            GradientStop { position: 1.0; color: root.theme ? root.theme.baseBottomColor : root.fillColor }
-        }
+        color: root.fillColor
     }
 
     InnerShadow {
         id: insetDark
         anchors.fill: insetBase
         source: insetBase
-        horizontalOffset: root.insetOffset
-        verticalOffset: root.insetOffset
+        horizontalOffset: -root.insetOffset
+        verticalOffset: -root.insetOffset
         radius: root.insetDarkRadius
         samples: root.insetDarkSamples
         color: root.insetDarkColor
@@ -42,8 +39,8 @@ Item {
     InnerShadow {
         anchors.fill: insetBase
         source: insetDark
-        horizontalOffset: root.insetLightOffset
-        verticalOffset: root.insetLightOffset
+        horizontalOffset: root.insetOffset
+        verticalOffset: root.insetOffset
         radius: root.insetLightRadius
         samples: root.insetLightSamples
         color: root.insetLightColor

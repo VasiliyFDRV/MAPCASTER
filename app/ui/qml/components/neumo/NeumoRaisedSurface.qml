@@ -20,10 +20,7 @@ Item {
         id: base
         anchors.fill: parent
         radius: root.radius
-        gradient: Gradient {
-            GradientStop { position: 0.0; color: root.theme ? root.theme.baseTopColor : root.fillColor }
-            GradientStop { position: 1.0; color: root.theme ? root.theme.baseBottomColor : root.fillColor }
-        }
+        color: root.fillColor
         layer.enabled: true
         layer.effect: DropShadow {
             transparentBorder: true
