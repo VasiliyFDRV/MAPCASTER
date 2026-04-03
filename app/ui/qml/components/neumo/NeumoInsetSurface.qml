@@ -29,8 +29,8 @@ Item {
         id: insetDark
         anchors.fill: insetBase
         source: insetBase
-        horizontalOffset: -root.insetOffset
-        verticalOffset: -root.insetOffset
+        horizontalOffset: root.insetOffset
+        verticalOffset: root.insetOffset
         radius: root.insetDarkRadius
         samples: root.insetDarkSamples
         color: root.insetDarkColor
@@ -39,8 +39,8 @@ Item {
     InnerShadow {
         anchors.fill: insetBase
         source: insetDark
-        horizontalOffset: root.insetOffset
-        verticalOffset: root.insetOffset
+        horizontalOffset: -root.insetOffset
+        verticalOffset: -root.insetOffset
         radius: root.insetLightRadius
         samples: root.insetLightSamples
         color: root.insetLightColor
