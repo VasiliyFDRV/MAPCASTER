@@ -22,7 +22,10 @@ Item {
         id: insetBase
         anchors.fill: parent
         radius: root.radius
-        color: root.fillColor
+        gradient: Gradient {
+            GradientStop { position: 0.0; color: root.theme ? root.theme.baseTopColor : root.fillColor }
+            GradientStop { position: 1.0; color: root.theme ? root.theme.baseBottomColor : root.fillColor }
+        }
     }
 
     InnerShadow {

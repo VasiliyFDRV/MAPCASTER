@@ -58,7 +58,10 @@ Item {
         id: bg
         anchors.fill: parent
         radius: largeButton ? 12 : (mediumButton ? 9 : 7)
-        color: theme ? theme.baseColor : "#2D2D2D"
+        gradient: Gradient {
+            GradientStop { position: 0.0; color: theme ? theme.baseTopColor : "#2D2D2D" }
+            GradientStop { position: 1.0; color: theme ? theme.baseBottomColor : "#2D2D2D" }
+        }
     }
 
     DropShadow {

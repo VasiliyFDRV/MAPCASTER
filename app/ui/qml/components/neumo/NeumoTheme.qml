@@ -4,6 +4,8 @@ QtObject {
     id: theme
 
     property color baseColor: "#2D2D2D"
+    property color baseTopColor: "#303030"
+    property color baseBottomColor: "#2A2A2A"
     property color textPrimary: "#D0D0D0"
     property color textSecondary: "#909090"
 
@@ -11,8 +13,8 @@ QtObject {
     property real raisedShadowOffset: 6
     property real raisedShadowRadius: 12
     property int raisedShadowSamples: 25
-    property color raisedShadowDarkColor: "#B8151618"
-    property color raisedShadowLightColor: "#703B3C40"
+    property color raisedShadowDarkColor: "#D0151618"
+    property color raisedShadowLightColor: "#9A3B3C40"
 
     property real insetRadius: 20
     property real insetOffset: 6
@@ -22,7 +24,7 @@ QtObject {
     property real insetLightOffset: -6
     property real insetLightRadius: 10
     property int insetLightSamples: 25
-    property color insetLightColor: "#663B3C40"
+    property color insetLightColor: "#9A3B3C40"
 
     property real iconLargeThreshold: 40
     property real iconMediumThreshold: 30
@@ -47,19 +49,19 @@ QtObject {
     property int iconInnerSamplesMedium: 17
     property int iconInnerSamplesSmall: 11
 
-    property color iconOuterDarkColorLarge: "#B8151618"
-    property color iconOuterDarkColorMedium: "#99151618"
-    property color iconOuterDarkColorSmall: "#70151618"
+    property color iconOuterDarkColorLarge: "#D0151618"
+    property color iconOuterDarkColorMedium: "#B8151618"
+    property color iconOuterDarkColorSmall: "#90151618"
     property color iconOuterLightColorLarge: "#A63B3C40"
-    property color iconOuterLightColorMedium: "#8A3B3C40"
-    property color iconOuterLightColorSmall: "#6A3B3C40"
+    property color iconOuterLightColorMedium: "#963B3C40"
+    property color iconOuterLightColorSmall: "#7A3B3C40"
 
-    property color iconInnerDarkColorLarge: "#D0151618"
-    property color iconInnerDarkColorMedium: "#A6151618"
-    property color iconInnerDarkColorSmall: "#7A151618"
-    property color iconInnerLightColorLarge: "#7C3B3C40"
-    property color iconInnerLightColorMedium: "#5A3B3C40"
-    property color iconInnerLightColorSmall: "#423B3C40"
+    property color iconInnerDarkColorLarge: "#E0151618"
+    property color iconInnerDarkColorMedium: "#B8151618"
+    property color iconInnerDarkColorSmall: "#90151618"
+    property color iconInnerLightColorLarge: "#8A3B3C40"
+    property color iconInnerLightColorMedium: "#6A3B3C40"
+    property color iconInnerLightColorSmall: "#523B3C40"
 
     property int rowShadowSamples: 23
     property real rowShadowRadius: 10
@@ -67,8 +69,8 @@ QtObject {
     property real rowShadowOffsetHover: 4.5
     property real rowShadowOffsetDrag: 5
     property real rowShadowRadiusDrag: 11
-    property color rowShadowDarkColor: "#9E151618"
-    property color rowShadowDarkColorDrag: "#BC151618"
-    property color rowShadowLightColor: "#643B3C40"
-    property color rowShadowLightColorDrag: "#7C3B3C40"
+    property color rowShadowDarkColor: "#C5151618"
+    property color rowShadowDarkColorDrag: "#DD151618"
+    property color rowShadowLightColor: "#8A3B3C40"
+    property color rowShadowLightColorDrag: "#9A3B3C40"
 }
