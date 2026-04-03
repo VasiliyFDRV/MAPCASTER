@@ -466,7 +466,7 @@ Window {
                         theme: neumoTheme
                         width: 44
                         height: 44
-                        iconSource: "icons/dice.svg"
+                        iconSource: Qt.resolvedUrl("icons/dice.svg")
                         toolTip: "Дайсы"
                         onClicked: appController.request_open_dice()
                     }
@@ -475,7 +475,7 @@ Window {
                         theme: neumoTheme
                         width: 44
                         height: 44
-                        iconSource: "icons/settings.svg"
+                        iconSource: Qt.resolvedUrl("icons/settings.svg")
                         toolTip: "Настройки"
                         onClicked: settingsDrawer.open()
                     }
@@ -510,7 +510,7 @@ Window {
                             theme: neumoTheme
                             width: 30
                             height: 30
-                            iconSource: "icons/back.svg"
+                            iconSource: Qt.resolvedUrl("icons/back.svg")
                             toolTip: "Назад к приключениям"
                             visible: launcherWindow.scenesMode
                             enabled: visible
@@ -626,7 +626,7 @@ Window {
                                                 theme: neumoTheme
                                                 width: 24
                                                 height: 24
-                                                iconSource: "icons/scene_edit.svg"
+                                                iconSource: Qt.resolvedUrl("icons/scene_edit.svg")
                                                 toolTip: explorerDelegate.scenesMode ? "Изменить сцену" : "Переименовать приключение"
                                                 onClicked: {
                                                     if (explorerDelegate.scenesMode) {
@@ -641,7 +641,7 @@ Window {
                                                 theme: neumoTheme
                                                 width: 24
                                                 height: 24
-                                                iconSource: "icons/clear.svg"
+                                                iconSource: Qt.resolvedUrl("icons/clear.svg")
                                                 toolTip: explorerDelegate.scenesMode ? "Удалить сцену" : "Удалить приключение"
                                                 onClicked: {
                                                     if (explorerDelegate.scenesMode) {
@@ -809,7 +809,7 @@ Window {
                         height: 30
                         enabled: sceneMapEnabled
                         opacity: enabled ? 1.0 : 0.4
-                        iconSource: "icons/palette.svg"
+                        iconSource: Qt.resolvedUrl("icons/palette.svg")
                         toolTip: "Выбрать цвет карты"
                         onClicked: {
                             launcherWindow.pendingColorTarget = "map"
@@ -870,7 +870,7 @@ Window {
                         height: 30
                         enabled: sceneBgEnabled
                         opacity: enabled ? 1.0 : 0.4
-                        iconSource: "icons/palette.svg"
+                        iconSource: Qt.resolvedUrl("icons/palette.svg")
                         toolTip: "Выбрать цвет фона"
                         onClicked: {
                             launcherWindow.pendingColorTarget = "background"
@@ -897,7 +897,7 @@ Window {
                     IconButton {
                         width: 30
                         height: 30
-                        iconSource: "icons/palette.svg"
+                        iconSource: Qt.resolvedUrl("icons/palette.svg")
                         toolTip: "Выбрать цвет сетки"
                         onClicked: {
                             launcherWindow.pendingColorTarget = "grid"
