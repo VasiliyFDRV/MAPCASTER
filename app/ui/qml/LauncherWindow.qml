@@ -1,4 +1,4 @@
-import QtQuick
+п»їimport QtQuick
 import QtQuick.Controls
 import QtQuick.Dialogs
 import QtQuick.Layouts
@@ -13,7 +13,7 @@ Window {
     height: 370
     visible: true
     color: "#2D2D2D"
-    title: "DnD Maps - Лаунчер"
+    title: "DnD Maps - Р›Р°СѓРЅС‡РµСЂ"
 
     onClosing: function(close) {
         close.accepted = true
@@ -72,7 +72,7 @@ Window {
             return
         }
         sceneDialogModeCode = draft.mode === "edit" ? "edit" : "create"
-        sceneDialogMode.text = sceneDialogModeCode === "edit" ? "Редактирование сцены" : "Создание сцены"
+        sceneDialogMode.text = sceneDialogModeCode === "edit" ? "Р РµРґР°РєС‚РёСЂРѕРІР°РЅРёРµ СЃС†РµРЅС‹" : "РЎРѕР·РґР°РЅРёРµ СЃС†РµРЅС‹"
         sceneNameField.text = draft.name || ""
         sceneOriginalName.text = draft.original_name || ""
         sceneNameField.enabled = true
@@ -111,7 +111,7 @@ Window {
         adventureDialogMode = "create"
         adventureOriginalName = ""
         adventureNameField.text = ""
-        adventureDialogTitle.text = "Новое приключение"
+        adventureDialogTitle.text = "РќРѕРІРѕРµ РїСЂРёРєР»СЋС‡РµРЅРёРµ"
         adventureDialog.open()
     }
 
@@ -122,7 +122,7 @@ Window {
         adventureDialogMode = "edit"
         adventureOriginalName = adventureName
         adventureNameField.text = adventureName
-        adventureDialogTitle.text = "Переименование приключения"
+        adventureDialogTitle.text = "РџРµСЂРµРёРјРµРЅРѕРІР°РЅРёРµ РїСЂРёРєР»СЋС‡РµРЅРёСЏ"
         adventureDialog.open()
     }
 
@@ -731,7 +731,7 @@ Window {
                     spacing: 4
 
                     Label {
-                        text: "Лаунчер DnD Maps"
+                        text: "Р›Р°СѓРЅС‡РµСЂ DnD Maps"
                         color: "#E8E8E8"
                         font.pixelSize: Math.max(28, Math.min(40, launcherWindow.width * 0.06))
                         font.weight: Font.DemiBold
@@ -740,8 +740,8 @@ Window {
                     }
                     Label {
                         text: launcherWindow.scenesMode
-                            ? "Список сцен текущего приключения"
-                            : "Корневая папка приключений"
+                            ? "РЎРїРёСЃРѕРє СЃС†РµРЅ С‚РµРєСѓС‰РµРіРѕ РїСЂРёРєР»СЋС‡РµРЅРёСЏ"
+                            : "РљРѕСЂРЅРµРІР°СЏ РїР°РїРєР° РїСЂРёРєР»СЋС‡РµРЅРёР№"
                         color: launcherWindow.textSecondary
                         font.pixelSize: 14
                         Layout.fillWidth: true
@@ -756,7 +756,7 @@ Window {
                         width: 44
                         height: 44
                         iconSource: "icons/dice.svg"
-                        toolTip: "Дайсы"
+                        toolTip: "Р”Р°Р№СЃС‹"
                         onClicked: appController.request_open_dice()
                     }
 
@@ -764,7 +764,7 @@ Window {
                         width: 44
                         height: 44
                         iconSource: "icons/settings.svg"
-                        toolTip: "Настройки"
+                        toolTip: "РќР°СЃС‚СЂРѕР№РєРё"
                         onClicked: settingsDrawer.open()
                     }
                 }
@@ -797,7 +797,7 @@ Window {
                             width: 30
                             height: 30
                             iconSource: "icons/back.svg"
-                            toolTip: "Назад к приключениям"
+                            toolTip: "РќР°Р·Р°Рґ Рє РїСЂРёРєР»СЋС‡РµРЅРёСЏРј"
                             visible: launcherWindow.scenesMode
                             enabled: visible
                             onClicked: appController.leave_launcher_adventure()
@@ -805,7 +805,7 @@ Window {
 
                         Label {
                             Layout.fillWidth: true
-                            text: launcherWindow.scenesMode ? appController.launcherAdventure : "Приключения"
+                            text: launcherWindow.scenesMode ? appController.launcherAdventure : "РџСЂРёРєР»СЋС‡РµРЅРёСЏ"
                             color: "#E4E4E4"
                             font.pixelSize: 18
                             font.weight: Font.DemiBold
@@ -817,7 +817,7 @@ Window {
                             height: 30
                             glyph: "+"
                             fontSize: 20
-                            toolTip: launcherWindow.scenesMode ? "Добавить сцену" : "Добавить приключение"
+                            toolTip: launcherWindow.scenesMode ? "Р”РѕР±Р°РІРёС‚СЊ СЃС†РµРЅСѓ" : "Р”РѕР±Р°РІРёС‚СЊ РїСЂРёРєР»СЋС‡РµРЅРёРµ"
                             onClicked: {
                                 if (launcherWindow.scenesMode) {
                                     launcherWindow.openCreateSceneDialog()
@@ -913,7 +913,7 @@ Window {
                                                 width: 24
                                                 height: 24
                                                 iconSource: "icons/scene_edit.svg"
-                                                toolTip: explorerDelegate.scenesMode ? "Изменить сцену" : "Переименовать приключение"
+                                                toolTip: explorerDelegate.scenesMode ? "РР·РјРµРЅРёС‚СЊ СЃС†РµРЅСѓ" : "РџРµСЂРµРёРјРµРЅРѕРІР°С‚СЊ РїСЂРёРєР»СЋС‡РµРЅРёРµ"
                                                 onClicked: {
                                                     if (explorerDelegate.scenesMode) {
                                                         launcherWindow.openEditSceneDialog(explorerDelegate.itemName)
@@ -927,7 +927,7 @@ Window {
                                                 width: 24
                                                 height: 24
                                                 iconSource: "icons/clear.svg"
-                                                toolTip: explorerDelegate.scenesMode ? "Удалить сцену" : "Удалить приключение"
+                                                toolTip: explorerDelegate.scenesMode ? "РЈРґР°Р»РёС‚СЊ СЃС†РµРЅСѓ" : "РЈРґР°Р»РёС‚СЊ РїСЂРёРєР»СЋС‡РµРЅРёРµ"
                                                 onClicked: {
                                                     if (explorerDelegate.scenesMode) {
                                                         appController.delete_scene(explorerDelegate.itemName)
@@ -971,8 +971,8 @@ Window {
                             anchors.centerIn: parent
                             visible: explorerView.count === 0
                             text: launcherWindow.scenesMode
-                                ? "В этом приключении пока нет сцен"
-                                : "Приключений пока нет"
+                                ? "Р’ СЌС‚РѕРј РїСЂРёРєР»СЋС‡РµРЅРёРё РїРѕРєР° РЅРµС‚ СЃС†РµРЅ"
+                                : "РџСЂРёРєР»СЋС‡РµРЅРёР№ РїРѕРєР° РЅРµС‚"
                             color: launcherWindow.textSecondary
                             font.pixelSize: 14
                         }
@@ -1027,7 +1027,7 @@ Window {
 
                 Label {
                     id: sceneDialogMode
-                    text: "Создание сцены"
+                    text: "РЎРѕР·РґР°РЅРёРµ СЃС†РµРЅС‹"
                     color: launcherWindow.textPrimary
                     font.pixelSize: 22
                     Layout.fillWidth: true
@@ -1035,7 +1035,7 @@ Window {
 
                 AppTextField {
                     id: sceneNameField
-                    placeholderText: "Название сцены"
+                    placeholderText: "РќР°Р·РІР°РЅРёРµ СЃС†РµРЅС‹"
                     Layout.fillWidth: true
                 }
                 AppTextField {
@@ -1048,7 +1048,7 @@ Window {
                 RowLayout {
                     Layout.fillWidth: true
                     spacing: 8
-                    Label { text: "Карта"; color: launcherWindow.textPrimary; Layout.fillWidth: true }
+                    Label { text: "РљР°СЂС‚Р°"; color: launcherWindow.textPrimary; Layout.fillWidth: true }
                     AppToggle {
                         id: sceneMapEnabledSwitch
                         Layout.preferredWidth: implicitWidth
@@ -1072,7 +1072,7 @@ Window {
                         mediaType: sceneMapTypeValue
                         previewValue: sceneMapValueText
                         fallbackColor: "#000000"
-                        placeholderText: "Клик / Ctrl+V / Перетащить / Двойной клик"
+                        placeholderText: "РљР»РёРє / Ctrl+V / РџРµСЂРµС‚Р°С‰РёС‚СЊ / Р”РІРѕР№РЅРѕР№ РєР»РёРє"
                         onDropValue: function(value) {
                             sceneMapValueText = value
                             sceneMapTypeValue = detectMediaTypeFromValue(value, "color")
@@ -1095,7 +1095,7 @@ Window {
                         enabled: sceneMapEnabled
                         opacity: enabled ? 1.0 : 0.4
                         iconSource: "icons/palette.svg"
-                        toolTip: "Выбрать цвет карты"
+                        toolTip: "Р’С‹Р±СЂР°С‚СЊ С†РІРµС‚ РєР°СЂС‚С‹"
                         onClicked: {
                             launcherWindow.pendingColorTarget = "map"
                             colorPickerDialog.selectedColor = sceneMapValueText
@@ -1109,7 +1109,7 @@ Window {
                 RowLayout {
                     Layout.fillWidth: true
                     spacing: 8
-                    Label { text: "Фон"; color: launcherWindow.textPrimary; Layout.fillWidth: true }
+                    Label { text: "Р¤РѕРЅ"; color: launcherWindow.textPrimary; Layout.fillWidth: true }
                     AppToggle {
                         id: sceneBgEnabledSwitch
                         Layout.preferredWidth: implicitWidth
@@ -1133,7 +1133,7 @@ Window {
                         mediaType: sceneBgTypeValue
                         previewValue: sceneBgValueText
                         fallbackColor: "#000000"
-                        placeholderText: "Клик / Ctrl+V / Перетащить / Двойной клик"
+                        placeholderText: "РљР»РёРє / Ctrl+V / РџРµСЂРµС‚Р°С‰РёС‚СЊ / Р”РІРѕР№РЅРѕР№ РєР»РёРє"
                         onDropValue: function(value) {
                             sceneBgValueText = value
                             sceneBgTypeValue = detectMediaTypeFromValue(value, "color")
@@ -1156,7 +1156,7 @@ Window {
                         enabled: sceneBgEnabled
                         opacity: enabled ? 1.0 : 0.4
                         iconSource: "icons/palette.svg"
-                        toolTip: "Выбрать цвет фона"
+                        toolTip: "Р’С‹Р±СЂР°С‚СЊ С†РІРµС‚ С„РѕРЅР°"
                         onClicked: {
                             launcherWindow.pendingColorTarget = "background"
                             colorPickerDialog.selectedColor = sceneBgValueText
@@ -1167,14 +1167,14 @@ Window {
 
                 Rectangle { Layout.fillWidth: true; Layout.preferredHeight: 1; color: "#4C4C4C" }
 
-                Label { text: "Гекс-сетка"; color: launcherWindow.textPrimary }
-                Label { text: "Размер клетки (ft)"; color: launcherWindow.textSecondary }
+                Label { text: "Р“РµРєСЃ-СЃРµС‚РєР°"; color: launcherWindow.textPrimary }
+                Label { text: "Р Р°Р·РјРµСЂ РєР»РµС‚РєРё (ft)"; color: launcherWindow.textSecondary }
                 AppTextField { id: sceneGridSize; Layout.fillWidth: true; text: "5.00" }
-                Label { text: "Толщина линии (px)"; color: launcherWindow.textSecondary }
+                Label { text: "РўРѕР»С‰РёРЅР° Р»РёРЅРёРё (px)"; color: launcherWindow.textSecondary }
                 AppTextField { id: sceneGridThickness; Layout.fillWidth: true; text: "1.50" }
-                Label { text: "Прозрачность (0..1)"; color: launcherWindow.textSecondary }
+                Label { text: "РџСЂРѕР·СЂР°С‡РЅРѕСЃС‚СЊ (0..1)"; color: launcherWindow.textSecondary }
                 AppTextField { id: sceneGridOpacity; Layout.fillWidth: true; text: "0.45" }
-                Label { text: "Цвет сетки"; color: launcherWindow.textSecondary }
+                Label { text: "Р¦РІРµС‚ СЃРµС‚РєРё"; color: launcherWindow.textSecondary }
                 RowLayout {
                     Layout.fillWidth: true
                     spacing: 8
@@ -1183,7 +1183,7 @@ Window {
                         width: 30
                         height: 30
                         iconSource: "icons/palette.svg"
-                        toolTip: "Выбрать цвет сетки"
+                        toolTip: "Р’С‹Р±СЂР°С‚СЊ С†РІРµС‚ СЃРµС‚РєРё"
                         onClicked: {
                             launcherWindow.pendingColorTarget = "grid"
                             colorPickerDialog.selectedColor = sceneGridColor.text
@@ -1198,12 +1198,12 @@ Window {
                     Layout.fillWidth: true
                     spacing: 8
                     AppButton {
-                        text: "Отмена"
+                        text: "РћС‚РјРµРЅР°"
                         Layout.fillWidth: true
                         onClicked: sceneDialog.close()
                     }
                     AppButton {
-                        text: "Сохранить"
+                        text: "РЎРѕС…СЂР°РЅРёС‚СЊ"
                         accent: true
                         Layout.fillWidth: true
                         onClicked: {
@@ -1241,7 +1241,7 @@ Window {
 
             Label {
                 id: adventureDialogTitle
-                text: "Новое приключение"
+                text: "РќРѕРІРѕРµ РїСЂРёРєР»СЋС‡РµРЅРёРµ"
                 color: launcherWindow.textPrimary
                 font.pixelSize: 20
                 Layout.fillWidth: true
@@ -1250,19 +1250,19 @@ Window {
             AppTextField {
                 id: adventureNameField
                 Layout.fillWidth: true
-                placeholderText: "Название приключения"
+                placeholderText: "РќР°Р·РІР°РЅРёРµ РїСЂРёРєР»СЋС‡РµРЅРёСЏ"
             }
 
             RowLayout {
                 Layout.fillWidth: true
                 spacing: 8
                 AppButton {
-                    text: "Отмена"
+                    text: "РћС‚РјРµРЅР°"
                     Layout.fillWidth: true
                     onClicked: adventureDialog.close()
                 }
                 AppButton {
-                    text: "Сохранить"
+                    text: "РЎРѕС…СЂР°РЅРёС‚СЊ"
                     accent: true
                     Layout.fillWidth: true
                     onClicked: {
@@ -1280,11 +1280,11 @@ Window {
 
     FileDialog {
         id: mediaFileDialog
-        title: "Выберите медиафайл"
+        title: "Р’С‹Р±РµСЂРёС‚Рµ РјРµРґРёР°С„Р°Р№Р»"
         fileMode: FileDialog.OpenFile
         nameFilters: [
-            "Медиафайлы (*.png *.jpg *.jpeg *.webp *.bmp *.gif *.mp4 *.webm *.mkv *.avi *.mov *.wmv *.m4v)",
-            "Все файлы (*.*)"
+            "РњРµРґРёР°С„Р°Р№Р»С‹ (*.png *.jpg *.jpeg *.webp *.bmp *.gif *.mp4 *.webm *.mkv *.avi *.mov *.wmv *.m4v)",
+            "Р’СЃРµ С„Р°Р№Р»С‹ (*.*)"
         ]
         onAccepted: {
             var selected = selectedFile.toString()
@@ -1342,7 +1342,7 @@ Window {
 
     ColorDialog {
         id: colorPickerDialog
-        title: "Выбор цвета"
+        title: "Р’С‹Р±РѕСЂ С†РІРµС‚Р°"
         onAccepted: {
             var value = normalizeColorValue(selectedColor)
             if (launcherWindow.pendingColorTarget === "background") {
@@ -1541,7 +1541,7 @@ Window {
                 spacing: 10
 
                 Label {
-                    text: "Настройки приложения"
+                    text: "РќР°СЃС‚СЂРѕР№РєРё РїСЂРёР»РѕР¶РµРЅРёСЏ"
                     color: launcherWindow.textPrimary
                     font.pixelSize: 22
                     Layout.fillWidth: true
@@ -1553,15 +1553,15 @@ Window {
                     color: "#4C4C4C"
                 }
 
-                Label { text: "Корневая папка приключений"; color: launcherWindow.textPrimary }
+                Label { text: "РљРѕСЂРЅРµРІР°СЏ РїР°РїРєР° РїСЂРёРєР»СЋС‡РµРЅРёР№"; color: launcherWindow.textPrimary }
                 AppTextField {
                     id: adventuresRootField
                     text: appController.adventuresRoot
-                    placeholderText: "Путь к папке приключений"
+                    placeholderText: "РџСѓС‚СЊ Рє РїР°РїРєРµ РїСЂРёРєР»СЋС‡РµРЅРёР№"
                     Layout.fillWidth: true
                 }
                 AppButton {
-                    text: "Применить путь"
+                    text: "РџСЂРёРјРµРЅРёС‚СЊ РїСѓС‚СЊ"
                     accent: true
                     onClicked: appController.update_adventures_root(adventuresRootField.text)
                 }
@@ -1573,13 +1573,13 @@ Window {
                 }
 
                 Label {
-                    text: "Раздел в переработке"
+                    text: "Р Р°Р·РґРµР» РІ РїРµСЂРµСЂР°Р±РѕС‚РєРµ"
                     color: launcherWindow.textPrimary
                     font.pixelSize: 16
                     Layout.fillWidth: true
                 }
                 Label {
-                    text: "Параметры сцены по умолчанию временно скрыты."
+                    text: "РџР°СЂР°РјРµС‚СЂС‹ СЃС†РµРЅС‹ РїРѕ СѓРјРѕР»С‡Р°РЅРёСЋ РІСЂРµРјРµРЅРЅРѕ СЃРєСЂС‹С‚С‹."
                     color: launcherWindow.textSecondary
                     wrapMode: Text.WordWrap
                     Layout.fillWidth: true
@@ -1591,21 +1591,21 @@ Window {
                     color: "#4C4C4C"
                 }
 
-                Label { text: "Левая панель"; color: launcherWindow.textPrimary }
-                Label { text: "Ширина панели (px)"; color: launcherWindow.textSecondary }
+                Label { text: "Р›РµРІР°СЏ РїР°РЅРµР»СЊ"; color: launcherWindow.textPrimary }
+                Label { text: "РЁРёСЂРёРЅР° РїР°РЅРµР»Рё (px)"; color: launcherWindow.textSecondary }
                 AppTextField {
                     id: panelWidthField
                     text: String(appController.leftPanelWidth)
                     Layout.fillWidth: true
                 }
-                Label { text: "Зона появления (px)"; color: launcherWindow.textSecondary }
+                Label { text: "Р—РѕРЅР° РїРѕСЏРІР»РµРЅРёСЏ (px)"; color: launcherWindow.textSecondary }
                 AppTextField {
                     id: revealZoneField
                     text: String(appController.leftRevealZone)
                     Layout.fillWidth: true
                 }
                 AppButton {
-                    text: "Применить панель"
+                    text: "РџСЂРёРјРµРЅРёС‚СЊ РїР°РЅРµР»СЊ"
                     onClicked: appController.update_panel(Number(panelWidthField.text), Number(revealZoneField.text))
                 }
 
@@ -1617,13 +1617,13 @@ Window {
                 RowLayout {
                     Layout.fillWidth: true
                     AppButton {
-                        text: "Сохранить настройки"
+                        text: "РЎРѕС…СЂР°РЅРёС‚СЊ РЅР°СЃС‚СЂРѕР№РєРё"
                         accent: true
                         Layout.fillWidth: true
                         onClicked: appController.persist_settings()
                     }
                     AppButton {
-                        text: "Закрыть"
+                        text: "Р—Р°РєСЂС‹С‚СЊ"
                         Layout.fillWidth: true
                         onClicked: settingsDrawer.close()
                     }
@@ -1637,6 +1637,7 @@ Window {
         }
     }
 }
+
 
 
 
