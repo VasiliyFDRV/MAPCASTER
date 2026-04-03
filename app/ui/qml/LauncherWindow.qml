@@ -827,22 +827,18 @@ Window {
                             }
                         }
                     }
-
-                    Rectangle {
-                        Layout.fillWidth: true
-                        Layout.preferredHeight: 1
-                        color: "#2A2B2E"
-                        opacity: 0.55
-                    }
-
                     Item {
                         Layout.fillWidth: true
                         Layout.fillHeight: true
 
                         ListView {
                             id: explorerView
+                            property real rowShadowBleed: 12
                             anchors.fill: parent
-                            anchors.margins: 2
+                            leftMargin: rowShadowBleed
+                            rightMargin: rowShadowBleed
+                            topMargin: rowShadowBleed
+                            bottomMargin: rowShadowBleed
                             spacing: 12
                             clip: true
                             boundsBehavior: Flickable.StopAtBounds
@@ -856,7 +852,8 @@ Window {
                                 property string itemName: modelData && modelData.name ? modelData.name : ""
                                 property real dragY: 0
                                 property real dragDeltaY: 0
-                                width: explorerView.width
+                                x: explorerView.leftMargin
+                                width: explorerView.width - explorerView.leftMargin - explorerView.rightMargin
                                 height: 48
                                 z: dragHandler.active ? 20 : 1
 
@@ -950,7 +947,7 @@ Window {
                                             return
                                         }
                                         var rowExtent = explorerDelegate.height + explorerView.spacing
-                                        var centerY = explorerDelegate.y + explorerDelegate.dragDeltaY + (explorerDelegate.height / 2)
+                                        var centerY = explorerDelegate.y + explorerDelegate.dragDeltaY + (explorerDelegate.height / 2) - explorerView.topMargin
                                         var rawIndex = Math.floor(centerY / Math.max(1, rowExtent))
                                         var toIndex = Math.max(0, Math.min(appController.scenesModel.length - 1, rawIndex))
                                         if (toIndex !== index) {
