@@ -21,8 +21,7 @@ Window {
         close.accepted = true
         appController.request_app_exit()
     }
-    property int selectedAdventureIndex: -1
-    property int selectedSceneIndex: -1
+    property bool scenesMode: appController.launcherAdventure.length > 0
     property string pendingFileTarget: "map"
     property string pendingColorTarget: "map"
     property string sceneDialogModeCode: "create"
@@ -95,22 +94,18 @@ Window {
     }
 
     function openCreateSceneDialog() {
-        if (appController.currentAdventure.length === 0) {
+        if (appController.launcherAdventure.length === 0) {
             return
         }
         applyDraftToDialog(appController.build_new_scene_draft())
         sceneDialog.open()
     }
 
-    function openEditSceneDialog() {
-        if (launcherWindow.selectedSceneIndex < 0) {
+    function openEditSceneDialog(sceneName) {
+        if (!sceneName || appController.launcherAdventure.length === 0) {
             return
         }
-        var item = appController.scenesModel[launcherWindow.selectedSceneIndex]
-        if (!item) {
-            return
-        }
-        applyDraftToDialog(appController.load_scene_draft(item.name))
+        applyDraftToDialog(appController.load_scene_draft_for_adventure(appController.launcherAdventure, sceneName))
         sceneDialog.open()
     }
 
@@ -122,14 +117,13 @@ Window {
         adventureDialog.open()
     }
 
-    function openEditAdventureDialog(index) {
-        var item = appController.adventuresModel[index]
-        if (!item) {
+    function openEditAdventureDialog(adventureName) {
+        if (!adventureName) {
             return
         }
         adventureDialogMode = "edit"
-        adventureOriginalName = item.name
-        adventureNameField.text = item.name
+        adventureOriginalName = adventureName
+        adventureNameField.text = adventureName
         adventureDialogTitle.text = "Переименование приключения"
         adventureDialog.open()
     }
@@ -158,7 +152,6 @@ Window {
             appController.move_scene(sceneName, -1)
             fromIndex -= 1
         }
-        launcherWindow.selectedSceneIndex = boundedTarget
     }
 
     function assignDroppedPath(drop, textField) {
@@ -689,32 +682,31 @@ Window {
         }
     }
 
-    component LauncherRowWell: Item {
-        id: rowWell
-        property bool active: false
-        property bool hovered: false
+    component LauncherRowButton: Item {
+        id: rowButton
+        property bool dragging: false
+        property bool hovered: hoverHandler.hovered
         default property alias contentData: contentWrap.data
 
-        LauncherInsetSurface {
-            id: rowInset
+        LauncherRaisedSurface {
+            id: rowSurface
             anchors.fill: parent
             radius: 13
-            fillColor: rowWell.active ? "#303136" : (rowWell.hovered ? "#2D2E32" : "#2A2B2F")
-            insetOffset: rowWell.active ? 5.5 : 5
-            insetDarkRadius: rowWell.active ? 12 : 10
-            insetDarkSamples: 29
-            insetDarkColor: rowWell.active ? "#D0151618" : "#C0151618"
-            insetLightOffset: rowWell.active ? -5.5 : -5
-            insetLightRadius: rowWell.active ? 10.5 : 9
-            insetLightSamples: 23
-            insetLightColor: rowWell.active ? "#703B3C40" : "#5A3B3C40"
+            fillColor: rowButton.dragging ? "#323338" : (rowButton.hovered ? "#303136" : "#2E2F33")
+            shadowOffset: rowButton.dragging ? 5 : (rowButton.hovered ? 4.5 : 4)
+            shadowRadius: rowButton.dragging ? 11 : 10
+            shadowSamples: 23
+            shadowDarkColor: rowButton.dragging ? "#BC151618" : "#9E151618"
+            shadowLightColor: rowButton.dragging ? "#7C3B3C40" : "#643B3C40"
         }
 
         Item {
             id: contentWrap
-            parent: rowInset
-            anchors.fill: rowInset
+            parent: rowSurface
+            anchors.fill: rowSurface
         }
+
+        HoverHandler { id: hoverHandler }
     }
 
     Rectangle {
@@ -742,7 +734,9 @@ Window {
                         elide: Text.ElideRight
                     }
                     Label {
-                        text: "Приключения, сцены и настройки по умолчанию"
+                        text: launcherWindow.scenesMode
+                            ? "Список сцен текущего приключения"
+                            : "Корневая папка приключений"
                         color: launcherWindow.textSecondary
                         font.pixelSize: 14
                         Layout.fillWidth: true
@@ -786,138 +780,92 @@ Window {
                 insetLightColor: "#6A3B3C40"
                 contentPadding: 20
 
-                RowLayout {
+                ColumnLayout {
                     anchors.fill: parent
-                    spacing: 22
+                    spacing: 16
 
-                    LauncherPanel {
+                    RowLayout {
                         Layout.fillWidth: true
-                        Layout.fillHeight: true
-                        Layout.preferredWidth: 1
-                        title: "Приключения"
-                        onAddClicked: launcherWindow.openCreateAdventureDialog()
+                        spacing: 10
 
-                        ListView {
-                            id: adventuresView
-                            anchors.fill: parent
-                            anchors.margins: 2
-                            spacing: 12
-                            clip: true
-                            boundsBehavior: Flickable.StopAtBounds
-                            model: appController.adventuresModel
-                            currentIndex: launcherWindow.selectedAdventureIndex
-                            ScrollBar.vertical: AppScrollBar {}
-                            ScrollBar.horizontal: AppScrollBar {}
+                        LauncherIconButton {
+                            width: 30
+                            height: 30
+                            iconSource: "icons/back.svg"
+                            toolTip: "Назад к приключениям"
+                            visible: launcherWindow.scenesMode
+                            enabled: visible
+                            onClicked: appController.leave_launcher_adventure()
+                        }
 
-                            delegate: Item {
-                                id: adventureDelegate
-                                width: adventuresView.width
-                                height: 48
-                                property bool hovered: hoverHandler.hovered
+                        Label {
+                            Layout.fillWidth: true
+                            text: launcherWindow.scenesMode ? appController.launcherAdventure : "Приключения"
+                            color: "#E4E4E4"
+                            font.pixelSize: 18
+                            font.weight: Font.DemiBold
+                            elide: Text.ElideRight
+                        }
 
-                                LauncherRowWell {
-                                    anchors.fill: parent
-                                    anchors.margins: 1
-                                    active: ListView.isCurrentItem
-                                    hovered: adventureDelegate.hovered
-
-                                    RowLayout {
-                                        anchors.fill: parent
-                                        anchors.leftMargin: 15
-                                        anchors.rightMargin: 8
-                                        spacing: 8
-
-                                        Label {
-                                            Layout.fillWidth: true
-                                            text: modelData.name
-                                            color: ListView.isCurrentItem ? "#F0F0F0" : "#B8B8B8"
-                                            font.pixelSize: 14
-                                            font.weight: ListView.isCurrentItem ? Font.DemiBold : Font.Medium
-                                            elide: Text.ElideRight
-                                            verticalAlignment: Text.AlignVCenter
-                                        }
-
-                                        Row {
-                                            anchors.verticalCenter: parent.verticalCenter
-                                            spacing: 5
-                                            visible: true
-
-                                            LauncherIconButton {
-                                                width: 24
-                                                height: 24
-                                                iconSource: "icons/scene_edit.svg"
-                                                toolTip: "Переименовать"
-                                                onClicked: launcherWindow.openEditAdventureDialog(index)
-                                            }
-                                            LauncherIconButton {
-                                                width: 24
-                                                height: 24
-                                                iconSource: "icons/clear.svg"
-                                                toolTip: "Удалить"
-                                                onClicked: {
-                                                    appController.delete_adventure(modelData.name)
-                                                    launcherWindow.selectedAdventureIndex = -1
-                                                    launcherWindow.selectedSceneIndex = -1
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
-
-                                HoverHandler { id: hoverHandler }
-                                TapHandler {
-                                    acceptedButtons: Qt.LeftButton
-                                    gesturePolicy: TapHandler.ReleaseWithinBounds
-                                    onTapped: {
-                                        launcherWindow.selectedAdventureIndex = index
-                                        launcherWindow.selectedSceneIndex = -1
-                                        appController.select_adventure(modelData.name)
-                                    }
+                        LauncherIconButton {
+                            width: 30
+                            height: 30
+                            glyph: "+"
+                            fontSize: 20
+                            toolTip: launcherWindow.scenesMode ? "Добавить сцену" : "Добавить приключение"
+                            onClicked: {
+                                if (launcherWindow.scenesMode) {
+                                    launcherWindow.openCreateSceneDialog()
+                                } else {
+                                    launcherWindow.openCreateAdventureDialog()
                                 }
                             }
                         }
                     }
 
-                    LauncherPanel {
+                    Rectangle {
+                        Layout.fillWidth: true
+                        Layout.preferredHeight: 1
+                        color: "#3A3B3F"
+                        opacity: 0.65
+                    }
+
+                    Item {
                         Layout.fillWidth: true
                         Layout.fillHeight: true
-                        Layout.preferredWidth: 1
-                        title: appController.currentAdventure ? ("Сцены: " + appController.currentAdventure) : "Сцены"
-                        addEnabled: appController.currentAdventure.length > 0
-                        onAddClicked: launcherWindow.openCreateSceneDialog()
 
                         ListView {
-                            id: scenesView
+                            id: explorerView
                             anchors.fill: parent
                             anchors.margins: 2
                             spacing: 12
                             clip: true
                             boundsBehavior: Flickable.StopAtBounds
-                            model: appController.scenesModel
-                            currentIndex: launcherWindow.selectedSceneIndex
+                            model: launcherWindow.scenesMode ? appController.scenesModel : appController.adventuresModel
                             ScrollBar.vertical: AppScrollBar {}
                             ScrollBar.horizontal: AppScrollBar {}
 
                             delegate: Item {
-                                id: sceneDelegate
-                                width: scenesView.width
-                                height: 48
-                                property bool hovered: hoverHandler.hovered
+                                id: explorerDelegate
+                                property bool scenesMode: launcherWindow.scenesMode
+                                property string itemName: modelData && modelData.name ? modelData.name : ""
                                 property real dragY: 0
                                 property real dragDeltaY: 0
+                                width: explorerView.width
+                                height: 48
+                                z: dragHandler.active ? 20 : 1
 
                                 Translate {
                                     id: dragTranslate
-                                    y: sceneDelegate.dragY
+                                    y: explorerDelegate.dragY
                                 }
                                 transform: [dragTranslate]
-                                z: dragHandler.active ? 20 : 1
 
-                                LauncherRowWell {
+                                LauncherRowButton {
+                                    id: rowButton
                                     anchors.fill: parent
                                     anchors.margins: 1
-                                    active: ListView.isCurrentItem
-                                    hovered: sceneDelegate.hovered
+                                    dragging: dragHandler.active
 
                                     RowLayout {
                                         anchors.fill: parent
@@ -925,85 +873,103 @@ Window {
                                         anchors.rightMargin: 8
                                         spacing: 8
 
-                                        Label {
+                                        Item {
                                             Layout.fillWidth: true
-                                            text: modelData.name
-                                            color: ListView.isCurrentItem ? "#F0F0F0" : "#B8B8B8"
-                                            font.pixelSize: 14
-                                            font.weight: ListView.isCurrentItem ? Font.DemiBold : Font.Medium
-                                            elide: Text.ElideRight
-                                            verticalAlignment: Text.AlignVCenter
+                                            Layout.fillHeight: true
+
+                                            Label {
+                                                anchors.fill: parent
+                                                text: explorerDelegate.itemName
+                                                color: "#C9C9C9"
+                                                font.pixelSize: 14
+                                                font.weight: Font.Medium
+                                                elide: Text.ElideRight
+                                                verticalAlignment: Text.AlignVCenter
+                                            }
+
+                                            TapHandler {
+                                                acceptedButtons: Qt.LeftButton
+                                                gesturePolicy: TapHandler.ReleaseWithinBounds
+                                                onTapped: {
+                                                    if (explorerDelegate.scenesMode) {
+                                                        appController.open_scene(explorerDelegate.itemName)
+                                                    } else {
+                                                        appController.enter_launcher_adventure(explorerDelegate.itemName)
+                                                    }
+                                                }
+                                            }
                                         }
 
                                         Row {
                                             anchors.verticalCenter: parent.verticalCenter
                                             spacing: 5
-                                            visible: true
 
                                             LauncherIconButton {
                                                 width: 24
                                                 height: 24
                                                 iconSource: "icons/scene_edit.svg"
-                                                toolTip: "Изменить сцену"
+                                                toolTip: explorerDelegate.scenesMode ? "Изменить сцену" : "Переименовать приключение"
                                                 onClicked: {
-                                                    launcherWindow.selectedSceneIndex = index
-                                                    launcherWindow.openEditSceneDialog()
+                                                    if (explorerDelegate.scenesMode) {
+                                                        launcherWindow.openEditSceneDialog(explorerDelegate.itemName)
+                                                    } else {
+                                                        launcherWindow.openEditAdventureDialog(explorerDelegate.itemName)
+                                                    }
                                                 }
                                             }
+
                                             LauncherIconButton {
                                                 width: 24
                                                 height: 24
                                                 iconSource: "icons/clear.svg"
-                                                toolTip: "Удалить сцену"
+                                                toolTip: explorerDelegate.scenesMode ? "Удалить сцену" : "Удалить приключение"
                                                 onClicked: {
-                                                    appController.delete_scene(modelData.name)
-                                                    launcherWindow.selectedSceneIndex = -1
+                                                    if (explorerDelegate.scenesMode) {
+                                                        appController.delete_scene(explorerDelegate.itemName)
+                                                    } else {
+                                                        appController.delete_adventure(explorerDelegate.itemName)
+                                                    }
                                                 }
                                             }
                                         }
                                     }
                                 }
 
-                                HoverHandler { id: hoverHandler }
-
                                 DragHandler {
                                     id: dragHandler
+                                    enabled: explorerDelegate.scenesMode
                                     target: null
                                     onActiveChanged: {
                                         if (active) {
-                                            launcherWindow.selectedSceneIndex = index
-                                            sceneDelegate.dragDeltaY = 0
+                                            explorerDelegate.dragDeltaY = 0
                                             return
                                         }
-                                        var rowExtent = sceneDelegate.height + scenesView.spacing
-                                        var centerY = sceneDelegate.y + sceneDelegate.dragDeltaY + (sceneDelegate.height / 2)
+                                        var rowExtent = explorerDelegate.height + explorerView.spacing
+                                        var centerY = explorerDelegate.y + explorerDelegate.dragDeltaY + (explorerDelegate.height / 2)
                                         var rawIndex = Math.floor(centerY / Math.max(1, rowExtent))
                                         var toIndex = Math.max(0, Math.min(appController.scenesModel.length - 1, rawIndex))
                                         if (toIndex !== index) {
-                                            launcherWindow.moveSceneTo(modelData.name, toIndex)
+                                            launcherWindow.moveSceneTo(explorerDelegate.itemName, toIndex)
                                         }
-                                        sceneDelegate.dragY = 0
-                                        sceneDelegate.dragDeltaY = 0
+                                        explorerDelegate.dragY = 0
+                                        explorerDelegate.dragDeltaY = 0
                                     }
                                     onTranslationChanged: {
-                                        sceneDelegate.dragY = translation.y
-                                        sceneDelegate.dragDeltaY = translation.y
-                                    }
-                                }
-
-                                TapHandler {
-                                    acceptedButtons: Qt.LeftButton
-                                    gesturePolicy: TapHandler.ReleaseWithinBounds
-                                    onTapped: launcherWindow.selectedSceneIndex = index
-                                    onDoubleTapped: {
-                                        launcherWindow.selectedSceneIndex = index
-                                        var item = appController.scenesModel[index]
-                                        if (item) {
-                                            appController.open_scene(item.name)
-                                        }
+                                        explorerDelegate.dragY = translation.y
+                                        explorerDelegate.dragDeltaY = translation.y
                                     }
                                 }
                             }
+                        }
+
+                        Label {
+                            anchors.centerIn: parent
+                            visible: explorerView.count === 0
+                            text: launcherWindow.scenesMode
+                                ? "В этом приключении пока нет сцен"
+                                : "Приключений пока нет"
+                            color: launcherWindow.textSecondary
+                            font.pixelSize: 14
                         }
                     }
                 }
@@ -1012,26 +978,6 @@ Window {
     }
 
     Component.onCompleted: appController.refresh_library()
-
-    Connections {
-        target: appController
-        function onLibraryChanged() {
-            var adventuresCount = appController.adventuresModel.length
-            var targetAdventure = appController.currentAdventure
-            var targetIndex = -1
-            for (var i = 0; i < adventuresCount; i++) {
-                if (appController.adventuresModel[i].name === targetAdventure) {
-                    targetIndex = i
-                    break
-                }
-            }
-            launcherWindow.selectedAdventureIndex = targetIndex
-            var scenesCount = appController.scenesModel.length
-            if (launcherWindow.selectedSceneIndex >= scenesCount) {
-                launcherWindow.selectedSceneIndex = scenesCount > 0 ? scenesCount - 1 : -1
-            }
-        }
-    }
 
     Dialog {
         id: sceneDialog
@@ -1256,7 +1202,7 @@ Window {
                         accent: true
                         Layout.fillWidth: true
                         onClicked: {
-                            var ok = appController.save_scene_draft(launcherWindow.collectDialogDraft())
+                            var ok = appController.save_scene_draft_for_adventure(appController.launcherAdventure, launcherWindow.collectDialogDraft())
                             if (ok) {
                                 sceneDialog.close()
                             }
@@ -1686,4 +1632,3 @@ Window {
         }
     }
 }
-

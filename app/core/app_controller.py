@@ -42,7 +42,7 @@ class AppController(QObject):
 
         self._adventures: list[str] = []
         self._scenes: list[str] = []
-        self._current_adventure = ""
+        self._launcher_adventure = ""
 
         self._active_scene_name = ""
         self._active_scene_adventure = ""
@@ -246,8 +246,16 @@ class AppController(QObject):
         return [{"name": name} for name in self._scenes]
 
     @Property(str, notify=library_changed)
+    def launcherAdventure(self) -> str:
+        return self._launcher_adventure
+
+    @Property(str, notify=library_changed)
     def currentAdventure(self) -> str:
-        return self._current_adventure
+        return self._launcher_adventure
+
+    @Property(str, notify=scene_view_changed)
+    def activeAdventure(self) -> str:
+        return self._active_scene_adventure
 
     @Property(str, notify=scene_view_changed)
     def currentScene(self) -> str:
@@ -527,20 +535,34 @@ class AppController(QObject):
     @Slot()
     def refresh_library(self) -> None:
         self._adventures = self._adventure_service.list_adventures()
-        if self._current_adventure not in self._adventures:
-            self._current_adventure = self._adventures[0] if self._adventures else ""
+        if self._launcher_adventure not in self._adventures:
+            self._launcher_adventure = ""
+        if self._active_scene_adventure and self._active_scene_adventure not in self._adventures:
+            self._clear_active_scene()
         self._refresh_scenes()
         self._emit_library_changed()
 
     @Slot(str)
     def select_adventure(self, name: str) -> None:
+        self.enter_launcher_adventure(name)
+
+    @Slot(str)
+    def enter_launcher_adventure(self, name: str) -> None:
         selected = name.strip()
         if not selected:
             return
         if selected not in self._adventures:
             self._set_status(f"Приключение '{selected}' не найдено.")
             return
-        self._current_adventure = selected
+        self._launcher_adventure = selected
+        self._refresh_scenes()
+        self._emit_library_changed()
+
+    @Slot()
+    def leave_launcher_adventure(self) -> None:
+        if not self._launcher_adventure:
+            return
+        self._launcher_adventure = ""
         self._refresh_scenes()
         self._emit_library_changed()
 
@@ -552,7 +574,6 @@ class AppController(QObject):
             self._set_status(str(exc))
             return
         self._adventures = self._adventure_service.list_adventures()
-        self._current_adventure = created
         self._refresh_scenes()
         self._set_status(f"Приключение '{created}' создано.")
         self._emit_library_changed()
@@ -567,8 +588,8 @@ class AppController(QObject):
 
         deleted = name.strip()
         self._adventures = self._adventure_service.list_adventures()
-        if deleted == self._current_adventure:
-            self._current_adventure = self._adventures[0] if self._adventures else ""
+        if deleted == self._launcher_adventure:
+            self._launcher_adventure = ""
             self._refresh_scenes()
         if deleted == self._active_scene_adventure:
             self._clear_active_scene()
@@ -585,8 +606,8 @@ class AppController(QObject):
             self._set_status(str(exc))
             return
         self._adventures = self._adventure_service.list_adventures()
-        if self._current_adventure == old_name:
-            self._current_adventure = renamed
+        if self._launcher_adventure == old_name:
+            self._launcher_adventure = renamed
             self._refresh_scenes()
         if self._active_scene_adventure == old_name:
             self._active_scene_adventure = renamed
@@ -595,12 +616,12 @@ class AppController(QObject):
 
     @Slot(str)
     def create_scene(self, scene_name: str) -> None:
-        if not self._current_adventure:
+        if not self._launcher_adventure:
             self._set_status("Сначала выберите приключение.")
             return
         try:
             created = self._adventure_service.create_scene(
-                self._current_adventure,
+                self._launcher_adventure,
                 scene_name,
                 self._settings["default_scene"],
             )
@@ -613,16 +634,16 @@ class AppController(QObject):
 
     @Slot(str)
     def delete_scene(self, scene_name: str) -> None:
-        if not self._current_adventure:
+        if not self._launcher_adventure:
             self._set_status("Сначала выберите приключение.")
             return
         try:
-            self._adventure_service.delete_scene(self._current_adventure, scene_name)
+            self._adventure_service.delete_scene(self._launcher_adventure, scene_name)
         except ValueError as exc:
             self._set_status(str(exc))
             return
         if (
-            self._active_scene_adventure == self._current_adventure
+            self._active_scene_adventure == self._launcher_adventure
             and self._active_scene_name == scene_name.strip()
         ):
             self._clear_active_scene()
@@ -633,12 +654,12 @@ class AppController(QObject):
 
     @Slot(str, int)
     def move_scene(self, scene_name: str, direction: int) -> None:
-        if not self._current_adventure:
+        if not self._launcher_adventure:
             self._set_status("Сначала выберите приключение.")
             return
         try:
             self._adventure_service.move_scene(
-                self._current_adventure,
+                self._launcher_adventure,
                 scene_name,
                 self._safe_int(direction, 0),
             )
@@ -650,7 +671,7 @@ class AppController(QObject):
 
     @Slot(str)
     def open_scene(self, scene_name: str) -> None:
-        if not self._current_adventure:
+        if not self._launcher_adventure:
             self._set_status("Сначала выберите приключение.")
             return
         selected = scene_name.strip()
@@ -658,7 +679,7 @@ class AppController(QObject):
             self._set_status(f"Сцена '{selected}' не найдена.")
             return
         try:
-            self._open_scene_internal(self._current_adventure, selected)
+            self._open_scene_internal(self._launcher_adventure, selected)
         except ValueError as exc:
             self._set_status(str(exc))
 
@@ -698,15 +719,21 @@ class AppController(QObject):
 
     @Slot(str, result="QVariantMap")
     def load_scene_draft(self, scene_name: str) -> dict[str, Any]:
-        if not self._current_adventure:
+        adventure_name = self._launcher_adventure or self._active_scene_adventure
+        return self.load_scene_draft_for_adventure(adventure_name, scene_name)
+
+    @Slot(str, str, result="QVariantMap")
+    def load_scene_draft_for_adventure(self, adventure_name: str, scene_name: str) -> dict[str, Any]:
+        adventure = adventure_name.strip()
+        if not adventure:
             self._set_status("Сначала выберите приключение.")
             return {}
         selected = scene_name.strip()
         if not selected:
             return {}
         try:
-            scene_data = self._adventure_service.load_scene(self._current_adventure, selected)
-            scene_dir = self._adventure_service.scene_path(self._current_adventure, selected)
+            scene_data = self._adventure_service.load_scene(adventure, selected)
+            scene_dir = self._adventure_service.scene_path(adventure, selected)
         except ValueError as exc:
             self._set_status(str(exc))
             return {}
@@ -730,8 +757,14 @@ class AppController(QObject):
 
     @Slot("QVariantMap", result=bool)
     def save_scene_draft(self, draft: dict[str, Any]) -> bool:
-        if not self._current_adventure:
-            self._set_status("Select an adventure first.")
+        adventure_name = self._launcher_adventure or self._active_scene_adventure
+        return self.save_scene_draft_for_adventure(adventure_name, draft)
+
+    @Slot(str, "QVariantMap", result=bool)
+    def save_scene_draft_for_adventure(self, adventure_name: str, draft: dict[str, Any]) -> bool:
+        adventure = adventure_name.strip()
+        if not adventure:
+            self._set_status("Сначала выберите приключение.")
             return False
 
         mode = str(draft.get("mode", "create")).strip().lower()
@@ -746,7 +779,7 @@ class AppController(QObject):
         try:
             if mode == "create":
                 target_name = self._adventure_service.create_scene(
-                    self._current_adventure,
+                    adventure,
                     scene_name,
                     payload,
                 )
@@ -758,35 +791,35 @@ class AppController(QObject):
                 if scene_name != original_name:
                     # On Windows the active scene directory may be locked by media playback.
                     if (
-                        self._active_scene_adventure == self._current_adventure
+                        self._active_scene_adventure == adventure
                         and self._active_scene_name == original_name
                     ):
                         self._save_active_scene_if_needed(force=True)
                         self._clear_active_scene()
                         renamed_active_scene = True
                     target_name = self._adventure_service.rename_scene(
-                        self._current_adventure,
+                        adventure,
                         original_name,
                         scene_name,
                     )
 
-            scene_dir = self._adventure_service.scene_path(self._current_adventure, target_name)
-            existing = self._adventure_service.load_scene(self._current_adventure, target_name)
+            scene_dir = self._adventure_service.scene_path(adventure, target_name)
+            existing = self._adventure_service.load_scene(adventure, target_name)
             validation_error = self._validate_scene_media_payload(scene_dir, payload)
             if validation_error:
                 if renamed_active_scene and original_name:
                     try:
-                        self._open_scene_internal(self._current_adventure, original_name)
+                        self._open_scene_internal(adventure, original_name)
                     except ValueError:
                         pass
                 self._set_status(validation_error)
                 return False
             final_payload = self._prepare_scene_payload_for_storage(scene_dir, payload, existing)
-            self._adventure_service.save_scene(self._current_adventure, target_name, final_payload)
+            self._adventure_service.save_scene(adventure, target_name, final_payload)
         except (ValueError, OSError) as exc:
             if renamed_active_scene and original_name:
                 try:
-                    self._open_scene_internal(self._current_adventure, original_name)
+                    self._open_scene_internal(adventure, original_name)
                 except ValueError:
                     pass
             self._set_status(str(exc))
@@ -797,11 +830,11 @@ class AppController(QObject):
         self._set_status(f"Scene '{target_name}' saved.")
 
         if (
-            self._active_scene_adventure == self._current_adventure
+            self._active_scene_adventure == adventure
             and self._active_scene_name in {original_name, target_name}
         ):
             try:
-                self.open_scene(target_name)
+                self._open_scene_internal(adventure, target_name)
             except Exception as exc:
                 self._set_status(str(exc))
                 return False
@@ -1511,10 +1544,10 @@ class AppController(QObject):
         return path.resolve().as_uri()
 
     def _refresh_scenes(self) -> None:
-        if not self._current_adventure:
+        if not self._launcher_adventure:
             self._scenes = []
             return
-        self._scenes = self._adventure_service.list_scenes(self._current_adventure)
+        self._scenes = self._adventure_service.list_scenes(self._launcher_adventure)
 
     def _open_scene_internal(self, adventure_name: str, scene_name: str) -> None:
         if self._active_scene_name:
@@ -1544,9 +1577,6 @@ class AppController(QObject):
         self._scene_dirty = False
         self._undo_stack = []
 
-        self._current_adventure = adventure_name
-        self._refresh_scenes()
-        self._emit_library_changed()
         self._emit_scene_view_changed()
 
         self._event_bus.publish(

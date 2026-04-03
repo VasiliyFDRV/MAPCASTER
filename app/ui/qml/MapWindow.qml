@@ -223,7 +223,7 @@ Window {
     }
 
     function sceneIdentity() {
-        return String(appController.currentAdventure || "") + "::" + String(appController.currentScene || "")
+        return String(appController.activeAdventure || "") + "::" + String(appController.currentScene || "")
     }
 
     function penBrushSizePx() {
@@ -1380,7 +1380,7 @@ Window {
         if (!appController.currentScene || appController.currentScene.length === 0) {
             return
         }
-        var draft = appController.load_scene_draft(appController.currentScene)
+        var draft = appController.load_scene_draft_for_adventure(appController.activeAdventure, appController.currentScene)
         if (!draft || !draft.map || !draft.background || !draft.grid) {
             return
         }
@@ -1436,7 +1436,7 @@ Window {
     }
 
     function applySceneEditorDraft() {
-        var ok = appController.save_scene_draft(collectSceneEditorDraft())
+        var ok = appController.save_scene_draft_for_adventure(appController.activeAdventure, collectSceneEditorDraft())
         if (ok) {
             sceneEditPopup.close()
         }
