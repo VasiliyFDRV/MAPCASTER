@@ -495,7 +495,7 @@ Window {
                 insetLightOffset: -7
                 insetLightRadius: 13
                 insetLightSamples: 29
-                insetLightColor: "#6A3B3C40"
+                insetLightColor: "#3B3C40"
                 contentPadding: 20
 
                 ColumnLayout {
