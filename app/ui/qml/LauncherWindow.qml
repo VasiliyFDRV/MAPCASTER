@@ -6,6 +6,7 @@ import QtQuick.Window
 import QtQuick.Effects
 import Qt5Compat.GraphicalEffects
 import "components"
+import "components/neumo"
 
 Window {
     id: launcherWindow
@@ -33,6 +34,7 @@ Window {
     property color bgDeep: "#2D2D2D"
     property color bgCard: "#2D2D2D"
     property color bgCardSoft: "#2D2D2D"
+    property var neumoTheme: NeumoTheme { baseColor: bgBase; textPrimary: textPrimary; textSecondary: textSecondary }
     property color lineColor: "#3B3C40"
     property color textPrimary: "#D0D0D0"
     property color textSecondary: "#909090"
@@ -364,276 +366,8 @@ Window {
         }
     }
 
-    component LauncherRaisedSurface: Item {
-        id: raisedSurface
-        property real radius: 18
-        property color fillColor: launcherWindow.bgCard
-        property real shadowOffset: 6
-        property real shadowRadius: 12
-        property int shadowSamples: 25
-        property color shadowDarkColor: "#B8151618"
-        property color shadowLightColor: "#703B3C40"
-        property real contentPadding: 0
-        default property alias contentData: contentItem.data
-        clip: false
-
-        Rectangle {
-            id: base
-            anchors.fill: parent
-            radius: raisedSurface.radius
-            color: raisedSurface.fillColor
-            layer.enabled: true
-            layer.effect: DropShadow {
-                transparentBorder: true
-                horizontalOffset: raisedSurface.shadowOffset
-                verticalOffset: raisedSurface.shadowOffset
-                radius: raisedSurface.shadowRadius
-                samples: raisedSurface.shadowSamples
-                color: raisedSurface.shadowDarkColor
-            }
-        }
-
-        DropShadow {
-            anchors.fill: base
-            source: base
-            transparentBorder: true
-            horizontalOffset: -raisedSurface.shadowOffset
-            verticalOffset: -raisedSurface.shadowOffset
-            radius: raisedSurface.shadowRadius
-            samples: raisedSurface.shadowSamples
-            color: raisedSurface.shadowLightColor
-            z: -1
-        }
-
-        Item {
-            id: contentItem
-            anchors.fill: parent
-            anchors.margins: raisedSurface.contentPadding
-        }
-    }
-
-    component LauncherInsetSurface: Item {
-        id: insetSurface
-        property real radius: 20
-        property color fillColor: launcherWindow.bgBase
-        property real insetOffset: 6
-        property real insetDarkRadius: 12
-        property int insetDarkSamples: 31
-        property color insetDarkColor: "#CC151618"
-        property real insetLightOffset: -6
-        property real insetLightRadius: 10
-        property int insetLightSamples: 25
-        property color insetLightColor: "#663B3C40"
-        property real contentPadding: 0
-        default property alias contentData: contentItem.data
-
-        Rectangle {
-            id: insetBase
-            anchors.fill: parent
-            radius: insetSurface.radius
-            color: insetSurface.fillColor
-        }
-
-        InnerShadow {
-            id: insetDark
-            anchors.fill: insetBase
-            source: insetBase
-            horizontalOffset: insetSurface.insetOffset
-            verticalOffset: insetSurface.insetOffset
-            radius: insetSurface.insetDarkRadius
-            samples: insetSurface.insetDarkSamples
-            color: insetSurface.insetDarkColor
-        }
-
-        InnerShadow {
-            anchors.fill: insetBase
-            source: insetDark
-            horizontalOffset: insetSurface.insetLightOffset
-            verticalOffset: insetSurface.insetLightOffset
-            radius: insetSurface.insetLightRadius
-            samples: insetSurface.insetLightSamples
-            color: insetSurface.insetLightColor
-        }
-
-        Item {
-            id: contentItem
-            anchors.fill: parent
-            anchors.margins: insetSurface.contentPadding
-        }
-    }
-
-    component LauncherIconButton: Item {
-        id: iconRoot
-        property string iconSource: ""
-        property string glyph: ""
-        property string toolTip: ""
-        property int fontSize: 14
-        property real buttonSize: Math.max(width, height)
-        property bool largeButton: buttonSize >= 40
-        property bool mediumButton: buttonSize >= 30 && buttonSize < 40
-        property real outerOffset: largeButton ? 6 : (mediumButton ? 4 : 2)
-        property real outerRadius: largeButton ? 12 : (mediumButton ? 8.5 : 4.5)
-        property int outerSamples: largeButton ? 25 : (mediumButton ? 21 : 15)
-        property real innerOffset: largeButton ? 3 : (mediumButton ? 2 : 1.2)
-        property real innerRadius: largeButton ? 7 : (mediumButton ? 5 : 3.2)
-        property int innerSamples: largeButton ? 21 : (mediumButton ? 17 : 11)
-        property color outerDarkColor: largeButton ? "#B8151618" : (mediumButton ? "#99151618" : "#70151618")
-        property color outerLightColor: largeButton ? "#A63B3C40" : (mediumButton ? "#8A3B3C40" : "#6A3B3C40")
-        property color innerDarkColor: largeButton ? "#D0151618" : (mediumButton ? "#A6151618" : "#7A151618")
-        property color innerLightColor: largeButton ? "#7C3B3C40" : (mediumButton ? "#5A3B3C40" : "#423B3C40")
-        property real tipX: 0
-        property real tipY: 0
-        signal clicked()
-        width: 24
-        height: 24
-
-        function updateTipPosition() {
-            if (!tipPopup.visible || !tipPopup.parent) {
-                return
-            }
-            var p = iconRoot.mapToItem(tipPopup.parent, iconRoot.width / 2, 0)
-            var xPos = Math.round(p.x - tipPopup.width / 2)
-            var yPos = Math.round(p.y - tipPopup.height - 8)
-            var maxX = Math.max(0, tipPopup.parent.width - tipPopup.width)
-            var maxY = Math.max(0, tipPopup.parent.height - tipPopup.height)
-            iconRoot.tipX = Math.max(0, Math.min(xPos, maxX))
-            iconRoot.tipY = Math.max(0, Math.min(yPos, maxY))
-        }
-
-        Rectangle {
-            id: bg
-            anchors.fill: parent
-            radius: largeButton ? 12 : (mediumButton ? 9 : 7)
-            color: launcherWindow.bgBase
-        }
-
-        DropShadow {
-            anchors.fill: bg
-            source: bg
-            transparentBorder: true
-            horizontalOffset: iconRoot.outerOffset
-            verticalOffset: iconRoot.outerOffset
-            radius: iconRoot.outerRadius
-            samples: iconRoot.outerSamples
-            color: iconRoot.outerDarkColor
-            visible: !hitArea.pressed
-            z: -1
-        }
 
 
-        DropShadow {
-            anchors.fill: bg
-            source: bg
-            transparentBorder: true
-            horizontalOffset: -iconRoot.outerOffset
-            verticalOffset: -iconRoot.outerOffset
-            radius: iconRoot.outerRadius
-            samples: iconRoot.outerSamples
-            color: iconRoot.outerLightColor
-            visible: !hitArea.pressed
-            z: -2
-        }
-
-        InnerShadow {
-            id: buttonInsetDark
-            anchors.fill: bg
-            source: bg
-            horizontalOffset: iconRoot.innerOffset
-            verticalOffset: iconRoot.innerOffset
-            radius: iconRoot.innerRadius
-            samples: iconRoot.innerSamples
-            color: iconRoot.innerDarkColor
-            visible: hitArea.pressed
-        }
-
-        InnerShadow {
-            anchors.fill: bg
-            source: buttonInsetDark
-            horizontalOffset: -iconRoot.innerOffset
-            verticalOffset: -iconRoot.innerOffset
-            radius: Math.max(2, iconRoot.innerRadius - 1)
-            samples: iconRoot.innerSamples
-            color: iconRoot.innerLightColor
-            visible: hitArea.pressed
-        }
-
-
-
-        Image {
-            id: iconImage
-            anchors.centerIn: parent
-            width: Math.max(10, Math.min(18, parent.width - (largeButton ? 14 : 10)))
-            height: width
-            visible: iconRoot.iconSource.length > 0
-            source: iconRoot.iconSource
-            fillMode: Image.PreserveAspectFit
-            smooth: true
-            mipmap: true
-            sourceSize.width: Math.round(width * 2)
-            sourceSize.height: Math.round(height * 2)
-            opacity: 0.0
-        }
-
-        ColorOverlay {
-            anchors.fill: iconImage
-            source: iconImage
-            visible: iconImage.visible
-            color: iconRoot.enabled ? "#CFCFCF" : "#7A7A7A"
-        }
-
-        Text {
-            anchors.centerIn: parent
-            visible: (!iconImage.visible || iconImage.status !== Image.Ready) && iconRoot.glyph.length > 0
-            text: iconRoot.glyph
-            color: iconRoot.enabled ? "#CFCFCF" : "#7A7A7A"
-            font.pixelSize: iconRoot.fontSize
-            font.weight: Font.DemiBold
-        }
-
-        Popup {
-            id: tipPopup
-            parent: Overlay.overlay
-            modal: false
-            focus: false
-            closePolicy: Popup.NoAutoClose
-            visible: hitArea.containsMouse && iconRoot.toolTip.length > 0
-            x: iconRoot.tipX
-            y: iconRoot.tipY
-            padding: 8
-
-            onVisibleChanged: iconRoot.updateTipPosition()
-            onWidthChanged: iconRoot.updateTipPosition()
-            onHeightChanged: iconRoot.updateTipPosition()
-            Connections {
-                target: tipPopup.parent
-                enabled: tipPopup.visible && target !== null
-                function onWidthChanged() { iconRoot.updateTipPosition() }
-                function onHeightChanged() { iconRoot.updateTipPosition() }
-            }
-
-            contentItem: Text {
-                text: iconRoot.toolTip
-                color: "#E6E6E6"
-                font.pixelSize: 12
-            }
-            background: Rectangle {
-                radius: 8
-                color: "#2B2B2B"
-                border.width: 1
-                border.color: "#5E5E5E"
-            }
-        }
-
-        MouseArea {
-            id: hitArea
-            anchors.fill: parent
-            enabled: iconRoot.enabled
-            hoverEnabled: true
-            onPositionChanged: iconRoot.updateTipPosition()
-            onEntered: iconRoot.updateTipPosition()
-            onClicked: iconRoot.clicked()
-        }
-    }
 
     component LauncherPanel: Item {
         id: panel
@@ -642,7 +376,8 @@ Window {
         signal addClicked()
         default property alias contentData: contentContainer.data
 
-        LauncherRaisedSurface {
+        NeumoRaisedSurface {
+            theme: neumoTheme
             anchors.fill: parent
             radius: 22
             fillColor: launcherWindow.bgCard
@@ -667,7 +402,8 @@ Window {
                         elide: Text.ElideRight
                     }
 
-                    LauncherIconButton {
+                    NeumoIconButton {
+                        theme: neumoTheme
                         width: 30
                         height: 30
                         glyph: "+"
@@ -687,32 +423,6 @@ Window {
         }
     }
 
-    component LauncherRowButton: Item {
-        id: rowButton
-        property bool dragging: false
-        property bool hovered: hoverHandler.hovered
-        default property alias contentData: contentWrap.data
-
-        LauncherRaisedSurface {
-            id: rowSurface
-            anchors.fill: parent
-            radius: 13
-            fillColor: launcherWindow.bgBase
-            shadowOffset: rowButton.dragging ? 5 : (rowButton.hovered ? 4.5 : 4)
-            shadowRadius: rowButton.dragging ? 11 : 10
-            shadowSamples: 23
-            shadowDarkColor: rowButton.dragging ? "#BC151618" : "#9E151618"
-            shadowLightColor: rowButton.dragging ? "#7C3B3C40" : "#643B3C40"
-        }
-
-        Item {
-            id: contentWrap
-            parent: rowSurface
-            anchors.fill: rowSurface
-        }
-
-        HoverHandler { id: hoverHandler }
-    }
 
     Rectangle {
         anchors.fill: parent
@@ -752,7 +462,8 @@ Window {
                 RowLayout {
                     spacing: 14
 
-                    LauncherIconButton {
+                    NeumoIconButton {
+                        theme: neumoTheme
                         width: 44
                         height: 44
                         iconSource: "icons/dice.svg"
@@ -760,7 +471,8 @@ Window {
                         onClicked: appController.request_open_dice()
                     }
 
-                    LauncherIconButton {
+                    NeumoIconButton {
+                        theme: neumoTheme
                         width: 44
                         height: 44
                         iconSource: "icons/settings.svg"
@@ -770,7 +482,8 @@ Window {
                 }
             }
 
-            LauncherInsetSurface {
+            NeumoInsetSurface {
+                theme: neumoTheme
                 Layout.fillWidth: true
                 Layout.fillHeight: true
                 radius: 26
@@ -793,7 +506,8 @@ Window {
                         Layout.fillWidth: true
                         spacing: 10
 
-                        LauncherIconButton {
+                        NeumoIconButton {
+                            theme: neumoTheme
                             width: 30
                             height: 30
                             iconSource: "icons/back.svg"
@@ -812,7 +526,8 @@ Window {
                             elide: Text.ElideRight
                         }
 
-                        LauncherIconButton {
+                        NeumoIconButton {
+                            theme: neumoTheme
                             width: 30
                             height: 30
                             glyph: "+"
@@ -863,7 +578,8 @@ Window {
                                 }
                                 transform: [dragTranslate]
 
-                                LauncherRowButton {
+                                NeumoRowButton {
+                                    theme: neumoTheme
                                     id: rowButton
                                     anchors.fill: parent
                                     anchors.margins: 1
@@ -906,7 +622,8 @@ Window {
                                             anchors.verticalCenter: parent.verticalCenter
                                             spacing: 5
 
-                                            LauncherIconButton {
+                                            NeumoIconButton {
+                                                theme: neumoTheme
                                                 width: 24
                                                 height: 24
                                                 iconSource: "icons/scene_edit.svg"
@@ -920,7 +637,8 @@ Window {
                                                 }
                                             }
 
-                                            LauncherIconButton {
+                                            NeumoIconButton {
+                                                theme: neumoTheme
                                                 width: 24
                                                 height: 24
                                                 iconSource: "icons/clear.svg"
