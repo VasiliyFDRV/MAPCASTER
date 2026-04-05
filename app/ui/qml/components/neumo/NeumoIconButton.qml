@@ -93,8 +93,8 @@ Item {
         id: buttonInsetDark
         anchors.fill: bg
         source: bg
-        horizontalOffset: -iconRoot.innerOffset
-        verticalOffset: -iconRoot.innerOffset
+        horizontalOffset: iconRoot.innerOffset
+        verticalOffset: iconRoot.innerOffset
         radius: iconRoot.innerRadius
         samples: iconRoot.innerSamples
         color: iconRoot.innerDarkColor
@@ -104,8 +104,8 @@ Item {
     InnerShadow {
         anchors.fill: bg
         source: buttonInsetDark
-        horizontalOffset: iconRoot.innerOffset
-        verticalOffset: iconRoot.innerOffset
+        horizontalOffset: -iconRoot.innerOffset
+        verticalOffset: -iconRoot.innerOffset
         radius: Math.max(2, iconRoot.innerRadius - 1)
         samples: iconRoot.innerSamples
         color: iconRoot.innerLightColor
@@ -187,3 +187,5 @@ Item {
         onClicked: iconRoot.clicked()
     }
 }
+
+
