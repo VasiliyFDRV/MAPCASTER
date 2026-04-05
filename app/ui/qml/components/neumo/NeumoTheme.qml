@@ -31,6 +31,16 @@ QtObject {
     property color insetDarkColor: Qt.rgba(shadowDarkBase.r, shadowDarkBase.g, shadowDarkBase.b, insetDarkAlpha)
     property color insetLightColor: Qt.rgba(shadowLightBase.r, shadowLightBase.g, shadowLightBase.b, insetLightAlpha)
 
+    property real frameInsetOffset: 7
+    property real frameInsetDarkRadius: 15
+    property int frameInsetDarkSamples: 35
+    property real frameInsetDarkAlpha: insetDarkAlpha
+    property color frameInsetDarkColor: Qt.rgba(shadowDarkBase.r, shadowDarkBase.g, shadowDarkBase.b, frameInsetDarkAlpha)
+    property real frameInsetLightOffset: -7
+    property real frameInsetLightRadius: 13
+    property int frameInsetLightSamples: 29
+    property color frameInsetLightColor: shadowLightBase
+
     property real iconLargeThreshold: 40
     property real iconMediumThreshold: 30
 

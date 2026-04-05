@@ -484,18 +484,11 @@ Window {
 
             NeumoInsetSurface {
                 theme: neumoTheme
+                useFrameProfile: true
                 Layout.fillWidth: true
                 Layout.fillHeight: true
                 radius: 26
                 fillColor: launcherWindow.bgBase
-                insetOffset: 7
-                insetDarkRadius: 15
-                insetDarkSamples: 35
-                insetDarkColor: "#D0151618"
-                insetLightOffset: -7
-                insetLightRadius: 13
-                insetLightSamples: 29
-                insetLightColor: "#3B3C40"
                 contentPadding: 20
 
                 ColumnLayout {
@@ -1352,6 +1345,7 @@ Window {
         }
     }
 }
+
 
 
 

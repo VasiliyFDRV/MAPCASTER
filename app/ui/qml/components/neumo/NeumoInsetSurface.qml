@@ -5,6 +5,7 @@ import Qt5Compat.GraphicalEffects
 Item {
     id: root
     property var theme
+    property bool useFrameProfile: false
     property real radius: theme ? theme.insetRadius : 20
     property color fillColor: theme ? theme.baseColor : "#2D2D2D"
     property real insetOffset: theme ? theme.insetOffset : 6
@@ -18,6 +19,31 @@ Item {
     property real contentPadding: 0
     default property alias contentData: contentItem.data
 
+    property real effectiveInsetOffset: useFrameProfile
+        ? (theme ? theme.frameInsetOffset : insetOffset)
+        : insetOffset
+    property real effectiveInsetDarkRadius: useFrameProfile
+        ? (theme ? theme.frameInsetDarkRadius : insetDarkRadius)
+        : insetDarkRadius
+    property int effectiveInsetDarkSamples: useFrameProfile
+        ? (theme ? theme.frameInsetDarkSamples : insetDarkSamples)
+        : insetDarkSamples
+    property color effectiveInsetDarkColor: useFrameProfile
+        ? (theme ? theme.frameInsetDarkColor : insetDarkColor)
+        : insetDarkColor
+    property real effectiveInsetLightOffset: useFrameProfile
+        ? (theme ? theme.frameInsetLightOffset : insetLightOffset)
+        : insetLightOffset
+    property real effectiveInsetLightRadius: useFrameProfile
+        ? (theme ? theme.frameInsetLightRadius : insetLightRadius)
+        : insetLightRadius
+    property int effectiveInsetLightSamples: useFrameProfile
+        ? (theme ? theme.frameInsetLightSamples : insetLightSamples)
+        : insetLightSamples
+    property color effectiveInsetLightColor: useFrameProfile
+        ? (theme ? theme.frameInsetLightColor : insetLightColor)
+        : insetLightColor
+
     Rectangle {
         id: insetBase
         anchors.fill: parent
@@ -29,21 +55,21 @@ Item {
         id: insetDark
         anchors.fill: insetBase
         source: insetBase
-        horizontalOffset: root.insetOffset
-        verticalOffset: root.insetOffset
-        radius: root.insetDarkRadius
-        samples: root.insetDarkSamples
-        color: root.insetDarkColor
+        horizontalOffset: root.effectiveInsetOffset
+        verticalOffset: root.effectiveInsetOffset
+        radius: root.effectiveInsetDarkRadius
+        samples: root.effectiveInsetDarkSamples
+        color: root.effectiveInsetDarkColor
     }
 
     InnerShadow {
         anchors.fill: insetBase
         source: insetDark
-        horizontalOffset: -root.insetOffset
-        verticalOffset: -root.insetOffset
-        radius: root.insetLightRadius
-        samples: root.insetLightSamples
-        color: root.insetLightColor
+        horizontalOffset: root.effectiveInsetLightOffset
+        verticalOffset: root.effectiveInsetLightOffset
+        radius: root.effectiveInsetLightRadius
+        samples: root.effectiveInsetLightSamples
+        color: root.effectiveInsetLightColor
     }
 
     Item {
