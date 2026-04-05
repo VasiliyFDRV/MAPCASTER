@@ -59,6 +59,8 @@ Item {
         anchors.fill: parent
         radius: largeButton ? 12 : (mediumButton ? 9 : 7)
         color: theme ? theme.baseColor : "#2D2D2D"
+        border.width: theme ? theme.borderWidth : 1
+        border.color: theme ? theme.borderColor : Qt.rgba(1, 1, 1, 0.03)
     }
 
     DropShadow {

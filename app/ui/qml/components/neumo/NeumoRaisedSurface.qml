@@ -21,6 +21,8 @@ Item {
         anchors.fill: parent
         radius: root.radius
         color: root.fillColor
+        border.width: root.theme ? root.theme.borderWidth : 1
+        border.color: root.theme ? root.theme.borderColor : Qt.rgba(1, 1, 1, 0.03)
         layer.enabled: true
         layer.effect: DropShadow {
             transparentBorder: true
