@@ -26,7 +26,7 @@ QtObject {
     property real insetDarkRadius: 12
     property int insetDarkSamples: 31
     property real insetDarkAlpha: 0.86
-    property real insetLightOffset: -6
+    property real insetLightOffset: 6
     property real insetLightRadius: 10
     property int insetLightSamples: 25
     property real insetLightAlpha: raisedLightAlpha
@@ -38,7 +38,7 @@ QtObject {
     property int frameInsetDarkSamples: 35
     property real frameInsetDarkAlpha: insetDarkAlpha
     property color frameInsetDarkColor: Qt.rgba(shadowDarkBase.r, shadowDarkBase.g, shadowDarkBase.b, frameInsetDarkAlpha)
-    property real frameInsetLightOffset: -7
+    property real frameInsetLightOffset: 7
     property real frameInsetLightRadius: 13
     property int frameInsetLightSamples: 29
     property real frameInsetLightAlpha: insetLightAlpha

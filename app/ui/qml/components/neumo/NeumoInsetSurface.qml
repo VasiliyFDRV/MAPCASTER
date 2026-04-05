@@ -12,7 +12,7 @@ Item {
     property real insetDarkRadius: theme ? theme.insetDarkRadius : 12
     property int insetDarkSamples: theme ? theme.insetDarkSamples : 31
     property color insetDarkColor: theme ? theme.insetDarkColor : "#CC151618"
-    property real insetLightOffset: theme ? theme.insetLightOffset : -6
+    property real insetLightOffset: theme ? theme.insetLightOffset : 6
     property real insetLightRadius: theme ? theme.insetLightRadius : 10
     property int insetLightSamples: theme ? theme.insetLightSamples : 25
     property color insetLightColor: theme ? theme.insetLightColor : "#663B3C40"
@@ -57,8 +57,8 @@ Item {
         id: insetDark
         anchors.fill: insetBase
         source: insetBase
-        horizontalOffset: root.effectiveInsetOffset
-        verticalOffset: root.effectiveInsetOffset
+        horizontalOffset: -root.effectiveInsetOffset
+        verticalOffset: -root.effectiveInsetOffset
         radius: root.effectiveInsetDarkRadius
         samples: root.effectiveInsetDarkSamples
         color: root.effectiveInsetDarkColor
