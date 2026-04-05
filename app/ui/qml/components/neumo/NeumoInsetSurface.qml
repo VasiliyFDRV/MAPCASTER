@@ -57,8 +57,8 @@ Item {
         id: insetDark
         anchors.fill: insetBase
         source: insetBase
-        horizontalOffset: -root.effectiveInsetOffset
-        verticalOffset: -root.effectiveInsetOffset
+        horizontalOffset: root.effectiveInsetOffset
+        verticalOffset: root.effectiveInsetOffset
         radius: root.effectiveInsetDarkRadius
         samples: root.effectiveInsetDarkSamples
         color: root.effectiveInsetDarkColor
@@ -67,8 +67,8 @@ Item {
     InnerShadow {
         anchors.fill: insetBase
         source: insetBase
-        horizontalOffset: root.effectiveInsetLightOffset
-        verticalOffset: root.effectiveInsetLightOffset
+        horizontalOffset: -root.effectiveInsetLightOffset
+        verticalOffset: -root.effectiveInsetLightOffset
         radius: root.effectiveInsetLightRadius
         samples: root.effectiveInsetLightSamples
         color: root.effectiveInsetLightColor
@@ -80,3 +80,4 @@ Item {
         anchors.margins: root.contentPadding
     }
 }
+
