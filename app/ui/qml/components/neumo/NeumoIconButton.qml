@@ -1,4 +1,4 @@
-﻿import QtQuick
+import QtQuick
 import QtQuick.Controls
 import QtQuick.Effects
 import Qt5Compat.GraphicalEffects
@@ -33,9 +33,6 @@ Item {
         : (mediumButton ? (theme ? theme.iconInnerDarkColorMedium : "#A6151618") : (theme ? theme.iconInnerDarkColorSmall : "#7A151618"))
     property color innerLightColor: largeButton ? (theme ? theme.iconInnerLightColorLarge : "#7C3B3C40")
         : (mediumButton ? (theme ? theme.iconInnerLightColorMedium : "#5A3B3C40") : (theme ? theme.iconInnerLightColorSmall : "#423B3C40"))
-    property color innerRimBaseColor: largeButton ? (theme ? theme.iconInnerRimLightColorLarge : innerLightColor)
-        : (mediumButton ? (theme ? theme.iconInnerRimLightColorMedium : innerLightColor) : (theme ? theme.iconInnerRimLightColorSmall : innerLightColor))
-    property real innerRimBandSize: Math.max(10, Math.ceil(iconRoot.innerRadius * 2 + Math.abs(iconRoot.innerOffset) + (theme ? theme.borderWidth : 1) + 6))
     property color iconColor: theme ? theme.textPrimary : "#CFCFCF"
     property color iconDisabledColor: "#7A7A7A"
     property real tipX: 0
@@ -92,41 +89,15 @@ Item {
         z: -2
     }
 
-    InnerShadow {
-        id: buttonInsetDark
+    NeumoInsetBevel {
         anchors.fill: bg
-        source: bg
-        horizontalOffset: iconRoot.innerOffset
-        verticalOffset: iconRoot.innerOffset
-        radius: iconRoot.innerRadius
-        samples: iconRoot.innerSamples
-        color: iconRoot.innerDarkColor
-        visible: hitArea.pressed
-    }
-
-    NeumoInnerRim {
-        anchors.fill: bg
-        sourceItem: bg
-        horizontalOffset: -iconRoot.innerOffset
-        verticalOffset: -iconRoot.innerOffset
-        radius: Math.max(2, iconRoot.innerRadius - 1)
-        samples: iconRoot.innerSamples
-        rimColor: iconRoot.innerRimBaseColor
-        bandSize: iconRoot.innerRimBandSize
-        active: hitArea.pressed
-    }
-
-    NeumoInnerRim {
-        anchors.fill: bg
-        sourceItem: bg
-        horizontalOffset: -iconRoot.innerOffset
-        verticalOffset: -iconRoot.innerOffset
-        radius: Math.max(2, iconRoot.innerRadius - 1)
-        samples: iconRoot.innerSamples
-        rimColor: iconRoot.innerLightColor
-        bandSize: iconRoot.innerRimBandSize + (iconRoot.largeButton ? 4 : (iconRoot.mediumButton ? 3 : 2))
-        bandMidAlpha: 0.92
-        cornerMidAlpha: 0.96
+        radius: bg.radius
+        darkColor: iconRoot.innerDarkColor
+        lightColor: iconRoot.innerLightColor
+        darkOffset: iconRoot.innerOffset
+        lightOffset: -iconRoot.innerOffset
+        darkRadius: iconRoot.innerRadius
+        lightRadius: iconRoot.innerRadius
         active: hitArea.pressed
     }
 
@@ -205,6 +176,3 @@ Item {
         onClicked: iconRoot.clicked()
     }
 }
-
-
-
