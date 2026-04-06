@@ -33,8 +33,9 @@ Item {
         : (mediumButton ? (theme ? theme.iconInnerDarkColorMedium : "#A6151618") : (theme ? theme.iconInnerDarkColorSmall : "#7A151618"))
     property color innerLightColor: largeButton ? (theme ? theme.iconInnerLightColorLarge : "#7C3B3C40")
         : (mediumButton ? (theme ? theme.iconInnerLightColorMedium : "#5A3B3C40") : (theme ? theme.iconInnerLightColorSmall : "#423B3C40"))
-    property real innerDarkBand: Math.max(4, Math.ceil(Math.abs(iconRoot.innerOffset) + iconRoot.innerRadius * 0.75 + (theme ? theme.borderWidth : 1) + 1))
-    property real innerLightBand: Math.max(4, Math.ceil(Math.abs(iconRoot.innerOffset) + Math.max(2, iconRoot.innerRadius - 1) * 0.75 + (theme ? theme.borderWidth : 1) + 1))
+    property color innerRimLightColor: largeButton ? (theme ? theme.iconInnerRimLightColorLarge : innerLightColor)
+        : (mediumButton ? (theme ? theme.iconInnerRimLightColorMedium : innerLightColor) : (theme ? theme.iconInnerRimLightColorSmall : innerLightColor))
+    property real innerRimBandSize: Math.max(10, Math.ceil(iconRoot.innerRadius * 2 + Math.abs(iconRoot.innerOffset) + (theme ? theme.borderWidth : 1) + 6))
     property color iconColor: theme ? theme.textPrimary : "#CFCFCF"
     property color iconDisabledColor: "#7A7A7A"
     property real tipX: 0
@@ -91,15 +92,40 @@ Item {
         z: -2
     }
 
-    NeumoInsetBevel {
+    InnerShadow {
+        id: buttonInsetDark
         anchors.fill: bg
-        radius: bg.radius
-        borderWidth: theme ? theme.borderWidth : 1
-        darkColor: iconRoot.innerDarkColor
-        lightColor: iconRoot.innerLightColor
-        darkBand: iconRoot.innerDarkBand
-        lightBand: iconRoot.innerLightBand
+        source: bg
+        horizontalOffset: iconRoot.innerOffset
+        verticalOffset: iconRoot.innerOffset
+        radius: iconRoot.innerRadius
+        samples: iconRoot.innerSamples
+        color: iconRoot.innerDarkColor
         visible: hitArea.pressed
+    }
+
+    InnerShadow {
+        id: buttonInsetLight
+        anchors.fill: bg
+        source: buttonInsetDark
+        horizontalOffset: -iconRoot.innerOffset
+        verticalOffset: -iconRoot.innerOffset
+        radius: Math.max(2, iconRoot.innerRadius - 1)
+        samples: iconRoot.innerSamples
+        color: iconRoot.innerLightColor
+        visible: hitArea.pressed
+    }
+
+    NeumoInnerRim {
+        anchors.fill: bg
+        sourceItem: bg
+        horizontalOffset: -iconRoot.innerOffset
+        verticalOffset: -iconRoot.innerOffset
+        radius: Math.max(2, iconRoot.innerRadius - 1)
+        samples: iconRoot.innerSamples
+        rimColor: iconRoot.innerRimLightColor
+        bandSize: iconRoot.innerRimBandSize
+        active: hitArea.pressed
     }
 
     Image {
