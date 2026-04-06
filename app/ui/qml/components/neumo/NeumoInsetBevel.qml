@@ -72,49 +72,63 @@ Item {
 
             if (root.darkColor.a > 0) {
                 var darkBandOuter = rgbaString(root.darkColor, 1.0)
-                var darkBandMid = rgbaString(root.darkColor, 0.42)
+                var darkBandNear = rgbaString(root.darkColor, 0.72)
+                var darkBandMid = rgbaString(root.darkColor, 0.34)
+                var darkBandTail = rgbaString(root.darkColor, 0.06)
                 var darkTransparent = rgbaString(root.darkColor, 0.0)
-                var darkCornerMid = rgbaString(root.darkColor, 0.55)
+                var darkCornerMid = rgbaString(root.darkColor, 0.44)
 
                 if (root.darkOnTopLeft) {
                     var top = ctx.createLinearGradient(0, 0, 0, darkBand)
                     top.addColorStop(0.0, darkBandOuter)
-                    top.addColorStop(0.55, darkBandMid)
+                    top.addColorStop(0.18, darkBandNear)
+                    top.addColorStop(0.52, darkBandMid)
+                    top.addColorStop(0.88, darkBandTail)
                     top.addColorStop(1.0, darkTransparent)
                     ctx.fillStyle = top
                     ctx.fillRect(0, 0, w, darkBand)
 
                     var left = ctx.createLinearGradient(0, 0, darkBand, 0)
                     left.addColorStop(0.0, darkBandOuter)
-                    left.addColorStop(0.55, darkBandMid)
+                    left.addColorStop(0.18, darkBandNear)
+                    left.addColorStop(0.52, darkBandMid)
+                    left.addColorStop(0.88, darkBandTail)
                     left.addColorStop(1.0, darkTransparent)
                     ctx.fillStyle = left
                     ctx.fillRect(0, 0, darkBand, h)
 
                     var topLeft = ctx.createRadialGradient(0, 0, 0, 0, 0, darkCorner)
                     topLeft.addColorStop(0.0, darkBandOuter)
-                    topLeft.addColorStop(0.55, darkCornerMid)
+                    topLeft.addColorStop(0.22, darkBandNear)
+                    topLeft.addColorStop(0.58, darkCornerMid)
+                    topLeft.addColorStop(0.90, darkBandTail)
                     topLeft.addColorStop(1.0, darkTransparent)
                     ctx.fillStyle = topLeft
                     ctx.fillRect(0, 0, darkCorner, darkCorner)
                 } else {
                     var bottomDark = ctx.createLinearGradient(0, h, 0, h - darkBand)
                     bottomDark.addColorStop(0.0, darkBandOuter)
-                    bottomDark.addColorStop(0.55, darkBandMid)
+                    bottomDark.addColorStop(0.18, darkBandNear)
+                    bottomDark.addColorStop(0.52, darkBandMid)
+                    bottomDark.addColorStop(0.88, darkBandTail)
                     bottomDark.addColorStop(1.0, darkTransparent)
                     ctx.fillStyle = bottomDark
                     ctx.fillRect(0, h - darkBand, w, darkBand)
 
                     var rightDark = ctx.createLinearGradient(w, 0, w - darkBand, 0)
                     rightDark.addColorStop(0.0, darkBandOuter)
-                    rightDark.addColorStop(0.55, darkBandMid)
+                    rightDark.addColorStop(0.18, darkBandNear)
+                    rightDark.addColorStop(0.52, darkBandMid)
+                    rightDark.addColorStop(0.88, darkBandTail)
                     rightDark.addColorStop(1.0, darkTransparent)
                     ctx.fillStyle = rightDark
                     ctx.fillRect(w - darkBand, 0, darkBand, h)
 
                     var bottomRightDark = ctx.createRadialGradient(w, h, 0, w, h, darkCorner)
                     bottomRightDark.addColorStop(0.0, darkBandOuter)
-                    bottomRightDark.addColorStop(0.55, darkCornerMid)
+                    bottomRightDark.addColorStop(0.22, darkBandNear)
+                    bottomRightDark.addColorStop(0.58, darkCornerMid)
+                    bottomRightDark.addColorStop(0.90, darkBandTail)
                     bottomRightDark.addColorStop(1.0, darkTransparent)
                     ctx.fillStyle = bottomRightDark
                     ctx.fillRect(w - darkCorner, h - darkCorner, darkCorner, darkCorner)
@@ -123,49 +137,63 @@ Item {
 
             if (root.lightColor.a > 0) {
                 var lightBandOuter = rgbaString(root.lightColor, 1.0)
-                var lightBandMid = rgbaString(root.lightColor, 0.42)
+                var lightBandNear = rgbaString(root.lightColor, 0.70)
+                var lightBandMid = rgbaString(root.lightColor, 0.30)
+                var lightBandTail = rgbaString(root.lightColor, 0.05)
                 var lightTransparent = rgbaString(root.lightColor, 0.0)
-                var lightCornerMid = rgbaString(root.lightColor, 0.55)
+                var lightCornerMid = rgbaString(root.lightColor, 0.42)
 
                 if (root.lightOnBottomRight) {
                     var bottom = ctx.createLinearGradient(0, h, 0, h - lightBand)
                     bottom.addColorStop(0.0, lightBandOuter)
-                    bottom.addColorStop(0.55, lightBandMid)
+                    bottom.addColorStop(0.18, lightBandNear)
+                    bottom.addColorStop(0.52, lightBandMid)
+                    bottom.addColorStop(0.90, lightBandTail)
                     bottom.addColorStop(1.0, lightTransparent)
                     ctx.fillStyle = bottom
                     ctx.fillRect(0, h - lightBand, w, lightBand)
 
                     var right = ctx.createLinearGradient(w, 0, w - lightBand, 0)
                     right.addColorStop(0.0, lightBandOuter)
-                    right.addColorStop(0.55, lightBandMid)
+                    right.addColorStop(0.18, lightBandNear)
+                    right.addColorStop(0.52, lightBandMid)
+                    right.addColorStop(0.90, lightBandTail)
                     right.addColorStop(1.0, lightTransparent)
                     ctx.fillStyle = right
                     ctx.fillRect(w - lightBand, 0, lightBand, h)
 
                     var bottomRight = ctx.createRadialGradient(w, h, 0, w, h, lightCorner)
                     bottomRight.addColorStop(0.0, lightBandOuter)
-                    bottomRight.addColorStop(0.55, lightCornerMid)
+                    bottomRight.addColorStop(0.22, lightBandNear)
+                    bottomRight.addColorStop(0.58, lightCornerMid)
+                    bottomRight.addColorStop(0.90, lightBandTail)
                     bottomRight.addColorStop(1.0, lightTransparent)
                     ctx.fillStyle = bottomRight
                     ctx.fillRect(w - lightCorner, h - lightCorner, lightCorner, lightCorner)
                 } else {
                     var topLight = ctx.createLinearGradient(0, 0, 0, lightBand)
                     topLight.addColorStop(0.0, lightBandOuter)
-                    topLight.addColorStop(0.55, lightBandMid)
+                    topLight.addColorStop(0.18, lightBandNear)
+                    topLight.addColorStop(0.52, lightBandMid)
+                    topLight.addColorStop(0.90, lightBandTail)
                     topLight.addColorStop(1.0, lightTransparent)
                     ctx.fillStyle = topLight
                     ctx.fillRect(0, 0, w, lightBand)
 
                     var leftLight = ctx.createLinearGradient(0, 0, lightBand, 0)
                     leftLight.addColorStop(0.0, lightBandOuter)
-                    leftLight.addColorStop(0.55, lightBandMid)
+                    leftLight.addColorStop(0.18, lightBandNear)
+                    leftLight.addColorStop(0.52, lightBandMid)
+                    leftLight.addColorStop(0.90, lightBandTail)
                     leftLight.addColorStop(1.0, lightTransparent)
                     ctx.fillStyle = leftLight
                     ctx.fillRect(0, 0, lightBand, h)
 
                     var topLeftLight = ctx.createRadialGradient(0, 0, 0, 0, 0, lightCorner)
                     topLeftLight.addColorStop(0.0, lightBandOuter)
-                    topLeftLight.addColorStop(0.55, lightCornerMid)
+                    topLeftLight.addColorStop(0.22, lightBandNear)
+                    topLeftLight.addColorStop(0.58, lightCornerMid)
+                    topLeftLight.addColorStop(0.90, lightBandTail)
                     topLeftLight.addColorStop(1.0, lightTransparent)
                     ctx.fillStyle = topLeftLight
                     ctx.fillRect(0, 0, lightCorner, lightCorner)
