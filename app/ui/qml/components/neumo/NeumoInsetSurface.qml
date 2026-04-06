@@ -79,72 +79,15 @@ Item {
         color: root.effectiveInsetLightColor
     }
 
-    InnerShadow {
-        id: rimSource
+    NeumoInnerRim {
         anchors.fill: insetBase
-        source: insetBase
+        sourceItem: insetBase
         horizontalOffset: root.effectiveInsetLightOffset
         verticalOffset: root.effectiveInsetLightOffset
         radius: root.effectiveInsetLightRadius
         samples: root.effectiveInsetLightSamples
-        color: root.effectiveInsetRimLightColor
-        visible: false
-    }
-
-    Canvas {
-        id: rimMask
-        anchors.fill: insetBase
-        visible: false
-        renderTarget: Canvas.Image
-
-        onPaint: {
-            var ctx = getContext("2d")
-            ctx.reset()
-            ctx.clearRect(0, 0, width, height)
-
-            var band = Math.max(0, Math.min(root.lightRimBandSize, Math.min(width, height)))
-            if (band <= 0) {
-                return
-            }
-
-            var bottomGradient = ctx.createLinearGradient(0, height - band, 0, height)
-            bottomGradient.addColorStop(0.0, "rgba(255,255,255,0)")
-            bottomGradient.addColorStop(0.55, "rgba(255,255,255,0.72)")
-            bottomGradient.addColorStop(1.0, "rgba(255,255,255,1)")
-            ctx.fillStyle = bottomGradient
-            ctx.fillRect(0, height - band, width, band)
-
-            var rightGradient = ctx.createLinearGradient(width - band, 0, width, 0)
-            rightGradient.addColorStop(0.0, "rgba(255,255,255,0)")
-            rightGradient.addColorStop(0.55, "rgba(255,255,255,0.72)")
-            rightGradient.addColorStop(1.0, "rgba(255,255,255,1)")
-            ctx.fillStyle = rightGradient
-            ctx.fillRect(width - band, 0, band, height)
-
-            var cornerGradient = ctx.createRadialGradient(width, height, 0, width, height, band)
-            cornerGradient.addColorStop(0.0, "rgba(255,255,255,1)")
-            cornerGradient.addColorStop(0.6, "rgba(255,255,255,0.82)")
-            cornerGradient.addColorStop(1.0, "rgba(255,255,255,0)")
-            ctx.fillStyle = cornerGradient
-            ctx.beginPath()
-            ctx.moveTo(width, height)
-            ctx.lineTo(width - band, height)
-            ctx.arc(width, height, band, Math.PI, Math.PI * 1.5, false)
-            ctx.closePath()
-            ctx.fill()
-        }
-
-        onWidthChanged: requestPaint()
-        onHeightChanged: requestPaint()
-        Component.onCompleted: requestPaint()
-    }
-
-    OpacityMask {
-        anchors.fill: insetBase
-        source: rimSource
-        maskSource: rimMask
-        cached: true
-        visible: root.effectiveInsetRimLightColor.a > 0
+        rimColor: root.effectiveInsetRimLightColor
+        bandSize: root.lightRimBandSize
     }
 
     Item {
