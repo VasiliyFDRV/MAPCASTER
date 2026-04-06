@@ -1,4 +1,4 @@
-import QtQuick
+﻿import QtQuick
 import QtQuick.Controls
 import QtQuick.Effects
 import Qt5Compat.GraphicalEffects
@@ -104,18 +104,6 @@ Item {
         visible: hitArea.pressed
     }
 
-    InnerShadow {
-        id: buttonInsetLight
-        anchors.fill: bg
-        source: buttonInsetDark
-        horizontalOffset: -iconRoot.innerOffset
-        verticalOffset: -iconRoot.innerOffset
-        radius: Math.max(2, iconRoot.innerRadius - 1)
-        samples: iconRoot.innerSamples
-        color: iconRoot.innerLightColor
-        visible: hitArea.pressed
-    }
-
     NeumoInnerRim {
         anchors.fill: bg
         sourceItem: bg
@@ -126,6 +114,18 @@ Item {
         rimColor: iconRoot.innerRimLightColor
         bandSize: iconRoot.innerRimBandSize
         active: hitArea.pressed
+    }
+
+    InnerShadow {
+        id: buttonInsetLight
+        anchors.fill: bg
+        source: buttonInsetDark
+        horizontalOffset: -iconRoot.innerOffset
+        verticalOffset: -iconRoot.innerOffset
+        radius: Math.max(2, iconRoot.innerRadius - 1)
+        samples: iconRoot.innerSamples
+        color: iconRoot.innerLightColor
+        visible: hitArea.pressed
     }
 
     Image {

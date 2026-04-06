@@ -1,4 +1,4 @@
-import QtQuick
+﻿import QtQuick
 import QtQuick.Effects
 import Qt5Compat.GraphicalEffects
 
@@ -68,17 +68,6 @@ Item {
         color: root.effectiveInsetDarkColor
     }
 
-    InnerShadow {
-        id: insetLight
-        anchors.fill: insetBase
-        source: insetDark
-        horizontalOffset: root.effectiveInsetLightOffset
-        verticalOffset: root.effectiveInsetLightOffset
-        radius: root.effectiveInsetLightRadius
-        samples: root.effectiveInsetLightSamples
-        color: root.effectiveInsetLightColor
-    }
-
     NeumoInnerRim {
         anchors.fill: insetBase
         sourceItem: insetBase
@@ -88,6 +77,17 @@ Item {
         samples: root.effectiveInsetLightSamples
         rimColor: root.effectiveInsetRimLightColor
         bandSize: root.lightRimBandSize
+    }
+
+    InnerShadow {
+        id: insetLight
+        anchors.fill: insetBase
+        source: insetDark
+        horizontalOffset: root.effectiveInsetLightOffset
+        verticalOffset: root.effectiveInsetLightOffset
+        radius: root.effectiveInsetLightRadius
+        samples: root.effectiveInsetLightSamples
+        color: root.effectiveInsetLightColor
     }
 
     Item {

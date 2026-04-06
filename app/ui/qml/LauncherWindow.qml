@@ -10,8 +10,8 @@ import "components/neumo"
 
 Window {
     id: launcherWindow
-    width: 450
-    height: 370
+    width: 420
+    height: 400
     visible: true
     color: "#2D2D2D"
     title: "DnD Maps - Лаунчер"
@@ -1345,6 +1345,7 @@ Window {
         }
     }
 }
+
 
 
 
