@@ -1,4 +1,4 @@
-﻿import QtQuick
+import QtQuick
 import QtQuick.Controls
 import QtQuick.Effects
 import Qt5Compat.GraphicalEffects
@@ -33,6 +33,9 @@ Item {
         : (mediumButton ? (theme ? theme.iconInnerDarkColorMedium : "#A6151618") : (theme ? theme.iconInnerDarkColorSmall : "#7A151618"))
     property color innerLightColor: largeButton ? (theme ? theme.iconInnerLightColorLarge : "#7C3B3C40")
         : (mediumButton ? (theme ? theme.iconInnerLightColorMedium : "#5A3B3C40") : (theme ? theme.iconInnerLightColorSmall : "#423B3C40"))
+    property color innerRimLightColor: largeButton ? (theme ? theme.iconInnerRimLightColorLarge : innerLightColor)
+        : (mediumButton ? (theme ? theme.iconInnerRimLightColorMedium : innerLightColor) : (theme ? theme.iconInnerRimLightColorSmall : innerLightColor))
+    property real innerRimBandSize: Math.max(10, Math.ceil(iconRoot.innerRadius * 2 + Math.abs(iconRoot.innerOffset) + (theme ? theme.borderWidth : 1) + 6))
     property color iconColor: theme ? theme.textPrimary : "#CFCFCF"
     property color iconDisabledColor: "#7A7A7A"
     property real tipX: 0
@@ -102,14 +105,83 @@ Item {
     }
 
     InnerShadow {
+        id: buttonInsetLight
         anchors.fill: bg
-        source: bg
+        source: buttonInsetDark
         horizontalOffset: -iconRoot.innerOffset
         verticalOffset: -iconRoot.innerOffset
         radius: Math.max(2, iconRoot.innerRadius - 1)
         samples: iconRoot.innerSamples
         color: iconRoot.innerLightColor
         visible: hitArea.pressed
+    }
+
+    InnerShadow {
+        id: rimSource
+        anchors.fill: bg
+        source: bg
+        horizontalOffset: -iconRoot.innerOffset
+        verticalOffset: -iconRoot.innerOffset
+        radius: Math.max(2, iconRoot.innerRadius - 1)
+        samples: iconRoot.innerSamples
+        color: iconRoot.innerRimLightColor
+        visible: false
+    }
+
+    Canvas {
+        id: rimMask
+        anchors.fill: bg
+        visible: false
+        renderTarget: Canvas.Image
+
+        onPaint: {
+            var ctx = getContext("2d")
+            ctx.reset()
+            ctx.clearRect(0, 0, width, height)
+
+            var band = Math.max(0, Math.min(iconRoot.innerRimBandSize, Math.min(width, height)))
+            if (band <= 0) {
+                return
+            }
+
+            var bottomGradient = ctx.createLinearGradient(0, height - band, 0, height)
+            bottomGradient.addColorStop(0.0, "rgba(255,255,255,0)")
+            bottomGradient.addColorStop(0.55, "rgba(255,255,255,0.72)")
+            bottomGradient.addColorStop(1.0, "rgba(255,255,255,1)")
+            ctx.fillStyle = bottomGradient
+            ctx.fillRect(0, height - band, width, band)
+
+            var rightGradient = ctx.createLinearGradient(width - band, 0, width, 0)
+            rightGradient.addColorStop(0.0, "rgba(255,255,255,0)")
+            rightGradient.addColorStop(0.55, "rgba(255,255,255,0.72)")
+            rightGradient.addColorStop(1.0, "rgba(255,255,255,1)")
+            ctx.fillStyle = rightGradient
+            ctx.fillRect(width - band, 0, band, height)
+
+            var cornerGradient = ctx.createRadialGradient(width, height, 0, width, height, band)
+            cornerGradient.addColorStop(0.0, "rgba(255,255,255,1)")
+            cornerGradient.addColorStop(0.6, "rgba(255,255,255,0.82)")
+            cornerGradient.addColorStop(1.0, "rgba(255,255,255,0)")
+            ctx.fillStyle = cornerGradient
+            ctx.beginPath()
+            ctx.moveTo(width, height)
+            ctx.lineTo(width - band, height)
+            ctx.arc(width, height, band, Math.PI, Math.PI * 1.5, false)
+            ctx.closePath()
+            ctx.fill()
+        }
+
+        onWidthChanged: requestPaint()
+        onHeightChanged: requestPaint()
+        Component.onCompleted: requestPaint()
+    }
+
+    OpacityMask {
+        anchors.fill: bg
+        source: rimSource
+        maskSource: rimMask
+        cached: true
+        visible: hitArea.pressed && iconRoot.innerRimLightColor.a > 0
     }
 
     Image {
@@ -187,4 +259,3 @@ Item {
         onClicked: iconRoot.clicked()
     }
 }
-
