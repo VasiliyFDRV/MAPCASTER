@@ -33,7 +33,7 @@ Item {
         : (mediumButton ? (theme ? theme.iconInnerDarkColorMedium : "#A6151618") : (theme ? theme.iconInnerDarkColorSmall : "#7A151618"))
     property color innerLightColor: largeButton ? (theme ? theme.iconInnerLightColorLarge : "#7C3B3C40")
         : (mediumButton ? (theme ? theme.iconInnerLightColorMedium : "#5A3B3C40") : (theme ? theme.iconInnerLightColorSmall : "#423B3C40"))
-    property color innerRimLightColor: largeButton ? (theme ? theme.iconInnerRimLightColorLarge : innerLightColor)
+    property color innerRimBaseColor: largeButton ? (theme ? theme.iconInnerRimLightColorLarge : innerLightColor)
         : (mediumButton ? (theme ? theme.iconInnerRimLightColorMedium : innerLightColor) : (theme ? theme.iconInnerRimLightColorSmall : innerLightColor))
     property real innerRimBandSize: Math.max(10, Math.ceil(iconRoot.innerRadius * 2 + Math.abs(iconRoot.innerOffset) + (theme ? theme.borderWidth : 1) + 6))
     property color iconColor: theme ? theme.textPrimary : "#CFCFCF"
@@ -111,21 +111,23 @@ Item {
         verticalOffset: -iconRoot.innerOffset
         radius: Math.max(2, iconRoot.innerRadius - 1)
         samples: iconRoot.innerSamples
-        rimColor: iconRoot.innerRimLightColor
+        rimColor: iconRoot.innerRimBaseColor
         bandSize: iconRoot.innerRimBandSize
         active: hitArea.pressed
     }
 
-    InnerShadow {
-        id: buttonInsetLight
+    NeumoInnerRim {
         anchors.fill: bg
-        source: buttonInsetDark
+        sourceItem: bg
         horizontalOffset: -iconRoot.innerOffset
         verticalOffset: -iconRoot.innerOffset
         radius: Math.max(2, iconRoot.innerRadius - 1)
         samples: iconRoot.innerSamples
-        color: iconRoot.innerLightColor
-        visible: hitArea.pressed
+        rimColor: iconRoot.innerLightColor
+        bandSize: iconRoot.innerRimBandSize + (iconRoot.largeButton ? 4 : (iconRoot.mediumButton ? 3 : 2))
+        bandMidAlpha: 0.92
+        cornerMidAlpha: 0.96
+        active: hitArea.pressed
     }
 
     Image {
@@ -203,3 +205,6 @@ Item {
         onClicked: iconRoot.clicked()
     }
 }
+
+
+

@@ -43,9 +43,12 @@ Item {
     property color effectiveInsetLightColor: useFrameProfile
         ? (theme ? theme.frameInsetLightColor : insetLightColor)
         : insetLightColor
-    property color effectiveInsetRimLightColor: useFrameProfile
+    property color effectiveInsetRimBaseColor: useFrameProfile
         ? (theme ? theme.frameInsetRimLightColor : insetLightColor)
         : (theme ? theme.insetRimLightColor : insetLightColor)
+    property color effectiveInsetVisibleLightColor: useFrameProfile
+        ? (theme ? theme.frameInsetLightColor : insetLightColor)
+        : insetLightColor
     property real lightRimBandSize: Math.max(18, Math.ceil(root.effectiveInsetLightRadius * 2 + Math.abs(root.effectiveInsetLightOffset) + (root.theme ? root.theme.borderWidth : 1) + 8))
 
     Rectangle {
@@ -75,19 +78,21 @@ Item {
         verticalOffset: root.effectiveInsetLightOffset
         radius: root.effectiveInsetLightRadius
         samples: root.effectiveInsetLightSamples
-        rimColor: root.effectiveInsetRimLightColor
+        rimColor: root.effectiveInsetRimBaseColor
         bandSize: root.lightRimBandSize
     }
 
-    InnerShadow {
-        id: insetLight
+    NeumoInnerRim {
         anchors.fill: insetBase
-        source: insetDark
+        sourceItem: insetBase
         horizontalOffset: root.effectiveInsetLightOffset
         verticalOffset: root.effectiveInsetLightOffset
         radius: root.effectiveInsetLightRadius
         samples: root.effectiveInsetLightSamples
-        color: root.effectiveInsetLightColor
+        rimColor: root.effectiveInsetVisibleLightColor
+        bandSize: root.lightRimBandSize + Math.max(4, Math.round(root.effectiveInsetLightRadius * 0.45))
+        bandMidAlpha: 0.92
+        cornerMidAlpha: 0.96
     }
 
     Item {
@@ -96,3 +101,6 @@ Item {
         anchors.margins: root.contentPadding
     }
 }
+
+
+
