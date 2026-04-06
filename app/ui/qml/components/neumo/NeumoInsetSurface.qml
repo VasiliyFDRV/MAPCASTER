@@ -1,6 +1,4 @@
 import QtQuick
-import QtQuick.Effects
-import Qt5Compat.GraphicalEffects
 
 Item {
     id: root
@@ -43,10 +41,8 @@ Item {
     property color effectiveInsetLightColor: useFrameProfile
         ? (theme ? theme.frameInsetLightColor : insetLightColor)
         : insetLightColor
-    property color effectiveInsetRimLightColor: useFrameProfile
-        ? (theme ? theme.frameInsetRimLightColor : insetLightColor)
-        : (theme ? theme.insetRimLightColor : insetLightColor)
-    property real lightRimBandSize: Math.max(18, Math.ceil(root.effectiveInsetLightRadius * 2 + Math.abs(root.effectiveInsetLightOffset) + (root.theme ? root.theme.borderWidth : 1) + 8))
+    property real darkBand: Math.max(5, Math.ceil(Math.abs(root.effectiveInsetOffset) + root.effectiveInsetDarkRadius * 0.75 + (root.theme ? root.theme.borderWidth : 1) + 1))
+    property real lightBand: Math.max(5, Math.ceil(Math.abs(root.effectiveInsetLightOffset) + root.effectiveInsetLightRadius * 0.75 + (root.theme ? root.theme.borderWidth : 1) + 1))
 
     Rectangle {
         id: insetBase
@@ -57,37 +53,14 @@ Item {
         border.color: root.theme ? root.theme.borderColor : Qt.rgba(1, 1, 1, 0.03)
     }
 
-    InnerShadow {
-        id: insetDark
+    NeumoInsetBevel {
         anchors.fill: insetBase
-        source: insetBase
-        horizontalOffset: root.effectiveInsetOffset
-        verticalOffset: root.effectiveInsetOffset
-        radius: root.effectiveInsetDarkRadius
-        samples: root.effectiveInsetDarkSamples
-        color: root.effectiveInsetDarkColor
-    }
-
-    InnerShadow {
-        id: insetLight
-        anchors.fill: insetBase
-        source: insetDark
-        horizontalOffset: root.effectiveInsetLightOffset
-        verticalOffset: root.effectiveInsetLightOffset
-        radius: root.effectiveInsetLightRadius
-        samples: root.effectiveInsetLightSamples
-        color: root.effectiveInsetLightColor
-    }
-
-    NeumoInnerRim {
-        anchors.fill: insetBase
-        sourceItem: insetBase
-        horizontalOffset: root.effectiveInsetLightOffset
-        verticalOffset: root.effectiveInsetLightOffset
-        radius: root.effectiveInsetLightRadius
-        samples: root.effectiveInsetLightSamples
-        rimColor: root.effectiveInsetRimLightColor
-        bandSize: root.lightRimBandSize
+        radius: root.radius
+        borderWidth: root.theme ? root.theme.borderWidth : 1
+        darkColor: root.effectiveInsetDarkColor
+        lightColor: root.effectiveInsetLightColor
+        darkBand: root.darkBand
+        lightBand: root.lightBand
     }
 
     Item {
