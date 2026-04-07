@@ -66,7 +66,7 @@ Item {
     }
 
     Item {
-        id: visualRoot
+        id: surfaceRoot
         anchors.fill: parent
         scale: iconRoot.hovered ? 1.045 : 1.0
         transformOrigin: Item.Center
@@ -121,44 +121,44 @@ Item {
             lightRadius: iconRoot.innerRadius
             active: hitArea.pressed
         }
+    }
 
-        Item {
-            id: iconVisual
-            anchors.centerIn: parent
-            width: Math.max(10, Math.min(18, parent.width - (largeButton ? 14 : 10)))
-            height: width
-        }
+    Item {
+        id: iconVisual
+        anchors.centerIn: parent
+        width: Math.max(10, Math.min(18, parent.width - (largeButton ? 14 : 10)))
+        height: width
+    }
 
-        Image {
-            id: iconImage
-            anchors.centerIn: iconVisual
-            width: iconVisual.width
-            height: width
-            visible: iconRoot.iconSource.length > 0
-            source: iconRoot.iconSource
-            fillMode: Image.PreserveAspectFit
-            smooth: true
-            mipmap: true
-            sourceSize.width: Math.round(width * 2)
-            sourceSize.height: Math.round(height * 2)
-            opacity: 0.0
-        }
+    Image {
+        id: iconImage
+        anchors.centerIn: iconVisual
+        width: iconVisual.width
+        height: width
+        visible: iconRoot.iconSource.length > 0
+        source: iconRoot.iconSource
+        fillMode: Image.PreserveAspectFit
+        smooth: true
+        mipmap: true
+        sourceSize.width: Math.round(width * 2)
+        sourceSize.height: Math.round(height * 2)
+        opacity: 0.0
+    }
 
-        ColorOverlay {
-            anchors.fill: iconImage
-            source: iconImage
-            visible: iconImage.visible
-            color: iconRoot.enabled ? iconRoot.iconColor : iconRoot.iconDisabledColor
-        }
+    ColorOverlay {
+        anchors.fill: iconImage
+        source: iconImage
+        visible: iconImage.visible
+        color: iconRoot.enabled ? iconRoot.iconColor : iconRoot.iconDisabledColor
+    }
 
-        Text {
-            anchors.centerIn: iconVisual
-            visible: (!iconImage.visible || iconImage.status !== Image.Ready) && iconRoot.glyph.length > 0
-            text: iconRoot.glyph
-            color: iconRoot.enabled ? iconRoot.iconColor : iconRoot.iconDisabledColor
-            font.pixelSize: iconRoot.fontSize
-            font.weight: Font.DemiBold
-        }
+    Text {
+        anchors.centerIn: iconVisual
+        visible: (!iconImage.visible || iconImage.status !== Image.Ready) && iconRoot.glyph.length > 0
+        text: iconRoot.glyph
+        color: iconRoot.enabled ? iconRoot.iconColor : iconRoot.iconDisabledColor
+        font.pixelSize: iconRoot.fontSize
+        font.weight: Font.DemiBold
     }
 
     Popup {
