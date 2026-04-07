@@ -29,11 +29,23 @@ class FilesystemRepository:
 
     def list_adventures(self) -> list[str]:
         self.ensure_root()
-        return sorted(
-            entry.name
-            for entry in self._adventures_root.iterdir()
-            if entry.is_dir()
-        )
+        adventures: list[tuple[datetime, str]] = []
+        for entry in self._adventures_root.iterdir():
+            if not entry.is_dir():
+                continue
+            payload = read_json(entry / "adventure.json", default={})
+            created_raw = str(payload.get("created_at", "")).strip()
+            created_at = datetime.min.replace(tzinfo=timezone.utc)
+            if created_raw:
+                try:
+                    created_at = datetime.fromisoformat(created_raw.replace("Z", "+00:00"))
+                    if created_at.tzinfo is None:
+                        created_at = created_at.replace(tzinfo=timezone.utc)
+                except ValueError:
+                    created_at = datetime.min.replace(tzinfo=timezone.utc)
+            adventures.append((created_at, entry.name))
+        adventures.sort(key=lambda item: (item[0], item[1].lower()), reverse=True)
+        return [name for _, name in adventures]
 
     def create_adventure(self, name: str) -> str:
         safe_name = self._sanitize_name(name)
@@ -235,8 +247,9 @@ class FilesystemRepository:
 
     def _append_scene_order(self, adventure_name: str, scene_name: str) -> None:
         data = self.load_adventure(adventure_name)
-        if scene_name not in data["scene_order"]:
-            data["scene_order"].append(scene_name)
+        if scene_name in data["scene_order"]:
+            data["scene_order"] = [item for item in data["scene_order"] if item != scene_name]
+        data["scene_order"].insert(0, scene_name)
         self.save_adventure(adventure_name, data)
 
     def _remove_from_scene_order(self, adventure_name: str, scene_name: str) -> None:
