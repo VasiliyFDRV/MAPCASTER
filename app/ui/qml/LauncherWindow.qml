@@ -49,10 +49,18 @@ Window {
     property bool adventureInlinePendingFocus: false
     property var adventureInlineModel: []
     property bool adventureInlineActive: !scenesMode && adventureInlineMode !== "none"
-    property bool adventureDragActive: false
-    property string adventureDragName: ""
-    property int adventureDragFromIndex: -1
-    property int adventureDragToIndex: -1
+    property string listDragMode: "none"
+    property string listDragName: ""
+    property int listDragFromIndex: -1
+    property int listDragToIndex: -1
+    property real listDragScrollCompensation: 0
+    property real listDragItemHeight: 0
+    property real listDragPointerDelta: 0
+    property real listDragSpacing: 0
+    property int listDragItemCount: 0
+    property real listDragVisibleCenterY: 0
+    property real listDragAutoScrollThreshold: 52
+    property real listDragAutoScrollBaseStep: 10
 
 
     function detectMediaTypeFromValue(rawValue, fallbackType) {
@@ -287,48 +295,99 @@ Window {
         appController.move_adventure(adventureName, boundedTarget)
     }
 
-    function beginAdventureDrag(adventureName, fromIndex) {
-        adventureDragActive = true
-        adventureDragName = adventureName
-        adventureDragFromIndex = fromIndex
-        adventureDragToIndex = fromIndex
+    function beginListDrag(mode, itemName, fromIndex, itemHeight, spacing, itemCount) {
+        listDragMode = mode
+        listDragName = itemName
+        listDragFromIndex = fromIndex
+        listDragToIndex = fromIndex
+        listDragScrollCompensation = 0
+        listDragItemHeight = itemHeight
+        listDragPointerDelta = 0
+        listDragSpacing = spacing
+        listDragItemCount = itemCount
+        listDragVisibleCenterY = itemHeight / 2
     }
 
-    function updateAdventureDrag(fromIndex, dragDeltaY, itemHeight, spacing, itemCount) {
-        if (!adventureDragActive) {
+    function updateListDrag(mode, fromIndex, dragDeltaY, itemHeight, spacing, itemCount, contentY) {
+        if (listDragMode !== mode) {
             return
         }
+        listDragItemHeight = itemHeight
+        listDragPointerDelta = dragDeltaY
+        listDragSpacing = spacing
+        listDragItemCount = itemCount
         var rowExtent = itemHeight + spacing
-        var shiftedCenter = fromIndex * rowExtent + dragDeltaY + (itemHeight / 2)
+        var shiftedCenter = fromIndex * rowExtent + dragDeltaY + listDragScrollCompensation + (itemHeight / 2)
         var rawIndex = Math.floor((shiftedCenter + Math.max(0, spacing / 2)) / Math.max(1, rowExtent))
-        adventureDragToIndex = Math.max(0, Math.min(itemCount - 1, rawIndex))
+        listDragToIndex = Math.max(0, Math.min(itemCount - 1, rawIndex))
+        listDragVisibleCenterY = shiftedCenter - contentY
     }
 
-    function adventureDisplacementForIndex(itemIndex, rowExtent) {
-        if (!adventureDragActive || adventureDragFromIndex < 0 || adventureDragToIndex < 0) {
+    function listDisplacementForIndex(mode, itemIndex, rowExtent) {
+        if (listDragMode !== mode || listDragFromIndex < 0 || listDragToIndex < 0) {
             return 0
         }
-        if (itemIndex === adventureDragFromIndex) {
+        if (itemIndex === listDragFromIndex) {
             return 0
         }
-        if (adventureDragToIndex > adventureDragFromIndex && itemIndex > adventureDragFromIndex && itemIndex <= adventureDragToIndex) {
+        if (listDragToIndex > listDragFromIndex && itemIndex > listDragFromIndex && itemIndex <= listDragToIndex) {
             return -rowExtent
         }
-        if (adventureDragToIndex < adventureDragFromIndex && itemIndex >= adventureDragToIndex && itemIndex < adventureDragFromIndex) {
+        if (listDragToIndex < listDragFromIndex && itemIndex >= listDragToIndex && itemIndex < listDragFromIndex) {
             return rowExtent
         }
         return 0
     }
 
-    function finishAdventureDrag() {
-        var draggedName = adventureDragName
-        var fromIndex = adventureDragFromIndex
-        var toIndex = adventureDragToIndex
-        adventureDragActive = false
-        adventureDragName = ""
-        adventureDragFromIndex = -1
-        adventureDragToIndex = -1
-        if (draggedName && fromIndex >= 0 && toIndex >= 0 && toIndex !== fromIndex) {
+    function autoScrollDraggedList(view) {
+        if (!view || listDragMode === "none") {
+            return
+        }
+        var maxContentY = Math.max(0, view.contentHeight - view.height)
+        if (maxContentY <= 0) {
+            return
+        }
+        var threshold = Math.min(listDragAutoScrollThreshold, Math.max(24, view.height * 0.22))
+        var nextContentY = view.contentY
+        if (listDragVisibleCenterY < threshold) {
+            var upRatio = 1 - Math.max(0, listDragVisibleCenterY) / threshold
+            nextContentY -= listDragAutoScrollBaseStep * (0.65 + upRatio * 1.85)
+        } else if (listDragVisibleCenterY > view.height - threshold) {
+            var downDistance = view.height - listDragVisibleCenterY
+            var downRatio = 1 - Math.max(0, downDistance) / threshold
+            nextContentY += listDragAutoScrollBaseStep * (0.65 + downRatio * 1.85)
+        }
+        nextContentY = Math.max(0, Math.min(maxContentY, nextContentY))
+        var delta = nextContentY - view.contentY
+        if (Math.abs(delta) < 0.01) {
+            return
+        }
+        view.contentY = nextContentY
+        listDragScrollCompensation += delta
+        updateListDrag(listDragMode, listDragFromIndex, listDragPointerDelta, listDragItemHeight, listDragSpacing, listDragItemCount, view.contentY)
+    }
+
+    function finishListDrag() {
+        var dragMode = listDragMode
+        var draggedName = listDragName
+        var fromIndex = listDragFromIndex
+        var toIndex = listDragToIndex
+        listDragMode = "none"
+        listDragName = ""
+        listDragFromIndex = -1
+        listDragToIndex = -1
+        listDragScrollCompensation = 0
+        listDragItemHeight = 0
+        listDragPointerDelta = 0
+        listDragSpacing = 0
+        listDragItemCount = 0
+        listDragVisibleCenterY = 0
+        if (!draggedName || fromIndex < 0 || toIndex < 0 || toIndex === fromIndex) {
+            return
+        }
+        if (dragMode === "scene") {
+            moveSceneTo(draggedName, toIndex)
+        } else if (dragMode === "adventure") {
             moveAdventureTo(draggedName, toIndex)
         }
     }
@@ -725,6 +784,13 @@ Window {
 
                         ListView {
                             id: explorerView
+
+                            Timer {
+                                interval: 16
+                                repeat: true
+                                running: launcherWindow.listDragMode !== "none"
+                                onTriggered: launcherWindow.autoScrollDraggedList(explorerView)
+                            }
                             property real rowShadowBleed: launcherWindow.explorerEdgeInset
                             anchors.fill: parent
                             leftMargin: rowShadowBleed
@@ -749,8 +815,10 @@ Window {
                                 property string itemName: modelData && modelData.name ? modelData.name : ""
                                 property real dragY: 0
                                 property real dragDeltaY: 0
-                                property real slotDisplacement: (!explorerDelegate.scenesMode && !explorerDelegate.isAdventureInline)
-                                    ? launcherWindow.adventureDisplacementForIndex(index, explorerDelegate.height + explorerView.spacing)
+                                property string dragMode: explorerDelegate.scenesMode ? "scene" : "adventure"
+                                property bool usesSmoothListDrag: explorerDelegate.scenesMode || !explorerDelegate.isAdventureInline
+                                property real slotDisplacement: explorerDelegate.usesSmoothListDrag
+                                    ? launcherWindow.listDisplacementForIndex(explorerDelegate.dragMode, index, explorerDelegate.height + explorerView.spacing)
                                     : 0
                                 x: explorerView.leftMargin
                                 width: explorerView.width - explorerView.leftMargin - explorerView.rightMargin
@@ -764,6 +832,8 @@ Window {
                                 Translate {
                                     id: dragTranslate
                                     y: explorerDelegate.dragY + explorerDelegate.slotDisplacement
+                                        + ((launcherWindow.listDragMode === explorerDelegate.dragMode && launcherWindow.listDragFromIndex === index)
+                                            ? launcherWindow.listDragScrollCompensation : 0)
                                 }
                                 transform: [dragTranslate]
 
@@ -934,37 +1004,46 @@ Window {
                                 DragHandler {
                                     id: dragHandler
                                     enabled: !launcherWindow.adventureInlineActive && !explorerDelegate.isAdventureInline
-                                        && (explorerDelegate.scenesMode || !launcherWindow.scenesMode)
                                     target: null
                                     onActiveChanged: {
                                         if (active) {
                                             explorerDelegate.dragDeltaY = 0
-                                            if (!explorerDelegate.scenesMode) {
-                                                singleClickTimer.stop()
-                                                launcherWindow.beginAdventureDrag(explorerDelegate.itemName, index)
-                                            }
+                                            singleClickTimer.stop()
+                                            launcherWindow.beginListDrag(
+                                                explorerDelegate.dragMode,
+                                                explorerDelegate.itemName,
+                                                index,
+                                                explorerDelegate.height,
+                                                explorerView.spacing,
+                                                explorerView.count
+                                            )
+                                            launcherWindow.updateListDrag(
+                                                explorerDelegate.dragMode,
+                                                index,
+                                                0,
+                                                explorerDelegate.height,
+                                                explorerView.spacing,
+                                                explorerView.count,
+                                                explorerView.contentY
+                                            )
                                             return
                                         }
-                                        if (explorerDelegate.scenesMode) {
-                                            var rowExtent = explorerDelegate.height + explorerView.spacing
-                                            var centerY = explorerDelegate.y + explorerDelegate.dragDeltaY + (explorerDelegate.height / 2) - explorerView.topMargin
-                                            var rawIndex = Math.floor(centerY / Math.max(1, rowExtent))
-                                            var toIndex = Math.max(0, Math.min(appController.scenesModel.length - 1, rawIndex))
-                                            if (toIndex !== index) {
-                                                launcherWindow.moveSceneTo(explorerDelegate.itemName, toIndex)
-                                            }
-                                        } else {
-                                            launcherWindow.finishAdventureDrag()
-                                        }
+                                        launcherWindow.finishListDrag()
                                         explorerDelegate.dragY = 0
                                         explorerDelegate.dragDeltaY = 0
                                     }
                                     onTranslationChanged: {
                                         explorerDelegate.dragY = translation.y
                                         explorerDelegate.dragDeltaY = translation.y
-                                        if (!explorerDelegate.scenesMode) {
-                                            launcherWindow.updateAdventureDrag(index, translation.y, explorerDelegate.height, explorerView.spacing, explorerView.count)
-                                        }
+                                        launcherWindow.updateListDrag(
+                                            explorerDelegate.dragMode,
+                                            index,
+                                            translation.y,
+                                            explorerDelegate.height,
+                                            explorerView.spacing,
+                                            explorerView.count,
+                                            explorerView.contentY
+                                        )
                                     }
                                 }
                             }
