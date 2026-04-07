@@ -15,12 +15,18 @@ QtObject {
 
     property real raisedRadius: 18
     property real raisedShadowOffset: 6
+    property real raisedShadowOffsetHover: 6.8
     property real raisedShadowRadius: 12
+    property real raisedShadowRadiusHover: 13
     property int raisedShadowSamples: 25
     property real raisedDarkAlpha: 0.96
     property real raisedLightAlpha: 0.60
+    property real raisedDarkAlphaHover: 1.0
+    property real raisedLightAlphaHover: raisedLightAlpha
     property color raisedShadowDarkColor: Qt.rgba(shadowDarkBase.r, shadowDarkBase.g, shadowDarkBase.b, raisedDarkAlpha)
     property color raisedShadowLightColor: Qt.rgba(shadowLightBase.r, shadowLightBase.g, shadowLightBase.b, raisedLightAlpha)
+    property color raisedShadowDarkColorHover: Qt.rgba(shadowDarkBase.r, shadowDarkBase.g, shadowDarkBase.b, raisedDarkAlphaHover)
+    property color raisedShadowLightColorHover: Qt.rgba(shadowLightBase.r, shadowLightBase.g, shadowLightBase.b, raisedLightAlphaHover)
 
     property real insetRadius: 20
     property real insetOffset: 6
@@ -55,9 +61,15 @@ QtObject {
     property real iconOuterOffsetLarge: 6
     property real iconOuterOffsetMedium: 4
     property real iconOuterOffsetSmall: 2
+    property real iconOuterOffsetLargeHover: 6.8
+    property real iconOuterOffsetMediumHover: 4.7
+    property real iconOuterOffsetSmallHover: 2.6
     property real iconOuterRadiusLarge: 12
     property real iconOuterRadiusMedium: 8.5
     property real iconOuterRadiusSmall: 4.5
+    property real iconOuterRadiusLargeHover: 13
+    property real iconOuterRadiusMediumHover: 9.2
+    property real iconOuterRadiusSmallHover: 5.1
     property int iconOuterSamplesLarge: 25
     property int iconOuterSamplesMedium: 21
     property int iconOuterSamplesSmall: 15
@@ -78,6 +90,12 @@ QtObject {
     property real iconOuterLightAlphaLarge: 0.60
     property real iconOuterLightAlphaMedium: 0.52
     property real iconOuterLightAlphaSmall: 0.44
+    property real iconOuterDarkAlphaLargeHover: 1.0
+    property real iconOuterDarkAlphaMediumHover: 0.98
+    property real iconOuterDarkAlphaSmallHover: 0.94
+    property real iconOuterLightAlphaLargeHover: iconOuterLightAlphaLarge
+    property real iconOuterLightAlphaMediumHover: iconOuterLightAlphaMedium
+    property real iconOuterLightAlphaSmallHover: iconOuterLightAlphaSmall
 
     property color iconOuterDarkColorLarge: Qt.rgba(shadowDarkBase.r, shadowDarkBase.g, shadowDarkBase.b, iconOuterDarkAlphaLarge)
     property color iconOuterDarkColorMedium: Qt.rgba(shadowDarkBase.r, shadowDarkBase.g, shadowDarkBase.b, iconOuterDarkAlphaMedium)
@@ -85,6 +103,12 @@ QtObject {
     property color iconOuterLightColorLarge: Qt.rgba(shadowLightBase.r, shadowLightBase.g, shadowLightBase.b, iconOuterLightAlphaLarge)
     property color iconOuterLightColorMedium: Qt.rgba(shadowLightBase.r, shadowLightBase.g, shadowLightBase.b, iconOuterLightAlphaMedium)
     property color iconOuterLightColorSmall: Qt.rgba(shadowLightBase.r, shadowLightBase.g, shadowLightBase.b, iconOuterLightAlphaSmall)
+    property color iconOuterDarkColorLargeHover: Qt.rgba(shadowDarkBase.r, shadowDarkBase.g, shadowDarkBase.b, iconOuterDarkAlphaLargeHover)
+    property color iconOuterDarkColorMediumHover: Qt.rgba(shadowDarkBase.r, shadowDarkBase.g, shadowDarkBase.b, iconOuterDarkAlphaMediumHover)
+    property color iconOuterDarkColorSmallHover: Qt.rgba(shadowDarkBase.r, shadowDarkBase.g, shadowDarkBase.b, iconOuterDarkAlphaSmallHover)
+    property color iconOuterLightColorLargeHover: Qt.rgba(shadowLightBase.r, shadowLightBase.g, shadowLightBase.b, iconOuterLightAlphaLargeHover)
+    property color iconOuterLightColorMediumHover: Qt.rgba(shadowLightBase.r, shadowLightBase.g, shadowLightBase.b, iconOuterLightAlphaMediumHover)
+    property color iconOuterLightColorSmallHover: Qt.rgba(shadowLightBase.r, shadowLightBase.g, shadowLightBase.b, iconOuterLightAlphaSmallHover)
 
     property real iconInnerDarkAlphaLarge: 0.98
     property real iconInnerDarkAlphaMedium: 0.92
@@ -108,16 +132,21 @@ QtObject {
 
     property int rowShadowSamples: 23
     property real rowShadowRadius: 10
-    property real rowShadowOffset: 4
-    property real rowShadowOffsetHover: 4.5
+    property real rowShadowRadiusHover: 10.5
+    property real rowShadowOffset: 4.5
+    property real rowShadowOffsetHover: 5.3
     property real rowShadowOffsetDrag: 5
     property real rowShadowRadiusDrag: 11
     property real rowDarkAlpha: 0.92
     property real rowLightAlpha: 0.60
+    property real rowDarkAlphaHover: 1.0
+    property real rowLightAlphaHover: 0.52
     property real rowDarkAlphaDrag: 0.98
     property real rowLightAlphaDrag: 0.68
     property color rowShadowDarkColor: Qt.rgba(shadowDarkBase.r, shadowDarkBase.g, shadowDarkBase.b, rowDarkAlpha)
+    property color rowShadowDarkColorHover: Qt.rgba(shadowDarkBase.r, shadowDarkBase.g, shadowDarkBase.b, rowDarkAlphaHover)
     property color rowShadowDarkColorDrag: Qt.rgba(shadowDarkBase.r, shadowDarkBase.g, shadowDarkBase.b, rowDarkAlphaDrag)
     property color rowShadowLightColor: Qt.rgba(shadowLightBase.r, shadowLightBase.g, shadowLightBase.b, rowLightAlpha)
+    property color rowShadowLightColorHover: Qt.rgba(shadowLightBase.r, shadowLightBase.g, shadowLightBase.b, rowLightAlphaHover)
     property color rowShadowLightColorDrag: Qt.rgba(shadowLightBase.r, shadowLightBase.g, shadowLightBase.b, rowLightAlphaDrag)
 }
