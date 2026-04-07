@@ -41,7 +41,13 @@ Window {
     property color accentColor: "#B6B6B6"
     property color accentStrong: "#9C9C9C"
     property string adventureDialogMode: "create"
+    property real explorerEdgeInset: 12
     property string adventureOriginalName: ""
+    property string adventureInlineMode: "none"
+    property string adventureInlineOriginalName: ""
+    property string adventureInlineDraftName: ""
+    property bool adventureInlinePendingFocus: false
+    property var adventureInlineModel: []
 
     function detectMediaTypeFromValue(rawValue, fallbackType) {
         var value = String(rawValue || "").trim().toLowerCase()
@@ -109,23 +115,122 @@ Window {
         sceneDialog.open()
     }
 
-    function openCreateAdventureDialog() {
-        adventureDialogMode = "create"
-        adventureOriginalName = ""
-        adventureNameField.text = ""
-        adventureDialogTitle.text = "Новое приключение"
-        adventureDialog.open()
+    function refreshAdventureInlineModel() {
+        var items = []
+        var source = appController.adventuresModel || []
+        for (var i = 0; i < source.length; i++) {
+            var adventure = source[i]
+            var name = adventure && adventure.name ? adventure.name : ""
+            if (adventureInlineMode === "rename" && name === adventureInlineOriginalName) {
+                items.push({
+                    "name": name,
+                    "isInlineEditor": true,
+                    "inlineMode": "rename"
+                })
+            } else {
+                items.push({
+                    "name": name,
+                    "isInlineEditor": false,
+                    "inlineMode": "none"
+                })
+            }
+        }
+        if (adventureInlineMode === "create") {
+            items.unshift({
+                "name": "",
+                "isInlineEditor": true,
+                "inlineMode": "create"
+            })
+        }
+        adventureInlineModel = items
     }
 
-    function openEditAdventureDialog(adventureName) {
+    function beginCreateAdventureInline() {
+        adventureInlineMode = "create"
+        adventureInlineOriginalName = ""
+        adventureInlineDraftName = ""
+        adventureInlinePendingFocus = true
+        refreshAdventureInlineModel()
+    }
+
+    function beginRenameAdventureInline(adventureName) {
         if (!adventureName) {
             return
         }
-        adventureDialogMode = "edit"
-        adventureOriginalName = adventureName
-        adventureNameField.text = adventureName
-        adventureDialogTitle.text = "Переименование приключения"
-        adventureDialog.open()
+        adventureInlineMode = "rename"
+        adventureInlineOriginalName = adventureName
+        adventureInlineDraftName = adventureName
+        adventureInlinePendingFocus = true
+        refreshAdventureInlineModel()
+    }
+
+    function cancelAdventureInlineEdit() {
+        if (adventureInlineMode === "none") {
+            return
+        }
+        adventureInlineMode = "none"
+        adventureInlineOriginalName = ""
+        adventureInlineDraftName = ""
+        adventureInlinePendingFocus = false
+        refreshAdventureInlineModel()
+    }
+
+    function commitAdventureInlineEdit() {
+        if (adventureInlineMode === "none") {
+            return
+        }
+        var trimmedName = String(adventureInlineDraftName || "").trim()
+        if (adventureInlineMode === "rename" && trimmedName === adventureInlineOriginalName) {
+            cancelAdventureInlineEdit()
+            return
+        }
+        if (adventureInlineMode === "create") {
+            appController.create_adventure(trimmedName)
+            var created = false
+            var adventures = appController.adventuresModel || []
+            for (var i = 0; i < adventures.length; i++) {
+                if (adventures[i] && adventures[i].name === trimmedName) {
+                    created = true
+                    break
+                }
+            }
+            if (created) {
+                adventureInlineMode = "none"
+                adventureInlineOriginalName = ""
+                adventureInlineDraftName = ""
+                adventureInlinePendingFocus = false
+            } else {
+                adventureInlineDraftName = trimmedName
+                adventureInlinePendingFocus = true
+            }
+            refreshAdventureInlineModel()
+            return
+        }
+        appController.rename_adventure(adventureInlineOriginalName, trimmedName)
+        var renamed = false
+        var oldStillExists = false
+        var renamedAdventures = appController.adventuresModel || []
+        for (var j = 0; j < renamedAdventures.length; j++) {
+            if (!renamedAdventures[j]) {
+                continue
+            }
+            if (renamedAdventures[j].name === trimmedName) {
+                renamed = true
+            }
+            if (renamedAdventures[j].name === adventureInlineOriginalName) {
+                oldStillExists = true
+            }
+        }
+        if (renamed && !oldStillExists) {
+            adventureInlineMode = "none"
+            adventureInlineOriginalName = ""
+            adventureInlineDraftName = ""
+            adventureInlinePendingFocus = false
+        } else {
+            adventureInlineDraftName = trimmedName
+            adventureInlinePendingFocus = true
+        }
+        refreshAdventureInlineModel()
     }
 
     function moveSceneTo(sceneName, targetIndex) {
@@ -497,6 +602,8 @@ Window {
 
                     RowLayout {
                         Layout.fillWidth: true
+                        Layout.leftMargin: launcherWindow.explorerEdgeInset
+                        Layout.rightMargin: launcherWindow.explorerEdgeInset
                         spacing: 10
 
                         NeumoIconButton {
@@ -530,7 +637,7 @@ Window {
                                 if (launcherWindow.scenesMode) {
                                     launcherWindow.openCreateSceneDialog()
                                 } else {
-                                    launcherWindow.openCreateAdventureDialog()
+                                    launcherWindow.beginCreateAdventureInline()
                                 }
                             }
                         }
@@ -541,7 +648,7 @@ Window {
 
                         ListView {
                             id: explorerView
-                            property real rowShadowBleed: 12
+                            property real rowShadowBleed: launcherWindow.explorerEdgeInset
                             anchors.fill: parent
                             leftMargin: rowShadowBleed
                             rightMargin: rowShadowBleed
@@ -550,13 +657,14 @@ Window {
                             spacing: 12
                             clip: true
                             boundsBehavior: Flickable.StopAtBounds
-                            model: launcherWindow.scenesMode ? appController.scenesModel : appController.adventuresModel
+                            model: launcherWindow.scenesMode ? appController.scenesModel : launcherWindow.adventureInlineModel
                             ScrollBar.vertical: AppScrollBar {}
                             ScrollBar.horizontal: AppScrollBar {}
 
                             delegate: Item {
                                 id: explorerDelegate
                                 property bool scenesMode: launcherWindow.scenesMode
+                                property bool isAdventureInline: !explorerDelegate.scenesMode && modelData && modelData.isInlineEditor
                                 property string itemName: modelData && modelData.name ? modelData.name : ""
                                 property real dragY: 0
                                 property real dragDeltaY: 0
@@ -577,6 +685,7 @@ Window {
                                     anchors.fill: parent
                                     anchors.margins: 1
                                     dragging: dragHandler.active
+                                    visible: !explorerDelegate.isAdventureInline
 
                                     RowLayout {
                                         anchors.fill: parent
@@ -598,16 +707,29 @@ Window {
                                                 verticalAlignment: Text.AlignVCenter
                                             }
 
-                                            TapHandler {
+                                            MouseArea {
+                                                anchors.fill: parent
                                                 acceptedButtons: Qt.LeftButton
-                                                gesturePolicy: TapHandler.ReleaseWithinBounds
-                                                onTapped: {
+                                                onClicked: {
                                                     if (explorerDelegate.scenesMode) {
                                                         appController.open_scene(explorerDelegate.itemName)
                                                     } else {
-                                                        appController.enter_launcher_adventure(explorerDelegate.itemName)
+                                                        singleClickTimer.restart()
                                                     }
                                                 }
+                                                onDoubleClicked: {
+                                                    if (!explorerDelegate.scenesMode) {
+                                                        singleClickTimer.stop()
+                                                        launcherWindow.beginRenameAdventureInline(explorerDelegate.itemName)
+                                                    }
+                                                }
+                                            }
+
+                                            Timer {
+                                                id: singleClickTimer
+                                                interval: 180
+                                                repeat: false
+                                                onTriggered: appController.enter_launcher_adventure(explorerDelegate.itemName)
                                             }
                                         }
 
@@ -620,12 +742,12 @@ Window {
                                                 width: 24
                                                 height: 24
                                                 iconSource: Qt.resolvedUrl("icons/scene_edit.svg")
-                                                toolTip: explorerDelegate.scenesMode ? "Изменить сцену" : "Переименовать приключение"
+                                                toolTip: explorerDelegate.scenesMode ? "???????? ?????" : "????????????? ???????????"
                                                 onClicked: {
                                                     if (explorerDelegate.scenesMode) {
                                                         launcherWindow.openEditSceneDialog(explorerDelegate.itemName)
                                                     } else {
-                                                        launcherWindow.openEditAdventureDialog(explorerDelegate.itemName)
+                                                        launcherWindow.beginRenameAdventureInline(explorerDelegate.itemName)
                                                     }
                                                 }
                                             }
@@ -635,7 +757,7 @@ Window {
                                                 width: 24
                                                 height: 24
                                                 iconSource: Qt.resolvedUrl("icons/clear.svg")
-                                                toolTip: explorerDelegate.scenesMode ? "Удалить сцену" : "Удалить приключение"
+                                                toolTip: explorerDelegate.scenesMode ? "??????? ?????" : "??????? ???????????"
                                                 onClicked: {
                                                     if (explorerDelegate.scenesMode) {
                                                         appController.delete_scene(explorerDelegate.itemName)
@@ -645,6 +767,61 @@ Window {
                                                 }
                                             }
                                         }
+                                    }
+                                }
+
+                                NeumoInsetSurface {
+                                    theme: neumoTheme
+                                    anchors.fill: parent
+                                    anchors.margins: 1
+                                    radius: 13
+                                    fillColor: launcherWindow.bgBase
+                                    contentPadding: 0
+                                    visible: explorerDelegate.isAdventureInline
+
+                                    RowLayout {
+                                        anchors.fill: parent
+                                        anchors.leftMargin: 15
+                                        anchors.rightMargin: 15
+                                        spacing: 8
+
+                                        TextField {
+                                            id: inlineAdventureField
+                                            Layout.fillWidth: true
+                                            text: launcherWindow.adventureInlineDraftName
+                                            color: launcherWindow.textPrimary
+                                            selectedTextColor: "#F4F4F6"
+                                            selectionColor: "#6C6C6C"
+                                            placeholderText: "??????? ????????"
+                                            placeholderTextColor: launcherWindow.textSecondary
+                                            padding: 0
+                                            leftPadding: 0
+                                            rightPadding: 0
+                                            topPadding: 0
+                                            bottomPadding: 0
+                                            background: null
+                                            verticalAlignment: Text.AlignVCenter
+                                            font.pixelSize: 14
+                                            onTextChanged: launcherWindow.adventureInlineDraftName = text
+                                            onAccepted: launcherWindow.commitAdventureInlineEdit()
+                                            onEditingFinished: launcherWindow.commitAdventureInlineEdit()
+                                            Keys.onEscapePressed: function(event) {
+                                                event.accepted = true
+                                                launcherWindow.cancelAdventureInlineEdit()
+                                            }
+                                        }
+                                    }
+                                }
+
+                                Timer {
+                                    id: inlineFocusTimer
+                                    interval: 0
+                                    running: explorerDelegate.isAdventureInline && launcherWindow.adventureInlinePendingFocus
+                                    repeat: false
+                                    onTriggered: {
+                                        launcherWindow.adventureInlinePendingFocus = false
+                                        inlineAdventureField.forceActiveFocus()
+                                        inlineAdventureField.selectAll()
                                     }
                                 }
 
@@ -690,7 +867,17 @@ Window {
         }
     }
 
-    Component.onCompleted: appController.refresh_library()
+    Component.onCompleted: {
+        appController.refresh_library()
+        refreshAdventureInlineModel()
+    }
+
+    Connections {
+        target: appController
+        function onLibraryChanged() {
+            refreshAdventureInlineModel()
+        }
+    }
 
     Dialog {
         id: sceneDialog
@@ -924,64 +1111,6 @@ Window {
                 }
 
                 Item { Layout.fillWidth: true; Layout.preferredHeight: 4 }
-            }
-        }
-    }
-
-    Dialog {
-        id: adventureDialog
-        modal: true
-        x: (launcherWindow.width - width) / 2
-        y: 120
-        width: Math.min(launcherWindow.width - 48, 440)
-        standardButtons: Dialog.NoButton
-        closePolicy: Popup.CloseOnEscape
-
-        background: Rectangle {
-            color: "#262626"
-            border.color: "#626262"
-            border.width: 1
-            radius: 12
-        }
-
-        contentItem: ColumnLayout {
-            spacing: 10
-
-            Label {
-                id: adventureDialogTitle
-                text: "Новое приключение"
-                color: launcherWindow.textPrimary
-                font.pixelSize: 20
-                Layout.fillWidth: true
-            }
-
-            AppTextField {
-                id: adventureNameField
-                Layout.fillWidth: true
-                placeholderText: "Название приключения"
-            }
-
-            RowLayout {
-                Layout.fillWidth: true
-                spacing: 8
-                AppButton {
-                    text: "Отмена"
-                    Layout.fillWidth: true
-                    onClicked: adventureDialog.close()
-                }
-                AppButton {
-                    text: "Сохранить"
-                    accent: true
-                    Layout.fillWidth: true
-                    onClicked: {
-                        if (adventureDialogMode === "edit") {
-                            appController.rename_adventure(adventureOriginalName, adventureNameField.text)
-                        } else {
-                            appController.create_adventure(adventureNameField.text)
-                        }
-                        adventureDialog.close()
-                    }
-                }
             }
         }
     }
