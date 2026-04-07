@@ -61,6 +61,12 @@ Window {
     property real listDragVisibleCenterY: 0
     property real listDragAutoScrollThreshold: 52
     property real listDragAutoScrollBaseStep: 5.5
+    property real listDragVisualStartX: 0
+    property real listDragVisualStartY: 0
+    property real listDragVisualX: 0
+    property real listDragVisualY: 0
+    property real listDragVisualWidth: 0
+    property real listDragVisualHeight: 0
 
 
     function detectMediaTypeFromValue(rawValue, fallbackType) {
@@ -295,7 +301,7 @@ Window {
         appController.move_adventure(adventureName, boundedTarget)
     }
 
-    function beginListDrag(mode, itemName, fromIndex, itemHeight, spacing, itemCount) {
+    function beginListDrag(mode, itemName, fromIndex, itemHeight, spacing, itemCount, delegateItem, overlayItem) {
         listDragMode = mode
         listDragName = itemName
         listDragFromIndex = fromIndex
@@ -305,7 +311,14 @@ Window {
         listDragPointerDelta = 0
         listDragSpacing = spacing
         listDragItemCount = itemCount
-        listDragVisibleCenterY = itemHeight / 2
+        var mapped = delegateItem && overlayItem ? delegateItem.mapToItem(overlayItem, 0, 0) : Qt.point(0, 0)
+        listDragVisualStartX = mapped.x
+        listDragVisualStartY = mapped.y
+        listDragVisualX = mapped.x
+        listDragVisualY = mapped.y
+        listDragVisualWidth = delegateItem ? delegateItem.width : 0
+        listDragVisualHeight = delegateItem ? delegateItem.height : itemHeight
+        listDragVisibleCenterY = mapped.y + (itemHeight / 2)
     }
 
     function updateListDrag(mode, fromIndex, dragDeltaY, itemHeight, spacing, itemCount, contentY) {
@@ -321,6 +334,7 @@ Window {
         var rawIndex = Math.floor((shiftedCenter + Math.max(0, spacing / 2)) / Math.max(1, rowExtent))
         listDragToIndex = Math.max(0, Math.min(itemCount - 1, rawIndex))
         listDragVisibleCenterY = shiftedCenter - contentY
+        listDragVisualY = listDragVisualStartY + dragDeltaY
     }
 
     function listDisplacementForIndex(mode, itemIndex, rowExtent) {
@@ -382,6 +396,12 @@ Window {
         listDragSpacing = 0
         listDragItemCount = 0
         listDragVisibleCenterY = 0
+        listDragVisualStartX = 0
+        listDragVisualStartY = 0
+        listDragVisualX = 0
+        listDragVisualY = 0
+        listDragVisualWidth = 0
+        listDragVisualHeight = 0
         if (!draggedName || fromIndex < 0 || toIndex < 0 || toIndex === fromIndex) {
             return
         }
@@ -817,6 +837,7 @@ Window {
                                 property real dragY: 0
                                 property real dragDeltaY: 0
                                 property string dragMode: explorerDelegate.scenesMode ? "scene" : "adventure"
+                                property bool isDraggedDelegate: launcherWindow.listDragMode === explorerDelegate.dragMode && launcherWindow.listDragFromIndex === index
                                 property bool usesSmoothListDrag: explorerDelegate.scenesMode || !explorerDelegate.isAdventureInline
                                 property real slotDisplacement: explorerDelegate.usesSmoothListDrag
                                     ? launcherWindow.listDisplacementForIndex(explorerDelegate.dragMode, index, explorerDelegate.height + explorerView.spacing)
@@ -832,9 +853,7 @@ Window {
 
                                 Translate {
                                     id: dragTranslate
-                                    y: explorerDelegate.dragY + explorerDelegate.slotDisplacement
-                                        + ((launcherWindow.listDragMode === explorerDelegate.dragMode && launcherWindow.listDragFromIndex === index)
-                                            ? launcherWindow.listDragScrollCompensation : 0)
+                                    y: explorerDelegate.isDraggedDelegate ? 0 : explorerDelegate.slotDisplacement
                                 }
                                 transform: [dragTranslate]
 
@@ -843,8 +862,8 @@ Window {
                                     id: rowButton
                                     anchors.fill: parent
                                     anchors.margins: 1
-                                    dragging: dragHandler.active
-                                    visible: !explorerDelegate.isAdventureInline
+                                    dragging: dragHandler.active && !explorerDelegate.isDraggedDelegate
+                                    visible: !explorerDelegate.isAdventureInline && !explorerDelegate.isDraggedDelegate
 
                                     RowLayout {
                                         anchors.fill: parent
@@ -1016,7 +1035,9 @@ Window {
                                                 index,
                                                 explorerDelegate.height,
                                                 explorerView.spacing,
-                                                explorerView.count
+                                                explorerView.count,
+                                                explorerDelegate,
+                                                explorerDragOverlay
                                             )
                                             launcherWindow.updateListDrag(
                                                 explorerDelegate.dragMode,
@@ -1045,6 +1066,63 @@ Window {
                                             explorerView.count,
                                             explorerView.contentY
                                         )
+                                    }
+                                }
+                            }
+                        }
+
+                        Item {
+                            id: explorerDragOverlay
+                            anchors.fill: parent
+                            z: 50
+
+                            NeumoRowButton {
+                                id: dragRowProxy
+                                theme: neumoTheme
+                                x: launcherWindow.listDragVisualX
+                                y: launcherWindow.listDragVisualY
+                                width: launcherWindow.listDragVisualWidth
+                                height: launcherWindow.listDragVisualHeight > 0 ? launcherWindow.listDragVisualHeight : 48
+                                visible: launcherWindow.listDragMode !== "none"
+                                dragging: true
+                                enabled: false
+
+                                RowLayout {
+                                    anchors.fill: parent
+                                    anchors.leftMargin: 15
+                                    anchors.rightMargin: 8
+                                    spacing: 8
+
+                                    Label {
+                                        Layout.fillWidth: true
+                                        Layout.fillHeight: true
+                                        text: launcherWindow.listDragName
+                                        color: "#C9C9C9"
+                                        font.pixelSize: 14
+                                        font.weight: Font.Medium
+                                        elide: Text.ElideRight
+                                        verticalAlignment: Text.AlignVCenter
+                                    }
+
+                                    Row {
+                                        anchors.verticalCenter: parent.verticalCenter
+                                        spacing: 5
+
+                                        NeumoIconButton {
+                                            theme: neumoTheme
+                                            width: 24
+                                            height: 24
+                                            enabled: false
+                                            iconSource: Qt.resolvedUrl("icons/scene_edit.svg")
+                                        }
+
+                                        NeumoIconButton {
+                                            theme: neumoTheme
+                                            width: 24
+                                            height: 24
+                                            enabled: false
+                                            iconSource: Qt.resolvedUrl("icons/clear.svg")
+                                        }
                                     }
                                 }
                             }
