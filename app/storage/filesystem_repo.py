@@ -16,6 +16,7 @@ INVALID_NAME_CHARS = re.compile(r'[<>:"/\\|?*]')
 class FilesystemRepository:
     def __init__(self, adventures_root: Path) -> None:
         self._adventures_root = adventures_root
+        self._adventure_order_file = '.launcher_order.json'
 
     @property
     def adventures_root(self) -> Path:
@@ -45,7 +46,10 @@ class FilesystemRepository:
                     created_at = datetime.min.replace(tzinfo=timezone.utc)
             adventures.append((created_at, entry.name))
         adventures.sort(key=lambda item: (item[0], item[1].lower()), reverse=True)
-        return [name for _, name in adventures]
+        discovered = [name for _, name in adventures]
+        order = self._normalized_adventure_order(discovered)
+        self._save_adventure_order(order)
+        return order
 
     def create_adventure(self, name: str) -> str:
         safe_name = self._sanitize_name(name)
@@ -61,6 +65,7 @@ class FilesystemRepository:
             "updated_at": self._now_iso(),
         }
         write_json(path / "adventure.json", payload)
+        self._prepend_adventure_order(safe_name)
         return safe_name
 
     def delete_adventure(self, name: str) -> None:
@@ -69,12 +74,14 @@ class FilesystemRepository:
         if not path.exists():
             raise ValueError(f"Приключение '{safe_name}' не существует.")
         shutil.rmtree(path)
+        self._remove_from_adventure_order(safe_name)
 
     def rename_adventure(self, name: str, new_name: str) -> str:
         old_name = self._sanitize_name(name)
         target_name = self._sanitize_name(new_name)
         if old_name == target_name:
             return old_name
+        order_before_rename = self.list_adventures()
         old_path = self._adventures_root / old_name
         new_path = self._adventures_root / target_name
         if not old_path.exists():
@@ -93,7 +100,22 @@ class FilesystemRepository:
         payload = read_json(new_path / "adventure.json", default={"name": target_name, "scene_order": []})
         payload["name"] = target_name
         write_json(new_path / "adventure.json", payload)
+        order = [target_name if item == old_name else item for item in order_before_rename]
+        self._save_adventure_order(order)
         return target_name
+
+    def move_adventure(self, name: str, target_index: int) -> None:
+        safe_name = self._sanitize_name(name)
+        order = self.list_adventures()
+        if safe_name not in order:
+            raise ValueError(f"Adventure '{safe_name}' not found.")
+        bounded_index = max(0, min(len(order) - 1, int(target_index)))
+        current_index = order.index(safe_name)
+        if current_index == bounded_index:
+            return
+        order.pop(current_index)
+        order.insert(bounded_index, safe_name)
+        self._save_adventure_order(order)
 
     def list_scenes(self, adventure_name: str) -> list[str]:
         adventure_path = self._adventure_path(adventure_name)
@@ -256,6 +278,49 @@ class FilesystemRepository:
         data = self.load_adventure(adventure_name)
         data["scene_order"] = [item for item in data["scene_order"] if item != scene_name]
         self.save_adventure(adventure_name, data)
+
+    def _adventure_order_path(self) -> Path:
+        return self._adventures_root / self._adventure_order_file
+
+    def _load_adventure_order(self) -> list[str]:
+        payload = read_json(self._adventure_order_path(), default={"adventure_order": []})
+        raw_order = payload.get("adventure_order", [])
+        if not isinstance(raw_order, list):
+            return []
+        normalized: list[str] = []
+        for item in raw_order:
+            if not isinstance(item, str):
+                continue
+            name = item.strip()
+            if name and name not in normalized:
+                normalized.append(name)
+        return normalized
+
+    def _save_adventure_order(self, order: list[str]) -> None:
+        normalized: list[str] = []
+        for item in order:
+            if not isinstance(item, str):
+                continue
+            name = item.strip()
+            if name and name not in normalized:
+                normalized.append(name)
+        write_json(self._adventure_order_path(), {"adventure_order": normalized})
+
+    def _normalized_adventure_order(self, discovered: list[str]) -> list[str]:
+        known = set(discovered)
+        stored = [item for item in self._load_adventure_order() if item in known]
+        missing = [item for item in discovered if item not in stored]
+        return stored + missing
+
+    def _prepend_adventure_order(self, adventure_name: str) -> None:
+        order = self.list_adventures()
+        order = [item for item in order if item != adventure_name]
+        order.insert(0, adventure_name)
+        self._save_adventure_order(order)
+
+    def _remove_from_adventure_order(self, adventure_name: str) -> None:
+        order = [item for item in self.list_adventures() if item != adventure_name]
+        self._save_adventure_order(order)
 
     def _adventure_path(self, name: str) -> Path:
         self.ensure_root()

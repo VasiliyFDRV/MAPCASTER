@@ -614,6 +614,19 @@ class AppController(QObject):
         self._set_status(f"Приключение '{old_name}' переименовано в '{renamed}'.")
         self._emit_library_changed()
 
+    @Slot(str, int)
+    def move_adventure(self, name: str, target_index: int) -> None:
+        adventure_name = name.strip()
+        if not adventure_name:
+            return
+        try:
+            self._adventure_service.move_adventure(adventure_name, self._safe_int(target_index, 0))
+        except ValueError as exc:
+            self._set_status(str(exc))
+            return
+        self._adventures = self._adventure_service.list_adventures()
+        self._emit_library_changed()
+
     @Slot(str)
     def create_scene(self, scene_name: str) -> None:
         if not self._launcher_adventure:

@@ -31,6 +31,9 @@ class AdventureService:
     def rename_adventure(self, name: str, new_name: str) -> str:
         return self._repository.rename_adventure(name, new_name)
 
+    def move_adventure(self, name: str, target_index: int) -> None:
+        self._repository.move_adventure(name, target_index)
+
     def list_scenes(self, adventure_name: str) -> list[str]:
         return self._repository.list_scenes(adventure_name)
 
