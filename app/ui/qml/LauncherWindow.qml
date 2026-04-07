@@ -742,7 +742,7 @@ Window {
                                                 width: 24
                                                 height: 24
                                                 iconSource: Qt.resolvedUrl("icons/scene_edit.svg")
-                                                toolTip: explorerDelegate.scenesMode ? "???????? ?????" : "????????????? ???????????"
+                                                toolTip: explorerDelegate.scenesMode ? "Изменить сцену" : "Переименовать приключение"
                                                 onClicked: {
                                                     if (explorerDelegate.scenesMode) {
                                                         launcherWindow.openEditSceneDialog(explorerDelegate.itemName)
@@ -757,7 +757,7 @@ Window {
                                                 width: 24
                                                 height: 24
                                                 iconSource: Qt.resolvedUrl("icons/clear.svg")
-                                                toolTip: explorerDelegate.scenesMode ? "??????? ?????" : "??????? ???????????"
+                                                toolTip: explorerDelegate.scenesMode ? "Удалить сцену" : "Удалить приключение"
                                                 onClicked: {
                                                     if (explorerDelegate.scenesMode) {
                                                         appController.delete_scene(explorerDelegate.itemName)
@@ -792,7 +792,7 @@ Window {
                                             color: launcherWindow.textPrimary
                                             selectedTextColor: "#F4F4F6"
                                             selectionColor: "#6C6C6C"
-                                            placeholderText: "??????? ????????"
+                                            placeholderText: "Введите название"
                                             placeholderTextColor: launcherWindow.textSecondary
                                             padding: 0
                                             leftPadding: 0
