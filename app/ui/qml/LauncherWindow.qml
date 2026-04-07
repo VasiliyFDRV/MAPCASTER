@@ -798,6 +798,7 @@ Window {
                             topMargin: rowShadowBleed
                             bottomMargin: rowShadowBleed
                             spacing: 12
+                            cacheBuffer: Math.max(height * 3, 720)
                             clip: true
                             boundsBehavior: Flickable.StopAtBounds
                             model: launcherWindow.scenesMode ? appController.scenesModel : launcherWindow.adventureInlineModel
