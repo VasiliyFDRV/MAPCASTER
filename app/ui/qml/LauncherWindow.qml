@@ -804,10 +804,25 @@ Window {
                                             font.pixelSize: 14
                                             onTextChanged: launcherWindow.adventureInlineDraftName = text
                                             onAccepted: launcherWindow.commitAdventureInlineEdit()
-                                            onEditingFinished: launcherWindow.commitAdventureInlineEdit()
+                                            onActiveFocusChanged: {
+                                                if (!activeFocus && explorerDelegate.isAdventureInline) {
+                                                    inlineFocusRestoreTimer.restart()
+                                                }
+                                            }
                                             Keys.onEscapePressed: function(event) {
                                                 event.accepted = true
                                                 launcherWindow.cancelAdventureInlineEdit()
+                                            }
+
+                                            Timer {
+                                                id: inlineFocusRestoreTimer
+                                                interval: 0
+                                                repeat: false
+                                                onTriggered: {
+                                                    if (explorerDelegate.isAdventureInline) {
+                                                        inlineAdventureField.forceActiveFocus()
+                                                    }
+                                                }
                                             }
                                         }
                                     }
