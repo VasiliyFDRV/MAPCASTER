@@ -48,6 +48,7 @@ Window {
     property string adventureInlineDraftName: ""
     property bool adventureInlinePendingFocus: false
     property var adventureInlineModel: []
+    property bool adventureInlineActive: !scenesMode && adventureInlineMode !== "none"
 
     function detectMediaTypeFromValue(rawValue, fallbackType) {
         var value = String(rawValue || "").trim().toLowerCase()
@@ -571,6 +572,7 @@ Window {
                         theme: neumoTheme
                         width: 44
                         height: 44
+                        enabled: !launcherWindow.adventureInlineActive
                         iconSource: Qt.resolvedUrl("icons/dice.svg")
                         toolTip: "Дайсы"
                         onClicked: appController.request_open_dice()
@@ -580,6 +582,7 @@ Window {
                         theme: neumoTheme
                         width: 44
                         height: 44
+                        enabled: !launcherWindow.adventureInlineActive
                         iconSource: Qt.resolvedUrl("icons/settings.svg")
                         toolTip: "Настройки"
                         onClicked: settingsDrawer.open()
@@ -610,10 +613,10 @@ Window {
                             theme: neumoTheme
                             width: 30
                             height: 30
+                            enabled: visible && !launcherWindow.adventureInlineActive
                             iconSource: Qt.resolvedUrl("icons/back.svg")
                             toolTip: "Назад к приключениям"
                             visible: launcherWindow.scenesMode
-                            enabled: visible
                             onClicked: appController.leave_launcher_adventure()
                         }
 
@@ -630,6 +633,7 @@ Window {
                             theme: neumoTheme
                             width: 30
                             height: 30
+                            enabled: !launcherWindow.adventureInlineActive
                             glyph: "+"
                             fontSize: 20
                             toolTip: launcherWindow.scenesMode ? "Добавить сцену" : "Добавить приключение"
@@ -710,6 +714,7 @@ Window {
                                             MouseArea {
                                                 anchors.fill: parent
                                                 acceptedButtons: Qt.LeftButton
+                                                enabled: !launcherWindow.adventureInlineActive
                                                 onClicked: {
                                                     if (explorerDelegate.scenesMode) {
                                                         appController.open_scene(explorerDelegate.itemName)
@@ -741,6 +746,7 @@ Window {
                                                 theme: neumoTheme
                                                 width: 24
                                                 height: 24
+                                                enabled: !launcherWindow.adventureInlineActive
                                                 iconSource: Qt.resolvedUrl("icons/scene_edit.svg")
                                                 toolTip: explorerDelegate.scenesMode ? "Изменить сцену" : "Переименовать приключение"
                                                 onClicked: {
@@ -756,6 +762,7 @@ Window {
                                                 theme: neumoTheme
                                                 width: 24
                                                 height: 24
+                                                enabled: !launcherWindow.adventureInlineActive
                                                 iconSource: Qt.resolvedUrl("icons/clear.svg")
                                                 toolTip: explorerDelegate.scenesMode ? "Удалить сцену" : "Удалить приключение"
                                                 onClicked: {
