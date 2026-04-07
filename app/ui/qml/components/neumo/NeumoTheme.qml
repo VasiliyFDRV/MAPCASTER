@@ -132,9 +132,9 @@ QtObject {
 
     property int rowShadowSamples: 23
     property real rowShadowRadius: 10
-    property real rowShadowRadiusHover: 10.5
+    property real rowShadowRadiusHover: 11.4
     property real rowShadowOffset: 4.5
-    property real rowShadowOffsetHover: 5.3
+    property real rowShadowOffsetHover: 6.1
     property real rowShadowOffsetDrag: 5
     property real rowShadowRadiusDrag: 11
     property real rowDarkAlpha: 0.92
