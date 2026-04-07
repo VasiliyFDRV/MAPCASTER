@@ -60,7 +60,7 @@ Window {
     property int listDragItemCount: 0
     property real listDragVisibleCenterY: 0
     property real listDragAutoScrollThreshold: 52
-    property real listDragAutoScrollBaseStep: 10
+    property real listDragAutoScrollBaseStep: 5.5
 
 
     function detectMediaTypeFromValue(rawValue, fallbackType) {
@@ -351,11 +351,11 @@ Window {
         var nextContentY = view.contentY
         if (listDragVisibleCenterY < threshold) {
             var upRatio = 1 - Math.max(0, listDragVisibleCenterY) / threshold
-            nextContentY -= listDragAutoScrollBaseStep * (0.65 + upRatio * 1.85)
+            nextContentY -= listDragAutoScrollBaseStep * (0.45 + upRatio * 1.25)
         } else if (listDragVisibleCenterY > view.height - threshold) {
             var downDistance = view.height - listDragVisibleCenterY
             var downRatio = 1 - Math.max(0, downDistance) / threshold
-            nextContentY += listDragAutoScrollBaseStep * (0.65 + downRatio * 1.85)
+            nextContentY += listDragAutoScrollBaseStep * (0.45 + downRatio * 1.25)
         }
         nextContentY = Math.max(0, Math.min(maxContentY, nextContentY))
         var delta = nextContentY - view.contentY
