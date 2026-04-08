@@ -24,6 +24,7 @@ FocusScope {
     property string effectiveType: MediaValueUtils.detectMediaTypeFromValue(previewValue, mediaType)
     property bool videoPreviewReady: false
     property bool videoPreviewPrimed: false
+    readonly property bool inputFieldHovered: valueField.hovered
 
     signal dropValue(string value)
     signal pasteRequest()

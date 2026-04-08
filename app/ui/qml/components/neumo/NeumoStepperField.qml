@@ -33,6 +33,8 @@ FocusScope {
     property real outlineWidth: launcherInlineStyle ? (root.activeFocus ? 1 : 0) : 1
     property real outlineOpacity: launcherInlineStyle ? 0.9 : (root.enabled ? 1.0 : 0.55)
 
+    readonly property bool editFieldHovered: editor.hovered
+
     signal valueModified(real value)
 
     implicitWidth: compactMode ? 126 : 156

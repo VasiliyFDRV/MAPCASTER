@@ -4,6 +4,14 @@ from pathlib import Path
 from typing import Any
 
 
+DEFAULT_MAP_COLOR = "#2E2E2E"
+DEFAULT_BACKGROUND_COLOR = "#1F1F1F"
+DEFAULT_GRID_CELL_SIZE_FT = 8.0
+DEFAULT_GRID_LINE_THICKNESS_PX = 1.0
+DEFAULT_GRID_OPACITY = 0.45
+DEFAULT_GRID_COLOR = "#000000"
+
+
 def build_default_settings(project_root: Path) -> dict[str, Any]:
     adventures_root = project_root / "adventures"
     return {
@@ -12,7 +20,7 @@ def build_default_settings(project_root: Path) -> dict[str, Any]:
             "map": {
                 "enabled": True,
                 "type": "color",
-                "value": "#2E2E2E",
+                "value": DEFAULT_MAP_COLOR,
                 "autoplay": True,
                 "loop": True,
                 "mute": True,
@@ -20,17 +28,17 @@ def build_default_settings(project_root: Path) -> dict[str, Any]:
             "background": {
                 "enabled": True,
                 "type": "color",
-                "value": "#1F1F1F",
+                "value": DEFAULT_BACKGROUND_COLOR,
                 "autoplay": True,
                 "loop": True,
                 "mute": True,
             },
             "grid": {
                 "enabled": True,
-                "cell_size_ft": 5.0,
-                "line_thickness_px": 1.5,
-                "opacity": 0.45,
-                "color": "#9DA6B0",
+                "cell_size_ft": DEFAULT_GRID_CELL_SIZE_FT,
+                "line_thickness_px": DEFAULT_GRID_LINE_THICKNESS_PX,
+                "opacity": DEFAULT_GRID_OPACITY,
+                "color": DEFAULT_GRID_COLOR,
             },
         },
         "ui": {

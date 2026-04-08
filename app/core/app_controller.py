@@ -10,7 +10,15 @@ from typing import Any
 from PySide6.QtCore import QObject, Property, Signal, Slot
 
 from app.core.event_bus import EventBus
-from app.domain.defaults import build_default_settings
+from app.domain.defaults import (
+    DEFAULT_BACKGROUND_COLOR,
+    DEFAULT_GRID_CELL_SIZE_FT,
+    DEFAULT_GRID_COLOR,
+    DEFAULT_GRID_LINE_THICKNESS_PX,
+    DEFAULT_GRID_OPACITY,
+    DEFAULT_MAP_COLOR,
+    build_default_settings,
+)
 from app.services.adventure_service import AdventureService
 from app.services.media_service import MediaService
 from app.services.settings_service import SettingsService
@@ -60,8 +68,8 @@ class AppController(QObject):
     @Property(str, notify=settings_changed)
     def mapFillColor(self) -> str:
         if self.mapMediaType == "color":
-            return str(self._settings["default_scene"]["map"].get("value", "#2E2E2E"))
-        return "#2E2E2E"
+            return str(self._settings["default_scene"]["map"].get("value", DEFAULT_MAP_COLOR))
+        return DEFAULT_MAP_COLOR
 
     @Property(str, notify=settings_changed)
     def mapMediaType(self) -> str:
@@ -69,7 +77,7 @@ class AppController(QObject):
 
     @Property(str, notify=settings_changed)
     def mapMediaValue(self) -> str:
-        return str(self._settings["default_scene"]["map"].get("value", "#2E2E2E"))
+        return str(self._settings["default_scene"]["map"].get("value", DEFAULT_MAP_COLOR))
 
     @Property(str, notify=settings_changed)
     def mapMediaSource(self) -> str:
@@ -90,8 +98,8 @@ class AppController(QObject):
     @Property(str, notify=settings_changed)
     def backgroundFillColor(self) -> str:
         if self.backgroundMediaType == "color":
-            return str(self._settings["default_scene"]["background"].get("value", "#1F1F1F"))
-        return "#1F1F1F"
+            return str(self._settings["default_scene"]["background"].get("value", DEFAULT_BACKGROUND_COLOR))
+        return DEFAULT_BACKGROUND_COLOR
 
     @Property(str, notify=settings_changed)
     def backgroundMediaType(self) -> str:
@@ -99,7 +107,7 @@ class AppController(QObject):
 
     @Property(str, notify=settings_changed)
     def backgroundMediaValue(self) -> str:
-        return str(self._settings["default_scene"]["background"].get("value", "#1F1F1F"))
+        return str(self._settings["default_scene"]["background"].get("value", DEFAULT_BACKGROUND_COLOR))
 
     @Property(str, notify=settings_changed)
     def backgroundMediaSource(self) -> str:
@@ -119,19 +127,19 @@ class AppController(QObject):
 
     @Property(float, notify=settings_changed)
     def gridCellSizeFt(self) -> float:
-        return float(self._settings["default_scene"]["grid"].get("cell_size_ft", 5.0))
+        return float(self._settings["default_scene"]["grid"].get("cell_size_ft", DEFAULT_GRID_CELL_SIZE_FT))
 
     @Property(float, notify=settings_changed)
     def gridLineThicknessPx(self) -> float:
-        return float(self._settings["default_scene"]["grid"].get("line_thickness_px", 1.5))
+        return float(self._settings["default_scene"]["grid"].get("line_thickness_px", DEFAULT_GRID_LINE_THICKNESS_PX))
 
     @Property(float, notify=settings_changed)
     def gridOpacity(self) -> float:
-        return float(self._settings["default_scene"]["grid"].get("opacity", 0.45))
+        return float(self._settings["default_scene"]["grid"].get("opacity", DEFAULT_GRID_OPACITY))
 
     @Property(str, notify=settings_changed)
     def gridColor(self) -> str:
-        return str(self._settings["default_scene"]["grid"].get("color", "#9DA6B0"))
+        return str(self._settings["default_scene"]["grid"].get("color", DEFAULT_GRID_COLOR))
 
     @Property(bool, notify=scene_view_changed)
     def activeMapEnabled(self) -> bool:
@@ -145,7 +153,7 @@ class AppController(QObject):
     def activeMapFillColor(self) -> str:
         if self.activeMapMediaType == "color":
             return str(self._scene_source()["map"].get("value", "#2E2E2E"))
-        return "#2E2E2E"
+        return DEFAULT_MAP_COLOR
 
     @Property(str, notify=scene_view_changed)
     def activeMapMediaSource(self) -> str:
@@ -181,7 +189,7 @@ class AppController(QObject):
     def activeBackgroundFillColor(self) -> str:
         if self.activeBackgroundMediaType == "color":
             return str(self._scene_source()["background"].get("value", "#1F1F1F"))
-        return "#1F1F1F"
+        return DEFAULT_BACKGROUND_COLOR
 
     @Property(str, notify=scene_view_changed)
     def activeBackgroundMediaSource(self) -> str:
@@ -211,19 +219,19 @@ class AppController(QObject):
 
     @Property(float, notify=scene_view_changed)
     def activeGridCellSizeFt(self) -> float:
-        return float(self._scene_source()["grid"].get("cell_size_ft", 5.0))
+        return float(self._scene_source()["grid"].get("cell_size_ft", DEFAULT_GRID_CELL_SIZE_FT))
 
     @Property(float, notify=scene_view_changed)
     def activeGridLineThicknessPx(self) -> float:
-        return float(self._scene_source()["grid"].get("line_thickness_px", 1.5))
+        return float(self._scene_source()["grid"].get("line_thickness_px", DEFAULT_GRID_LINE_THICKNESS_PX))
 
     @Property(float, notify=scene_view_changed)
     def activeGridOpacity(self) -> float:
-        return float(self._scene_source()["grid"].get("opacity", 0.45))
+        return float(self._scene_source()["grid"].get("opacity", DEFAULT_GRID_OPACITY))
 
     @Property(str, notify=scene_view_changed)
     def activeGridColor(self) -> str:
-        return str(self._scene_source()["grid"].get("color", "#9DA6B0"))
+        return str(self._scene_source()["grid"].get("color", DEFAULT_GRID_COLOR))
 
     @Property(str, notify=settings_changed)
     def adventuresRoot(self) -> str:
@@ -736,9 +744,29 @@ class AppController(QObject):
         map_media = dict(default_scene["map"])
         bg_media = dict(default_scene["background"])
         grid = dict(default_scene["grid"])
-        map_media["enabled"] = True
-        bg_media["enabled"] = False
-        grid["enabled"] = True
+        map_media.update({
+            "enabled": True,
+            "type": "color",
+            "value": DEFAULT_MAP_COLOR,
+            "autoplay": True,
+            "loop": True,
+            "mute": True,
+        })
+        bg_media.update({
+            "enabled": False,
+            "type": "color",
+            "value": DEFAULT_BACKGROUND_COLOR,
+            "autoplay": True,
+            "loop": True,
+            "mute": True,
+        })
+        grid.update({
+            "enabled": True,
+            "cell_size_ft": DEFAULT_GRID_CELL_SIZE_FT,
+            "line_thickness_px": DEFAULT_GRID_LINE_THICKNESS_PX,
+            "opacity": DEFAULT_GRID_OPACITY,
+            "color": DEFAULT_GRID_COLOR,
+        })
         return {
             "mode": "create",
             "name": "",
@@ -925,10 +953,10 @@ class AppController(QObject):
     @Slot(float, float, float, str)
     def update_grid(self, cell_size_ft: float, line_thickness_px: float, opacity: float, color: str) -> None:
         grid = self._settings["default_scene"]["grid"]
-        grid["cell_size_ft"] = max(0.1, self._safe_float(cell_size_ft, 5.0))
-        grid["line_thickness_px"] = min(10.0, max(0.2, self._safe_float(line_thickness_px, 1.5)))
-        grid["opacity"] = min(1.0, max(0.0, self._safe_float(opacity, 0.45)))
-        grid["color"] = color.strip() or "#9DA6B0"
+        grid["cell_size_ft"] = max(0.1, self._safe_float(cell_size_ft, DEFAULT_GRID_CELL_SIZE_FT))
+        grid["line_thickness_px"] = min(10.0, max(0.2, self._safe_float(line_thickness_px, DEFAULT_GRID_LINE_THICKNESS_PX)))
+        grid["opacity"] = min(1.0, max(0.0, self._safe_float(opacity, DEFAULT_GRID_OPACITY)))
+        grid["color"] = color.strip() or DEFAULT_GRID_COLOR
         self._emit_settings_changed()
         if self._active_scene_data is None:
             self._default_runtime_scene["grid"] = dict(grid)
@@ -1702,20 +1730,20 @@ class AppController(QObject):
             "enabled": bool(grid.get("enabled", defaults.get("enabled", True))),
             "cell_size_ft": max(
                 0.1,
-                self._safe_float(grid.get("cell_size_ft", defaults.get("cell_size_ft", 5.0)), 5.0),
+                self._safe_float(grid.get("cell_size_ft", defaults.get("cell_size_ft", DEFAULT_GRID_CELL_SIZE_FT)), DEFAULT_GRID_CELL_SIZE_FT),
             ),
             "line_thickness_px": min(
                 10.0,
                 max(
                     0.2,
-                    self._safe_float(grid.get("line_thickness_px", defaults.get("line_thickness_px", 1.5)), 1.5),
+                    self._safe_float(grid.get("line_thickness_px", defaults.get("line_thickness_px", DEFAULT_GRID_LINE_THICKNESS_PX)), DEFAULT_GRID_LINE_THICKNESS_PX),
                 ),
             ),
             "opacity": min(
                 1.0,
-                max(0.0, self._safe_float(grid.get("opacity", defaults.get("opacity", 0.45)), 0.45)),
+                max(0.0, self._safe_float(grid.get("opacity", defaults.get("opacity", DEFAULT_GRID_OPACITY)), DEFAULT_GRID_OPACITY)),
             ),
-            "color": str(grid.get("color", defaults.get("color", "#9DA6B0"))).strip() or "#9DA6B0",
+            "color": str(grid.get("color", defaults.get("color", DEFAULT_GRID_COLOR))).strip() or DEFAULT_GRID_COLOR,
         }
 
     def _prepare_scene_payload_for_storage(

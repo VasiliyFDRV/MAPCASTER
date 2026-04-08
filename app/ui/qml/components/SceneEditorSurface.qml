@@ -4,7 +4,7 @@ import QtQuick.Layouts
 import "neumo"
 import "MediaValueUtils.js" as MediaValueUtils
 
-Item {
+FocusScope {
     id: root
 
     property var theme
@@ -21,10 +21,10 @@ Item {
     property string backgroundType: "color"
     property string mapValue: "#2E2E2E"
     property string backgroundValue: "#1F1F1F"
-    property real gridCellSize: 5.0
-    property real gridLineThickness: 1.5
+    property real gridCellSize: 8.0
+    property real gridLineThickness: 1.0
     property real gridOpacity: 0.45
-    property string gridColor: "#9D9D9D"
+    property string gridColor: "#000000"
     property string initialFingerprint: ""
 
     readonly property string modeTitle: modeCode === "edit"
@@ -41,12 +41,29 @@ Item {
     readonly property int sectionSpacing: narrowLayout ? 10 : 13
     readonly property int sectionOuterGutter: narrowLayout ? 6 : 9
     readonly property int headerTitleSize: narrowLayout ? 20 : 22
+    readonly property string gridSizeLabel: "\u0420\u0430\u0437\u043c\u0435\u0440 \u043a\u043b\u0435\u0442\u043a\u0438"
+    readonly property string gridLineThicknessLabel: "\u0422\u043e\u043b\u0449\u0438\u043d\u0430 \u043b\u0438\u043d\u0438\u0438"
+    readonly property string gridOpacityLabel: "\u041f\u0440\u043e\u0437\u0440\u0430\u0447\u043d\u043e\u0441\u0442\u044c \u0441\u0435\u0442\u043a\u0438"
+    readonly property int compactGridLabelWidth: narrowLayout ? 132 : 0
 
     signal backRequested(bool dirty)
     signal saveRequested(var draft)
     signal browseRequested(string target)
     signal colorRequested(string target, string currentValue)
     signal pasteRequested(string target)
+
+    function pointerOverEditableControl() {
+        return sceneNameField.hovered
+            || gridColorField.hovered
+            || mapMediaTile.inputFieldHovered
+            || backgroundMediaTile.inputFieldHovered
+            || gridCellWideField.editFieldHovered
+            || gridLineWideField.editFieldHovered
+            || gridOpacityWideField.editFieldHovered
+            || gridCellCompactField.editFieldHovered
+            || gridLineCompactField.editFieldHovered
+            || gridOpacityCompactField.editFieldHovered
+    }
 
     function applyMediaValue(target, value, explicitType) {
         var nextValue = String(value || "").trim()
@@ -76,10 +93,10 @@ Item {
         backgroundType = String(draftBackground.type || MediaValueUtils.detectMediaTypeFromValue(draftBackground.value || "", "color"))
         mapValue = mapType === "color" ? MediaValueUtils.normalizeColorValue(draftMap.value || "#2E2E2E", "#2E2E2E") : String(draftMap.value || "")
         backgroundValue = backgroundType === "color" ? MediaValueUtils.normalizeColorValue(draftBackground.value || "#1F1F1F", "#1F1F1F") : String(draftBackground.value || "")
-        gridCellSize = Number(draftGrid.cell_size_ft === undefined ? 5.0 : draftGrid.cell_size_ft)
-        gridLineThickness = Number(draftGrid.line_thickness_px === undefined ? 1.5 : draftGrid.line_thickness_px)
+        gridCellSize = Number(draftGrid.cell_size_ft === undefined ? 8.0 : draftGrid.cell_size_ft)
+        gridLineThickness = Number(draftGrid.line_thickness_px === undefined ? 1.0 : draftGrid.line_thickness_px)
         gridOpacity = Number(draftGrid.opacity === undefined ? 0.45 : draftGrid.opacity)
-        gridColor = MediaValueUtils.normalizeColorValue(draftGrid.color || "#9D9D9D", "#9D9D9D")
+        gridColor = MediaValueUtils.normalizeColorValue(draftGrid.color || "#000000", "#000000")
         sceneNameField.text = sceneName
         gridColorField.text = gridColor
         initialFingerprint = currentDraftFingerprint
@@ -112,7 +129,7 @@ Item {
                 "cell_size_ft": Number(gridCellSize.toFixed(2)),
                 "line_thickness_px": Number(gridLineThickness.toFixed(2)),
                 "opacity": Number(gridOpacity.toFixed(2)),
-                "color": MediaValueUtils.normalizeColorValue(gridColor, "#9D9D9D")
+                "color": MediaValueUtils.normalizeColorValue(gridColor, "#000000")
             }
         }
     }
@@ -148,10 +165,17 @@ Item {
         repeat: false
         onTriggered: {
             sceneNameField.forceActiveFocus()
-            sceneNameField.selectAll()
         }
     }
 
+    TapHandler {
+        acceptedButtons: Qt.AllButtons
+        onTapped: {
+            if (!root.pointerOverEditableControl()) {
+                root.forceActiveFocus()
+            }
+        }
+    }
 
     Flickable {
         id: editorScroll
@@ -274,6 +298,7 @@ Item {
                             spacing: root.sectionSpacing
 
                             MediaDropTile {
+                                id: mapMediaTile
                                 theme: root.theme
                                 Layout.fillWidth: true
                                 Layout.minimumWidth: 0
@@ -351,25 +376,28 @@ Item {
 
                                                 Label {
                                                     Layout.fillWidth: true
-                                                    text: "\u0420\u0430\u0437\u043c\u0435\u0440"
+                                                    text: root.gridSizeLabel
                                                     color: root.theme ? root.theme.textSecondary : "#909090"
                                                     font.pixelSize: 11
+                                                    wrapMode: Text.WordWrap
                                                     horizontalAlignment: Text.AlignHCenter
                                                 }
 
                                                 Label {
                                                     Layout.fillWidth: true
-                                                    text: "\u041b\u0438\u043d\u0438\u044f"
+                                                    text: root.gridLineThicknessLabel
                                                     color: root.theme ? root.theme.textSecondary : "#909090"
                                                     font.pixelSize: 11
+                                                    wrapMode: Text.WordWrap
                                                     horizontalAlignment: Text.AlignHCenter
                                                 }
 
                                                 Label {
                                                     Layout.fillWidth: true
-                                                    text: "\u0410\u043b\u044c\u0444\u0430"
+                                                    text: root.gridOpacityLabel
                                                     color: root.theme ? root.theme.textSecondary : "#909090"
                                                     font.pixelSize: 11
+                                                    wrapMode: Text.WordWrap
                                                     horizontalAlignment: Text.AlignHCenter
                                                 }
                                             }
@@ -379,6 +407,7 @@ Item {
                                                 spacing: 8
 
                                                 NeumoStepperField {
+                                                    id: gridCellWideField
                                                     theme: root.theme
                                                     Layout.fillWidth: true
                                                     Layout.minimumWidth: 0
@@ -391,6 +420,7 @@ Item {
                                                 }
 
                                                 NeumoStepperField {
+                                                    id: gridLineWideField
                                                     theme: root.theme
                                                     Layout.fillWidth: true
                                                     Layout.minimumWidth: 0
@@ -403,6 +433,7 @@ Item {
                                                 }
 
                                                 NeumoStepperField {
+                                                    id: gridOpacityWideField
                                                     theme: root.theme
                                                     Layout.fillWidth: true
                                                     Layout.minimumWidth: 0
@@ -426,14 +457,15 @@ Item {
                                                 spacing: 8
 
                                                 Label {
-                                                    Layout.preferredWidth: 82
-                                                    text: "\u0420\u0430\u0437\u043c\u0435\u0440"
+                                                    Layout.preferredWidth: root.compactGridLabelWidth
+                                                    text: root.gridSizeLabel
                                                     color: root.theme ? root.theme.textSecondary : "#909090"
                                                     font.pixelSize: 12
                                                     verticalAlignment: Text.AlignVCenter
                                                 }
 
                                                 NeumoStepperField {
+                                                    id: gridCellCompactField
                                                     theme: root.theme
                                                     Layout.fillWidth: true
                                                     Layout.minimumWidth: 0
@@ -452,14 +484,15 @@ Item {
                                                 spacing: 8
 
                                                 Label {
-                                                    Layout.preferredWidth: 82
-                                                    text: "\u041b\u0438\u043d\u0438\u044f"
+                                                    Layout.preferredWidth: root.compactGridLabelWidth
+                                                    text: root.gridLineThicknessLabel
                                                     color: root.theme ? root.theme.textSecondary : "#909090"
                                                     font.pixelSize: 12
                                                     verticalAlignment: Text.AlignVCenter
                                                 }
 
                                                 NeumoStepperField {
+                                                    id: gridLineCompactField
                                                     theme: root.theme
                                                     Layout.fillWidth: true
                                                     Layout.minimumWidth: 0
@@ -478,14 +511,15 @@ Item {
                                                 spacing: 8
 
                                                 Label {
-                                                    Layout.preferredWidth: 82
-                                                    text: "\u0410\u043b\u044c\u0444\u0430"
+                                                    Layout.preferredWidth: root.compactGridLabelWidth
+                                                    text: root.gridOpacityLabel
                                                     color: root.theme ? root.theme.textSecondary : "#909090"
                                                     font.pixelSize: 12
                                                     verticalAlignment: Text.AlignVCenter
                                                 }
 
                                                 NeumoStepperField {
+                                                    id: gridOpacityCompactField
                                                     theme: root.theme
                                                     Layout.fillWidth: true
                                                     Layout.minimumWidth: 0
@@ -521,7 +555,7 @@ Item {
                                                     Layout.fillWidth: true
                                                     Layout.minimumWidth: 0
                                                     text: root.gridColor
-                                                    placeholderText: "#9D9D9D"
+                                                    placeholderText: "#000000"
                                                     onTextChanged: root.gridColor = text
                                                 }
 
@@ -589,6 +623,7 @@ Item {
                             spacing: root.sectionSpacing
 
                             MediaDropTile {
+                                id: backgroundMediaTile
                                 theme: root.theme
                                 Layout.fillWidth: true
                                 Layout.minimumWidth: 0

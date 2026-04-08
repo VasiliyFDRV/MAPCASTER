@@ -35,8 +35,8 @@ TextField {
     padding: 0
     leftPadding: launcherInlineStyle ? 10 : 14
     rightPadding: launcherInlineStyle ? 10 : 14
-    topPadding: launcherInlineStyle ? 9 : 11
-    bottomPadding: launcherInlineStyle ? 11 : 11
+    topPadding: launcherInlineStyle ? 10 : 11
+    bottomPadding: launcherInlineStyle ? 10 : 11
 
     verticalAlignment: TextInput.AlignVCenter
 
