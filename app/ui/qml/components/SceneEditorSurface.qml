@@ -38,6 +38,7 @@ Item {
     readonly property int sectionRadius: narrowLayout ? 18 : 20
     readonly property int sectionPadding: narrowLayout ? 12 : 15
     readonly property int sectionSpacing: narrowLayout ? 10 : 13
+    readonly property int sectionOuterGutter: narrowLayout ? 6 : 9
     readonly property int headerTitleSize: narrowLayout ? 20 : 22
 
     signal backRequested(bool dirty)
@@ -242,12 +243,17 @@ Item {
                     color: root.theme ? root.theme.textSecondary : "#909090"
                     font.pixelSize: 12
                     Layout.fillWidth: true
+                    Layout.leftMargin: root.sectionOuterGutter
+                    Layout.rightMargin: root.sectionOuterGutter
                 }
 
                 NeumoTextField {
                     id: sceneNameField
                     theme: root.theme
+                    visualStyle: "launcherInline"
                     Layout.fillWidth: true
+                    Layout.leftMargin: root.sectionOuterGutter
+                    Layout.rightMargin: root.sectionOuterGutter
                     placeholderText: "\u0412\u0432\u0435\u0434\u0438\u0442\u0435 \u043d\u0430\u0437\u0432\u0430\u043d\u0438\u0435"
                     text: root.sceneName
                     onTextChanged: root.sceneName = text
@@ -257,10 +263,16 @@ Item {
                     id: mapSection
                     theme: root.theme
                     Layout.fillWidth: true
+                    Layout.leftMargin: root.sectionOuterGutter
+                    Layout.rightMargin: root.sectionOuterGutter
+                    Layout.topMargin: 2
                     Layout.preferredHeight: implicitHeight
                     implicitHeight: mapSectionContent.implicitHeight + contentPadding * 2
                     radius: root.sectionRadius
                     fillColor: root.theme ? root.theme.baseColor : "#2D2D2D"
+                    shadowOffset: root.narrowLayout ? 3.5 : 4.4
+                    shadowRadius: root.narrowLayout ? 8.0 : 9.4
+                    shadowSamples: 23
                     contentPadding: root.sectionPadding
 
                     ColumnLayout {
@@ -537,6 +549,7 @@ Item {
                                                 NeumoTextField {
                                                     id: gridColorField
                                                     theme: root.theme
+                                                    visualStyle: "launcherInline"
                                                     Layout.fillWidth: true
                                                     Layout.minimumWidth: 0
                                                     text: root.gridColor
@@ -565,10 +578,16 @@ Item {
                     id: backgroundSection
                     theme: root.theme
                     Layout.fillWidth: true
+                    Layout.leftMargin: root.sectionOuterGutter
+                    Layout.rightMargin: root.sectionOuterGutter
+                    Layout.topMargin: root.narrowLayout ? 4 : 6
                     Layout.preferredHeight: implicitHeight
                     implicitHeight: backgroundSectionContent.implicitHeight + contentPadding * 2
                     radius: root.sectionRadius
                     fillColor: root.theme ? root.theme.baseColor : "#2D2D2D"
+                    shadowOffset: root.narrowLayout ? 3.5 : 4.4
+                    shadowRadius: root.narrowLayout ? 8.0 : 9.4
+                    shadowSamples: 23
                     contentPadding: root.sectionPadding
 
                     ColumnLayout {

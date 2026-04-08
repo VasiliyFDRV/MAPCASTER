@@ -30,9 +30,11 @@ QtObject {
 
     property color fieldBackgroundColor: "#232323"
     property color fieldInsetFillColor: "#26282C"
+    property color fieldInlineFillColor: baseColor
     property color fieldBorderColor: "#4D4D4D"
     property color fieldBorderHoverColor: "#626262"
     property color fieldBorderFocusColor: "#ABABAB"
+    property color fieldInlineFocusColor: "#8C8C8C"
     property color fieldSelectedTextColor: "#F4F4F6"
     property color fieldSelectionColor: "#6C6C6C"
     property color fieldPlaceholderColor: textSecondary
@@ -47,12 +49,25 @@ QtObject {
     property color utilityIconPressedFillColor: "#646464"
     property color utilityIconBorderColor: "#969696"
 
-    property color toggleTrackColor: "#353535"
-    property color toggleTrackCheckedColor: "#646464"
+    property color toggleTrackColor: fieldInsetFillColor
+    property color toggleTrackCheckedColor: fieldInsetFillColor
     property color toggleTrackBorderColor: "#5C5C5C"
-    property color toggleTrackCheckedBorderColor: "#A8A8A8"
-    property color toggleKnobColor: "#EAEAEA"
-    property color toggleKnobBorderColor: "#B2B2B2"
+    property color toggleTrackCheckedBorderColor: "#6A6F78"
+    property color toggleTrackNeutralBorderColor: "#5F646D"
+    property color toggleTrackCheckedTintColor: "#8A909A"
+
+    property color toggleKnobOffBaseColor: "#565A62"
+    property color toggleKnobOnBaseColor: "#7A828F"
+    property color toggleKnobOffLightColor: "#7D838D"
+    property color toggleKnobOffDarkColor: "#3E444E"
+    property color toggleKnobOnLightColor: "#C4CCD9"
+    property color toggleKnobOnDarkColor: "#5A6372"
+    property color toggleKnobOffBorderColor: "#6E7480"
+    property color toggleKnobOnBorderColor: "#C1C9D8"
+
+    property real toggleHoverScale: 1.015
+    property real togglePressScale: 0.97
+    property real togglePressYOffset: 1
 
     property color comboTextColor: textPrimary
     property color comboIndicatorColor: "#C6C6C6"

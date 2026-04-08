@@ -8,7 +8,7 @@ FocusScope {
     id: root
     clip: true
 
-    implicitHeight: compactMode ? 148 : 222
+    implicitHeight: compactMode ? 156 : 228
     implicitWidth: 280
 
     property var theme
@@ -103,20 +103,20 @@ FocusScope {
         theme: root.theme
         radius: compactMode ? 16 : 18
         fillColor: theme ? theme.baseColor : "#2D2D2D"
-        contentPadding: compactMode ? 11 : 14
+        contentPadding: compactMode ? 14 : 16
 
         ColumnLayout {
             anchors.fill: parent
-            spacing: compactMode ? 8 : 11
+            spacing: compactMode ? 10 : 12
 
             NeumoRaisedSurface {
                 id: previewTile
                 Layout.fillWidth: true
                 Layout.fillHeight: true
-                Layout.leftMargin: compactMode ? 6 : 8
-                Layout.rightMargin: compactMode ? 6 : 8
+                Layout.leftMargin: compactMode ? 7 : 9
+                Layout.rightMargin: compactMode ? 7 : 9
                 Layout.minimumHeight: compactMode ? 64 : 136
-                Layout.preferredHeight: compactMode ? 72 : 150
+                Layout.preferredHeight: compactMode ? 74 : 152
                 theme: root.theme
                 radius: compactMode ? 12 : 16
                 fillColor: theme ? theme.baseColor : "#2D2D2D"
@@ -202,12 +202,14 @@ FocusScope {
                 Layout.fillWidth: true
                 Layout.leftMargin: compactMode ? 8 : 10
                 Layout.rightMargin: compactMode ? 8 : 10
-                Layout.topMargin: compactMode ? 1 : 2
+                Layout.topMargin: compactMode ? 5 : 6
+                Layout.bottomMargin: compactMode ? 3 : 4
                 spacing: compactMode ? 6 : 8
 
                 NeumoTextField {
                     id: valueField
                     theme: root.theme
+                    visualStyle: "launcherInline"
                     Layout.fillWidth: false
                     Layout.minimumWidth: 120
                     Layout.preferredWidth: Math.max(120, root.width * (compactMode ? 0.72 : 0.78))

@@ -1,6 +1,5 @@
-﻿import QtQuick
+import QtQuick
 import QtQuick.Controls
-import QtQuick.Layouts
 
 FocusScope {
     id: root
@@ -12,10 +11,11 @@ FocusScope {
     property real stepSize: 1.0
     property int decimals: 2
     property bool compactMode: false
+    property bool wheelAdjustEnabled: false
 
     signal valueModified(real value)
 
-    implicitWidth: compactMode ? 122 : 154
+    implicitWidth: compactMode ? 126 : 156
     implicitHeight: compactMode ? 38 : 42
 
     function decimalsFactor() {
@@ -90,7 +90,7 @@ FocusScope {
         border.width: 1
         border.color: root.activeFocus
             ? (theme ? theme.fieldBorderFocusColor : "#ABABAB")
-            : (editor.hovered
+            : (leftArea.containsMouse || rightArea.containsMouse || editor.hovered
                 ? (theme ? theme.fieldBorderHoverColor : "#626262")
                 : (theme ? theme.fieldBorderColor : "#4D4D4D"))
         opacity: root.enabled ? 1.0 : 0.55
@@ -100,54 +100,114 @@ FocusScope {
         }
     }
 
-    RowLayout {
+    Item {
+        id: body
         anchors.fill: parent
         anchors.leftMargin: compactMode ? 4 : 6
         anchors.rightMargin: compactMode ? 4 : 6
         anchors.topMargin: compactMode ? 4 : 6
         anchors.bottomMargin: compactMode ? 4 : 6
-        spacing: compactMode ? 4 : 6
+
+        readonly property int segmentWidth: compactMode ? 24 : 28
 
         Item {
-            Layout.preferredWidth: compactMode ? 20 : 24
-            Layout.preferredHeight: compactMode ? 20 : 24
-            Layout.alignment: Qt.AlignVCenter
+            id: leftSegment
+            anchors.left: parent.left
+            anchors.top: parent.top
+            anchors.bottom: parent.bottom
+            width: body.segmentWidth
 
-            NeumoRaisedSurface {
+            Rectangle {
                 anchors.fill: parent
-                theme: root.theme
                 radius: compactMode ? 7 : 8
-                fillColor: theme ? theme.baseColor : "#2D2D2D"
-                shadowOffset: compactMode ? 1.7 : 2.0
-                shadowRadius: compactMode ? 4.2 : 5.0
-                shadowSamples: 17
-                shadowDarkColor: theme
-                    ? Qt.rgba(theme.shadowDarkBase.r, theme.shadowDarkBase.g, theme.shadowDarkBase.b, 0.55)
-                    : "#8C151618"
-                shadowLightColor: theme
-                    ? Qt.rgba(theme.shadowLightBase.r, theme.shadowLightBase.g, theme.shadowLightBase.b, 0.24)
-                    : "#3D55565C"
+                color: theme ? theme.baseColor : "#2D2D2D"
+                opacity: leftArea.pressed ? 0.34 : (leftArea.containsMouse ? 0.18 : 0.0)
+
+                Behavior on opacity {
+                    NumberAnimation { duration: 90 }
+                }
             }
 
             Text {
                 anchors.centerIn: parent
                 text: "-"
                 color: root.theme ? root.theme.textPrimary : "#D0D0D0"
-                font.pixelSize: compactMode ? 13 : 16
+                font.pixelSize: compactMode ? 13 : 15
                 font.weight: Font.DemiBold
+                opacity: root.enabled ? 1.0 : 0.45
             }
 
             MouseArea {
+                id: leftArea
                 anchors.fill: parent
                 enabled: root.enabled
+                hoverEnabled: true
                 onClicked: root.stepBy(-1)
             }
         }
 
+        Rectangle {
+            anchors.left: leftSegment.right
+            anchors.top: parent.top
+            anchors.bottom: parent.bottom
+            width: 1
+            color: theme ? theme.fieldBorderColor : "#4D4D4D"
+            opacity: 0.55
+        }
+
+        Item {
+            id: rightSegment
+            anchors.right: parent.right
+            anchors.top: parent.top
+            anchors.bottom: parent.bottom
+            width: body.segmentWidth
+
+            Rectangle {
+                anchors.fill: parent
+                radius: compactMode ? 7 : 8
+                color: theme ? theme.baseColor : "#2D2D2D"
+                opacity: rightArea.pressed ? 0.34 : (rightArea.containsMouse ? 0.18 : 0.0)
+
+                Behavior on opacity {
+                    NumberAnimation { duration: 90 }
+                }
+            }
+
+            Text {
+                anchors.centerIn: parent
+                text: "+"
+                color: root.theme ? root.theme.textPrimary : "#D0D0D0"
+                font.pixelSize: compactMode ? 12 : 14
+                font.weight: Font.DemiBold
+                opacity: root.enabled ? 1.0 : 0.45
+            }
+
+            MouseArea {
+                id: rightArea
+                anchors.fill: parent
+                enabled: root.enabled
+                hoverEnabled: true
+                onClicked: root.stepBy(1)
+            }
+        }
+
+        Rectangle {
+            anchors.right: rightSegment.left
+            anchors.top: parent.top
+            anchors.bottom: parent.bottom
+            width: 1
+            color: theme ? theme.fieldBorderColor : "#4D4D4D"
+            opacity: 0.55
+        }
+
         TextField {
             id: editor
-            Layout.fillWidth: true
-            Layout.minimumWidth: 0
+            anchors.left: leftSegment.right
+            anchors.right: rightSegment.left
+            anchors.top: parent.top
+            anchors.bottom: parent.bottom
+            anchors.leftMargin: compactMode ? 6 : 8
+            anchors.rightMargin: compactMode ? 6 : 8
             color: root.theme ? root.theme.textPrimary : "#D0D0D0"
             selectedTextColor: root.theme ? root.theme.fieldSelectedTextColor : "#F4F4F6"
             selectionColor: root.theme ? root.theme.fieldSelectionColor : "#6C6C6C"
@@ -185,47 +245,11 @@ FocusScope {
                 root.stepBy(-1)
             }
         }
-
-        Item {
-            Layout.preferredWidth: compactMode ? 20 : 24
-            Layout.preferredHeight: compactMode ? 20 : 24
-            Layout.alignment: Qt.AlignVCenter
-
-            NeumoRaisedSurface {
-                anchors.fill: parent
-                theme: root.theme
-                radius: compactMode ? 7 : 8
-                fillColor: theme ? theme.baseColor : "#2D2D2D"
-                shadowOffset: compactMode ? 1.7 : 2.0
-                shadowRadius: compactMode ? 4.2 : 5.0
-                shadowSamples: 17
-                shadowDarkColor: theme
-                    ? Qt.rgba(theme.shadowDarkBase.r, theme.shadowDarkBase.g, theme.shadowDarkBase.b, 0.55)
-                    : "#8C151618"
-                shadowLightColor: theme
-                    ? Qt.rgba(theme.shadowLightBase.r, theme.shadowLightBase.g, theme.shadowLightBase.b, 0.24)
-                    : "#3D55565C"
-            }
-
-            Text {
-                anchors.centerIn: parent
-                text: "+"
-                color: root.theme ? root.theme.textPrimary : "#D0D0D0"
-                font.pixelSize: compactMode ? 12 : 14
-                font.weight: Font.DemiBold
-            }
-
-            MouseArea {
-                anchors.fill: parent
-                enabled: root.enabled
-                onClicked: root.stepBy(1)
-            }
-        }
     }
 
     WheelHandler {
         target: null
-        enabled: root.enabled
+        enabled: root.enabled && root.wheelAdjustEnabled && (leftArea.containsMouse || rightArea.containsMouse || editor.activeFocus)
         onWheel: function(event) {
             if (event.angleDelta.y > 0) {
                 root.stepBy(1)
