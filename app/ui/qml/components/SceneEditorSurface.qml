@@ -37,7 +37,7 @@ Item {
     readonly property bool narrowLayout: width < 360
     readonly property int sectionRadius: narrowLayout ? 18 : 20
     readonly property int sectionPadding: narrowLayout ? 10 : 12
-    readonly property int sectionSpacing: narrowLayout ? 7 : 9
+    readonly property int sectionSpacing: narrowLayout ? 8 : 10
     readonly property int headerTitleSize: narrowLayout ? 20 : 22
 
     signal backRequested(bool dirty)
@@ -286,6 +286,7 @@ Item {
                             MediaDropTile {
                                 theme: root.theme
                                 Layout.fillWidth: true
+                                Layout.topMargin: root.narrowLayout ? 4 : 2
                                 compactMode: true
                                 mediaType: root.mapType
                                 previewValue: root.mapValue
@@ -350,7 +351,7 @@ Item {
 
                                             Label {
                                                 Layout.fillWidth: true
-                                                text: "\u0422\u043e\u043b\u0449\u0438\u043d\u0430"
+                                                text: "\u041b\u0438\u043d\u0438\u044f"
                                                 color: root.theme ? root.theme.textSecondary : "#909090"
                                                 font.pixelSize: 11
                                                 horizontalAlignment: Text.AlignHCenter
@@ -358,7 +359,7 @@ Item {
 
                                             Label {
                                                 Layout.fillWidth: true
-                                                text: "\u041f\u0440\u043e\u0437\u0440\u0430\u0447\u043d\u043e\u0441\u0442\u044c"
+                                                text: "\u0410\u043b\u044c\u0444\u0430"
                                                 color: root.theme ? root.theme.textSecondary : "#909090"
                                                 font.pixelSize: 11
                                                 horizontalAlignment: Text.AlignHCenter
@@ -372,6 +373,8 @@ Item {
                                             NeumoStepperField {
                                                 theme: root.theme
                                                 Layout.fillWidth: true
+                                                Layout.minimumWidth: 0
+                                                compactMode: root.narrowLayout
                                                 value: root.gridCellSize
                                                 from: 0.1
                                                 to: 100.0
@@ -383,6 +386,8 @@ Item {
                                             NeumoStepperField {
                                                 theme: root.theme
                                                 Layout.fillWidth: true
+                                                Layout.minimumWidth: 0
+                                                compactMode: root.narrowLayout
                                                 value: root.gridLineThickness
                                                 from: 0.2
                                                 to: 10.0
@@ -394,6 +399,8 @@ Item {
                                             NeumoStepperField {
                                                 theme: root.theme
                                                 Layout.fillWidth: true
+                                                Layout.minimumWidth: 0
+                                                compactMode: root.narrowLayout
                                                 value: root.gridOpacity
                                                 from: 0.0
                                                 to: 1.0
@@ -403,9 +410,9 @@ Item {
                                             }
                                         }
 
-                                        RowLayout {
+                                        ColumnLayout {
                                             Layout.fillWidth: true
-                                            spacing: 8
+                                            spacing: 6
 
                                             Label {
                                                 text: "\u0426\u0432\u0435\u0442 \u0441\u0435\u0442\u043a\u0438"
@@ -413,22 +420,28 @@ Item {
                                                 font.pixelSize: 12
                                             }
 
-                                            NeumoTextField {
-                                                id: gridColorField
-                                                theme: root.theme
+                                            RowLayout {
                                                 Layout.fillWidth: true
-                                                text: root.gridColor
-                                                placeholderText: "#9D9D9D"
-                                                onTextChanged: root.gridColor = text
-                                            }
+                                                spacing: 8
 
-                                            NeumoUtilityIconButton {
-                                                theme: root.theme
-                                                width: 28
-                                                height: 28
-                                                iconSource: Qt.resolvedUrl("../icons/palette.svg")
-                                                toolTip: "\u0412\u044b\u0431\u0440\u0430\u0442\u044c \u0446\u0432\u0435\u0442 \u0441\u0435\u0442\u043a\u0438"
-                                                onClicked: root.colorRequested("grid", root.gridColor)
+                                                NeumoTextField {
+                                                    id: gridColorField
+                                                    theme: root.theme
+                                                    Layout.fillWidth: true
+                                                    Layout.minimumWidth: 0
+                                                    text: root.gridColor
+                                                    placeholderText: "#9D9D9D"
+                                                    onTextChanged: root.gridColor = text
+                                                }
+
+                                                NeumoUtilityIconButton {
+                                                    theme: root.theme
+                                                    width: 28
+                                                    height: 28
+                                                    iconSource: Qt.resolvedUrl("../icons/palette.svg")
+                                                    toolTip: "\u0412\u044b\u0431\u0440\u0430\u0442\u044c \u0446\u0432\u0435\u0442 \u0441\u0435\u0442\u043a\u0438"
+                                                    onClicked: root.colorRequested("grid", root.gridColor)
+                                                }
                                             }
                                         }
                                     }
@@ -477,6 +490,7 @@ Item {
                             MediaDropTile {
                                 theme: root.theme
                                 Layout.fillWidth: true
+                                Layout.topMargin: root.narrowLayout ? 4 : 2
                                 compactMode: true
                                 mediaType: root.backgroundType
                                 previewValue: root.backgroundValue

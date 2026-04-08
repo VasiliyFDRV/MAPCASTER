@@ -1017,7 +1017,7 @@ Window {
                     Layout.fillHeight: true
                     radius: 28
                     fillColor: launcherWindow.bgBase
-                    contentPadding: 14
+                    contentPadding: 18
 
                     SceneEditorSurface {
                         id: sceneEditorSurface

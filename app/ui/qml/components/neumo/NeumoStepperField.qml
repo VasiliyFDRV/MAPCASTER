@@ -11,11 +11,12 @@ FocusScope {
     property real to: 9999.0
     property real stepSize: 1.0
     property int decimals: 2
+    property bool compactMode: false
 
     signal valueModified(real value)
 
-    implicitWidth: 154
-    implicitHeight: 42
+    implicitWidth: compactMode ? 122 : 154
+    implicitHeight: compactMode ? 38 : 42
 
     function decimalsFactor() {
         return Math.pow(10, Math.max(0, decimals))
@@ -77,14 +78,14 @@ FocusScope {
     NeumoInsetSurface {
         anchors.fill: parent
         theme: root.theme
-        radius: 14
+        radius: compactMode ? 12 : 14
         fillColor: theme ? theme.fieldInsetFillColor : "#262626"
         contentPadding: 0
     }
 
     Rectangle {
         anchors.fill: parent
-        radius: 14
+        radius: compactMode ? 12 : 14
         color: "transparent"
         border.width: 1
         border.color: root.activeFocus
@@ -101,24 +102,24 @@ FocusScope {
 
     RowLayout {
         anchors.fill: parent
-        anchors.leftMargin: 6
-        anchors.rightMargin: 6
-        anchors.topMargin: 6
-        anchors.bottomMargin: 6
-        spacing: 6
+        anchors.leftMargin: compactMode ? 4 : 6
+        anchors.rightMargin: compactMode ? 4 : 6
+        anchors.topMargin: compactMode ? 4 : 6
+        anchors.bottomMargin: compactMode ? 4 : 6
+        spacing: compactMode ? 4 : 6
 
         Item {
-            Layout.preferredWidth: 24
-            Layout.preferredHeight: 24
+            Layout.preferredWidth: compactMode ? 20 : 24
+            Layout.preferredHeight: compactMode ? 20 : 24
             Layout.alignment: Qt.AlignVCenter
 
             NeumoRaisedSurface {
                 anchors.fill: parent
                 theme: root.theme
-                radius: 8
+                radius: compactMode ? 7 : 8
                 fillColor: theme ? theme.baseColor : "#2D2D2D"
-                shadowOffset: 2.0
-                shadowRadius: 5.0
+                shadowOffset: compactMode ? 1.7 : 2.0
+                shadowRadius: compactMode ? 4.2 : 5.0
                 shadowSamples: 17
                 shadowDarkColor: theme
                     ? Qt.rgba(theme.shadowDarkBase.r, theme.shadowDarkBase.g, theme.shadowDarkBase.b, 0.55)
@@ -132,7 +133,7 @@ FocusScope {
                 anchors.centerIn: parent
                 text: "-"
                 color: root.theme ? root.theme.textPrimary : "#D0D0D0"
-                font.pixelSize: 16
+                font.pixelSize: compactMode ? 13 : 16
                 font.weight: Font.DemiBold
             }
 
@@ -152,7 +153,7 @@ FocusScope {
             selectionColor: root.theme ? root.theme.fieldSelectionColor : "#6C6C6C"
             horizontalAlignment: Text.AlignHCenter
             verticalAlignment: Text.AlignVCenter
-            font.pixelSize: 13
+            font.pixelSize: compactMode ? 12 : 13
             background: null
             padding: 0
             leftPadding: 0
@@ -186,17 +187,17 @@ FocusScope {
         }
 
         Item {
-            Layout.preferredWidth: 24
-            Layout.preferredHeight: 24
+            Layout.preferredWidth: compactMode ? 20 : 24
+            Layout.preferredHeight: compactMode ? 20 : 24
             Layout.alignment: Qt.AlignVCenter
 
             NeumoRaisedSurface {
                 anchors.fill: parent
                 theme: root.theme
-                radius: 8
+                radius: compactMode ? 7 : 8
                 fillColor: theme ? theme.baseColor : "#2D2D2D"
-                shadowOffset: 2.0
-                shadowRadius: 5.0
+                shadowOffset: compactMode ? 1.7 : 2.0
+                shadowRadius: compactMode ? 4.2 : 5.0
                 shadowSamples: 17
                 shadowDarkColor: theme
                     ? Qt.rgba(theme.shadowDarkBase.r, theme.shadowDarkBase.g, theme.shadowDarkBase.b, 0.55)
@@ -210,7 +211,7 @@ FocusScope {
                 anchors.centerIn: parent
                 text: "+"
                 color: root.theme ? root.theme.textPrimary : "#D0D0D0"
-                font.pixelSize: 14
+                font.pixelSize: compactMode ? 12 : 14
                 font.weight: Font.DemiBold
             }
 

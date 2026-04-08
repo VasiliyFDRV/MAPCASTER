@@ -117,8 +117,8 @@ FocusScope {
                 theme: root.theme
                 radius: compactMode ? 14 : 16
                 fillColor: theme ? theme.baseColor : "#2D2D2D"
-                shadowOffset: compactMode ? 3.4 : 4.4
-                shadowRadius: compactMode ? 7.6 : 9.4
+                shadowOffset: compactMode ? 2.6 : 4.4
+                shadowRadius: compactMode ? 5.8 : 9.4
                 shadowSamples: 21
 
                 Rectangle {
