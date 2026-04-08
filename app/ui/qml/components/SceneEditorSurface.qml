@@ -219,19 +219,22 @@ Item {
             }
         }
 
-        ScrollView {
+        Flickable {
             id: editorScroll
             Layout.fillWidth: true
             Layout.fillHeight: true
             clip: true
-            contentWidth: availableWidth
+            boundsBehavior: Flickable.StopAtBounds
+            flickableDirection: Flickable.VerticalFlick
+            contentWidth: width
             contentHeight: editorContent.implicitHeight
+            interactive: contentHeight > height
             ScrollBar.vertical: NeumoScrollBar {}
-            ScrollBar.horizontal: NeumoScrollBar {}
+            ScrollBar.horizontal: ScrollBar { policy: ScrollBar.AlwaysOff }
 
             ColumnLayout {
                 id: editorContent
-                width: editorScroll.availableWidth > 0 ? editorScroll.availableWidth : editorScroll.width
+                width: editorScroll.width
                 spacing: 12
 
                 Label {
@@ -251,14 +254,18 @@ Item {
                 }
 
                 NeumoRaisedSurface {
+                    id: mapSection
                     theme: root.theme
                     Layout.fillWidth: true
+                    Layout.preferredHeight: implicitHeight
+                    implicitHeight: mapSectionContent.implicitHeight + contentPadding * 2
                     radius: root.sectionRadius
                     fillColor: root.theme ? root.theme.baseColor : "#2D2D2D"
                     contentPadding: root.sectionPadding
 
                     ColumnLayout {
-                        anchors.fill: parent
+                        id: mapSectionContent
+                        width: parent.width
                         spacing: root.sectionSpacing
 
                         RowLayout {
@@ -289,6 +296,7 @@ Item {
                             MediaDropTile {
                                 theme: root.theme
                                 Layout.fillWidth: true
+                                Layout.minimumWidth: 0
                                 Layout.topMargin: root.narrowLayout ? 4 : 2
                                 compactMode: true
                                 mediaType: root.mapType
@@ -304,14 +312,18 @@ Item {
                             }
 
                             NeumoRaisedSurface {
+                                id: gridSection
                                 theme: root.theme
                                 Layout.fillWidth: true
+                                Layout.preferredHeight: implicitHeight
+                                implicitHeight: gridSectionContent.implicitHeight + contentPadding * 2
                                 radius: root.narrowLayout ? 16 : 18
                                 fillColor: root.theme ? root.theme.baseColor : "#2D2D2D"
                                 contentPadding: root.sectionPadding
 
                                 ColumnLayout {
-                                    anchors.fill: parent
+                                    id: gridSectionContent
+                                    width: parent.width
                                     spacing: 8
 
                                     RowLayout {
@@ -542,14 +554,18 @@ Item {
                 }
 
                 NeumoRaisedSurface {
+                    id: backgroundSection
                     theme: root.theme
                     Layout.fillWidth: true
+                    Layout.preferredHeight: implicitHeight
+                    implicitHeight: backgroundSectionContent.implicitHeight + contentPadding * 2
                     radius: root.sectionRadius
                     fillColor: root.theme ? root.theme.baseColor : "#2D2D2D"
                     contentPadding: root.sectionPadding
 
                     ColumnLayout {
-                        anchors.fill: parent
+                        id: backgroundSectionContent
+                        width: parent.width
                         spacing: root.sectionSpacing
 
                         RowLayout {
@@ -580,6 +596,7 @@ Item {
                             MediaDropTile {
                                 theme: root.theme
                                 Layout.fillWidth: true
+                                Layout.minimumWidth: 0
                                 Layout.topMargin: root.narrowLayout ? 4 : 2
                                 compactMode: true
                                 mediaType: root.backgroundType
