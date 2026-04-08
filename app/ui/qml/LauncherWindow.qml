@@ -3,8 +3,6 @@ import QtQuick.Controls
 import QtQuick.Dialogs
 import QtQuick.Layouts
 import QtQuick.Window
-import QtQuick.Effects
-import Qt5Compat.GraphicalEffects
 import "components"
 import "components/MediaValueUtils.js" as MediaValueUtils
 import "components/neumo"
@@ -92,7 +90,6 @@ Window {
         }
 
         Item {
-            id: sceneEditorModeScreen
             anchors.fill: parent
             visible: launcherWindow.sceneEditorVisible
 
