@@ -521,6 +521,7 @@ Window {
             anchors.fill: parent
             anchors.margins: 20
             spacing: 24
+            visible: !launcherWindow.sceneEditorVisible
 
             RowLayout {
                 Layout.fillWidth: true
@@ -996,38 +997,57 @@ Window {
                         }
                     }
                 }
+                }
+            }
 
-                SceneEditorSurface {
-                    id: sceneEditorSurface
-                    visible: launcherWindow.sceneEditorVisible
+        Item {
+            id: sceneEditorModeScreen
+            anchors.fill: parent
+            visible: launcherWindow.sceneEditorVisible
+
+            ColumnLayout {
+                anchors.fill: parent
+                anchors.margins: 16
+                spacing: 0
+
+                NeumoInsetSurface {
+                    theme: neumoTheme
+                    useFrameProfile: true
                     Layout.fillWidth: true
                     Layout.fillHeight: true
-                    theme: neumoTheme
-                    initialDraft: launcherWindow.sceneEditorInitialDraft
-                    openToken: launcherWindow.sceneEditorOpenToken
-                    statusMessage: appController.statusMessage
-                    onBackRequested: function(dirty) {
-                        launcherWindow.requestCloseSceneEditor(!dirty)
-                    }
-                    onSaveRequested: function(draft) {
-                        var ok = appController.save_scene_draft_for_adventure(appController.launcherAdventure, draft)
-                        if (ok) {
-                            launcherWindow.closeSceneEditor()
+                    radius: 28
+                    fillColor: launcherWindow.bgBase
+                    contentPadding: 14
+
+                    SceneEditorSurface {
+                        id: sceneEditorSurface
+                        anchors.fill: parent
+                        theme: neumoTheme
+                        initialDraft: launcherWindow.sceneEditorInitialDraft
+                        openToken: launcherWindow.sceneEditorOpenToken
+                        onBackRequested: function(dirty) {
+                            launcherWindow.requestCloseSceneEditor(!dirty)
                         }
-                    }
-                    onBrowseRequested: function(target) {
-                        launcherWindow.pendingFileTarget = target
-                        mediaFileDialog.open()
-                    }
-                    onColorRequested: function(target, currentValue) {
-                        launcherWindow.pendingColorTarget = target
-                        colorPickerDialog.selectedColor = currentValue
-                        colorPickerDialog.open()
-                    }
-                    onPasteRequested: function(target) {
-                        var pastedValue = appController.paste_media_value(target)
-                        if (pastedValue && pastedValue.length > 0) {
-                            sceneEditorSurface.applyPastedValue(target, pastedValue)
+                        onSaveRequested: function(draft) {
+                            var ok = appController.save_scene_draft_for_adventure(appController.launcherAdventure, draft)
+                            if (ok) {
+                                launcherWindow.closeSceneEditor()
+                            }
+                        }
+                        onBrowseRequested: function(target) {
+                            launcherWindow.pendingFileTarget = target
+                            mediaFileDialog.open()
+                        }
+                        onColorRequested: function(target, currentValue) {
+                            launcherWindow.pendingColorTarget = target
+                            colorPickerDialog.selectedColor = currentValue
+                            colorPickerDialog.open()
+                        }
+                        onPasteRequested: function(target) {
+                            var pastedValue = appController.paste_media_value(target)
+                            if (pastedValue && pastedValue.length > 0) {
+                                sceneEditorSurface.applyPastedValue(target, pastedValue)
+                            }
                         }
                     }
                 }

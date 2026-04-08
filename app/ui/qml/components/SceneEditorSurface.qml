@@ -1,4 +1,4 @@
-﻿import QtQuick
+import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
 import "neumo"
@@ -8,7 +8,6 @@ Item {
 
     property var theme
     property string modeCode: "create"
-    property string statusMessage: ""
     property var initialDraft: ({})
     property int openToken: 0
 
@@ -26,12 +25,20 @@ Item {
     property real gridOpacity: 0.45
     property string gridColor: "#9D9D9D"
     property string initialFingerprint: ""
+
     readonly property string modeTitle: modeCode === "edit"
         ? "\u0420\u0435\u0434\u0430\u043a\u0442\u0438\u0440\u043e\u0432\u0430\u043d\u0438\u0435 \u0441\u0446\u0435\u043d\u044b"
         : "\u0421\u043e\u0437\u0434\u0430\u043d\u0438\u0435 \u0441\u0446\u0435\u043d\u044b"
+    readonly property string saveButtonText: modeCode === "edit"
+        ? "\u0421\u043e\u0445\u0440\u0430\u043d\u0438\u0442\u044c"
+        : "\u0421\u043e\u0437\u0434\u0430\u0442\u044c"
     readonly property string currentDraftFingerprint: JSON.stringify(root.currentDraft())
     readonly property bool dirty: currentDraftFingerprint !== initialFingerprint
-    readonly property bool showStatusMessage: statusMessage.length > 0 && statusMessage !== "\u0413\u043e\u0442\u043e\u0432\u043e"
+    readonly property bool narrowLayout: width < 360
+    readonly property int sectionRadius: narrowLayout ? 18 : 20
+    readonly property int sectionPadding: narrowLayout ? 10 : 12
+    readonly property int sectionSpacing: narrowLayout ? 7 : 9
+    readonly property int headerTitleSize: narrowLayout ? 20 : 22
 
     signal backRequested(bool dirty)
     signal saveRequested(var draft)
@@ -171,49 +178,44 @@ Item {
 
     ColumnLayout {
         anchors.fill: parent
-        spacing: 14
+        spacing: 10
 
-        RowLayout {
+        ColumnLayout {
             Layout.fillWidth: true
-            spacing: 12
+            spacing: 6
 
-            NeumoIconButton {
-                theme: root.theme
-                width: 30
-                height: 30
-                iconSource: Qt.resolvedUrl("../icons/back.svg")
-                toolTip: "\u041d\u0430\u0437\u0430\u0434"
-                onClicked: root.backRequested(root.dirty)
-            }
-
-            ColumnLayout {
+            RowLayout {
                 Layout.fillWidth: true
-                spacing: 2
+                spacing: 8
 
-                Label {
-                    text: root.modeTitle
-                    color: root.theme ? root.theme.textPrimary : "#D0D0D0"
-                    font.pixelSize: 22
-                    font.weight: Font.DemiBold
-                    Layout.fillWidth: true
-                    elide: Text.ElideRight
+                NeumoIconButton {
+                    theme: root.theme
+                    width: 30
+                    height: 30
+                    iconSource: Qt.resolvedUrl("../icons/back.svg")
+                    toolTip: "\u041d\u0430\u0437\u0430\u0434"
+                    onClicked: root.backRequested(root.dirty)
                 }
 
-                Label {
-                    visible: root.showStatusMessage
-                    text: root.statusMessage
-                    color: "#C9B07D"
-                    font.pixelSize: 12
+                Item {
                     Layout.fillWidth: true
-                    wrapMode: Text.WordWrap
+                }
+
+                NeumoDialogButton {
+                    theme: root.theme
+                    text: root.saveButtonText
+                    accent: true
+                    onClicked: root.saveRequested(root.currentDraft())
                 }
             }
 
-            NeumoDialogButton {
-                theme: root.theme
-                text: "\u0421\u043e\u0445\u0440\u0430\u043d\u0438\u0442\u044c"
-                accent: true
-                onClicked: root.saveRequested(root.currentDraft())
+            Label {
+                Layout.fillWidth: true
+                text: root.modeTitle
+                color: root.theme ? root.theme.textPrimary : "#D0D0D0"
+                font.pixelSize: root.headerTitleSize
+                font.weight: Font.DemiBold
+                elide: Text.ElideRight
             }
         }
 
@@ -227,7 +229,7 @@ Item {
 
             ColumnLayout {
                 width: editorScroll.availableWidth
-                spacing: 14
+                spacing: 12
 
                 Label {
                     text: "\u041d\u0430\u0437\u0432\u0430\u043d\u0438\u0435 \u0441\u0446\u0435\u043d\u044b"
@@ -240,7 +242,7 @@ Item {
                     id: sceneNameField
                     theme: root.theme
                     Layout.fillWidth: true
-                    placeholderText: "\u041d\u0430\u0437\u0432\u0430\u043d\u0438\u0435 \u0441\u0446\u0435\u043d\u044b"
+                    placeholderText: "\u0412\u0432\u0435\u0434\u0438\u0442\u0435 \u043d\u0430\u0437\u0432\u0430\u043d\u0438\u0435"
                     text: root.sceneName
                     onTextChanged: root.sceneName = text
                 }
@@ -248,13 +250,13 @@ Item {
                 NeumoRaisedSurface {
                     theme: root.theme
                     Layout.fillWidth: true
-                    radius: 20
+                    radius: root.sectionRadius
                     fillColor: root.theme ? root.theme.baseColor : "#2D2D2D"
-                    contentPadding: 16
+                    contentPadding: root.sectionPadding
 
                     ColumnLayout {
                         anchors.fill: parent
-                        spacing: 12
+                        spacing: root.sectionSpacing
 
                         RowLayout {
                             Layout.fillWidth: true
@@ -264,7 +266,7 @@ Item {
                                 Layout.fillWidth: true
                                 text: "\u041a\u0430\u0440\u0442\u0430"
                                 color: root.theme ? root.theme.textPrimary : "#D0D0D0"
-                                font.pixelSize: 18
+                                font.pixelSize: root.narrowLayout ? 16 : 18
                                 font.weight: Font.DemiBold
                             }
 
@@ -276,18 +278,20 @@ Item {
                         }
 
                         ColumnLayout {
-                            visible: root.mapEnabled
                             Layout.fillWidth: true
-                            spacing: 12
+                            visible: root.mapEnabled
+                            enabled: root.mapEnabled
+                            spacing: root.sectionSpacing
 
                             MediaDropTile {
                                 theme: root.theme
                                 Layout.fillWidth: true
+                                compactMode: true
                                 mediaType: root.mapType
                                 previewValue: root.mapValue
                                 fallbackColor: "#2E2E2E"
-                                placeholderText: "\u041a\u0430\u0440\u0442\u0430: Ctrl+V, drag and drop, double click"
-                                helperText: "\u041c\u043e\u0436\u043d\u043e \u0432\u0441\u0442\u0430\u0432\u0438\u0442\u044c \u043f\u0443\u0442\u044c, \u0444\u0430\u0439\u043b \u0438\u043b\u0438 \u0432\u044b\u0431\u0440\u0430\u0442\u044c \u0446\u0432\u0435\u0442"
+                                placeholderText: "\u041a\u0430\u0440\u0442\u0430: \u0444\u0430\u0439\u043b, \u0432\u0438\u0434\u0435\u043e \u0438\u043b\u0438 \u0446\u0432\u0435\u0442"
+                                helperText: ""
                                 onDropValue: function(value) { root.applyMediaValue("map", value, null) }
                                 onPasteRequest: root.pasteRequested("map")
                                 onBrowseRequest: root.browseRequested("map")
@@ -298,13 +302,13 @@ Item {
                             NeumoRaisedSurface {
                                 theme: root.theme
                                 Layout.fillWidth: true
-                                radius: 18
+                                radius: root.narrowLayout ? 16 : 18
                                 fillColor: root.theme ? root.theme.baseColor : "#2D2D2D"
-                                contentPadding: 14
+                                contentPadding: root.sectionPadding
 
                                 ColumnLayout {
                                     anchors.fill: parent
-                                    spacing: 10
+                                    spacing: 8
 
                                     RowLayout {
                                         Layout.fillWidth: true
@@ -314,51 +318,56 @@ Item {
                                             Layout.fillWidth: true
                                             text: "\u0421\u0435\u0442\u043a\u0430"
                                             color: root.theme ? root.theme.textPrimary : "#D0D0D0"
-                                            font.pixelSize: 16
+                                            font.pixelSize: root.narrowLayout ? 14 : 16
                                             font.weight: Font.DemiBold
                                         }
 
                                         NeumoToggle {
                                             theme: root.theme
                                             checked: root.gridEnabled
+                                            enabled: root.mapEnabled
                                             onToggled: function(next) { root.gridEnabled = next }
                                         }
                                     }
 
                                     ColumnLayout {
-                                        visible: root.gridEnabled
                                         Layout.fillWidth: true
+                                        visible: root.gridEnabled
+                                        enabled: root.gridEnabled && root.mapEnabled
                                         spacing: 8
 
                                         RowLayout {
                                             Layout.fillWidth: true
-                                            spacing: 10
+                                            spacing: 8
 
                                             Label {
                                                 Layout.fillWidth: true
-                                                text: "\u0420\u0430\u0437\u043c\u0435\u0440 \u043a\u043b\u0435\u0442\u043a\u0438"
+                                                text: "\u0420\u0430\u0437\u043c\u0435\u0440"
                                                 color: root.theme ? root.theme.textSecondary : "#909090"
-                                                font.pixelSize: 12
+                                                font.pixelSize: 11
+                                                horizontalAlignment: Text.AlignHCenter
                                             }
 
                                             Label {
                                                 Layout.fillWidth: true
-                                                text: "\u0422\u043e\u043b\u0449\u0438\u043d\u0430 \u043b\u0438\u043d\u0438\u0438"
+                                                text: "\u0422\u043e\u043b\u0449\u0438\u043d\u0430"
                                                 color: root.theme ? root.theme.textSecondary : "#909090"
-                                                font.pixelSize: 12
+                                                font.pixelSize: 11
+                                                horizontalAlignment: Text.AlignHCenter
                                             }
 
                                             Label {
                                                 Layout.fillWidth: true
                                                 text: "\u041f\u0440\u043e\u0437\u0440\u0430\u0447\u043d\u043e\u0441\u0442\u044c"
                                                 color: root.theme ? root.theme.textSecondary : "#909090"
-                                                font.pixelSize: 12
+                                                font.pixelSize: 11
+                                                horizontalAlignment: Text.AlignHCenter
                                             }
                                         }
 
                                         RowLayout {
                                             Layout.fillWidth: true
-                                            spacing: 10
+                                            spacing: 8
 
                                             NeumoStepperField {
                                                 theme: root.theme
@@ -415,8 +424,8 @@ Item {
 
                                             NeumoUtilityIconButton {
                                                 theme: root.theme
-                                                width: 30
-                                                height: 30
+                                                width: 28
+                                                height: 28
                                                 iconSource: Qt.resolvedUrl("../icons/palette.svg")
                                                 toolTip: "\u0412\u044b\u0431\u0440\u0430\u0442\u044c \u0446\u0432\u0435\u0442 \u0441\u0435\u0442\u043a\u0438"
                                                 onClicked: root.colorRequested("grid", root.gridColor)
@@ -432,13 +441,13 @@ Item {
                 NeumoRaisedSurface {
                     theme: root.theme
                     Layout.fillWidth: true
-                    radius: 20
+                    radius: root.sectionRadius
                     fillColor: root.theme ? root.theme.baseColor : "#2D2D2D"
-                    contentPadding: 16
+                    contentPadding: root.sectionPadding
 
                     ColumnLayout {
                         anchors.fill: parent
-                        spacing: 12
+                        spacing: root.sectionSpacing
 
                         RowLayout {
                             Layout.fillWidth: true
@@ -448,7 +457,7 @@ Item {
                                 Layout.fillWidth: true
                                 text: "\u0424\u043e\u043d"
                                 color: root.theme ? root.theme.textPrimary : "#D0D0D0"
-                                font.pixelSize: 18
+                                font.pixelSize: root.narrowLayout ? 16 : 18
                                 font.weight: Font.DemiBold
                             }
 
@@ -460,18 +469,20 @@ Item {
                         }
 
                         ColumnLayout {
-                            visible: root.backgroundEnabled
                             Layout.fillWidth: true
-                            spacing: 12
+                            visible: root.backgroundEnabled
+                            enabled: root.backgroundEnabled
+                            spacing: root.sectionSpacing
 
                             MediaDropTile {
                                 theme: root.theme
                                 Layout.fillWidth: true
+                                compactMode: true
                                 mediaType: root.backgroundType
                                 previewValue: root.backgroundValue
                                 fallbackColor: "#1F1F1F"
-                                placeholderText: "\u0424\u043e\u043d: Ctrl+V, drag and drop, double click"
-                                helperText: "\u041c\u043e\u0436\u043d\u043e \u0437\u0430\u0434\u0430\u0442\u044c \u0446\u0432\u0435\u0442, \u0438\u0437\u043e\u0431\u0440\u0430\u0436\u0435\u043d\u0438\u0435 \u0438\u043b\u0438 \u0432\u0438\u0434\u0435\u043e"
+                                placeholderText: "\u0424\u043e\u043d: \u0444\u0430\u0439\u043b, \u0432\u0438\u0434\u0435\u043e \u0438\u043b\u0438 \u0446\u0432\u0435\u0442"
+                                helperText: ""
                                 onDropValue: function(value) { root.applyMediaValue("background", value, null) }
                                 onPasteRequest: root.pasteRequested("background")
                                 onBrowseRequest: root.browseRequested("background")
@@ -484,7 +495,7 @@ Item {
 
                 Item {
                     Layout.fillWidth: true
-                    Layout.preferredHeight: 4
+                    Layout.preferredHeight: 2
                 }
             }
         }

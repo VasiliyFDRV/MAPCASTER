@@ -1,4 +1,4 @@
-﻿import QtQuick
+import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
 import QtMultimedia
@@ -7,10 +7,11 @@ import "neumo"
 FocusScope {
     id: root
 
-    implicitHeight: 222
+    implicitHeight: compactMode ? 154 : 222
     implicitWidth: 280
 
     property var theme
+    property bool compactMode: false
     property string mediaType: "color"
     property string previewValue: ""
     property string previewSourceUrl: previewSource(previewValue)
@@ -99,30 +100,30 @@ FocusScope {
     NeumoInsetSurface {
         anchors.fill: parent
         theme: root.theme
-        radius: 18
+        radius: compactMode ? 16 : 18
         fillColor: theme ? theme.baseColor : "#2D2D2D"
-        contentPadding: 12
+        contentPadding: compactMode ? 9 : 12
 
         ColumnLayout {
             anchors.fill: parent
-            spacing: 10
+            spacing: compactMode ? 7 : 10
 
             NeumoRaisedSurface {
                 id: previewTile
                 Layout.fillWidth: true
                 Layout.fillHeight: true
-                Layout.minimumHeight: 136
-                Layout.preferredHeight: 150
+                Layout.minimumHeight: compactMode ? 80 : 136
+                Layout.preferredHeight: compactMode ? 88 : 150
                 theme: root.theme
-                radius: 16
+                radius: compactMode ? 14 : 16
                 fillColor: theme ? theme.baseColor : "#2D2D2D"
-                shadowOffset: 4.4
-                shadowRadius: 9.4
+                shadowOffset: compactMode ? 3.4 : 4.4
+                shadowRadius: compactMode ? 7.6 : 9.4
                 shadowSamples: 21
 
                 Rectangle {
                     anchors.fill: parent
-                    radius: 16
+                    radius: compactMode ? 14 : 16
                     clip: true
                     color: theme ? theme.mediaTilePreviewFillColor : "#1E1F22"
                     border.width: 1
@@ -160,7 +161,7 @@ FocusScope {
                             anchors.centerIn: parent
                             text: "VIDEO"
                             color: root.theme ? root.theme.mediaTileValueTextColor : "#D0D0D0"
-                            font.pixelSize: 14
+                            font.pixelSize: compactMode ? 12 : 14
                             font.weight: Font.DemiBold
                             visible: !root.videoPreviewReady
                         }
@@ -173,10 +174,10 @@ FocusScope {
 
                         Text {
                             anchors.centerIn: parent
-                            width: parent.width - 26
+                            width: parent.width - 24
                             text: root.placeholderText
                             color: root.theme ? root.theme.mediaTileHintColor : "#909090"
-                            font.pixelSize: 12
+                            font.pixelSize: compactMode ? 11 : 12
                             wrapMode: Text.WordWrap
                             horizontalAlignment: Text.AlignHCenter
                         }
@@ -196,7 +197,7 @@ FocusScope {
 
             RowLayout {
                 Layout.fillWidth: true
-                spacing: 8
+                spacing: compactMode ? 6 : 8
 
                 NeumoTextField {
                     id: valueField
@@ -211,8 +212,8 @@ FocusScope {
 
                 NeumoUtilityIconButton {
                     theme: root.theme
-                    width: 30
-                    height: 30
+                    width: compactMode ? 28 : 30
+                    height: compactMode ? 28 : 30
                     iconSource: Qt.resolvedUrl("../icons/palette.svg")
                     toolTip: "\u0412\u044b\u0431\u0440\u0430\u0442\u044c \u0446\u0432\u0435\u0442"
                     onClicked: root.colorRequest()
@@ -221,9 +222,10 @@ FocusScope {
 
             Text {
                 Layout.fillWidth: true
+                visible: root.helperText.length > 0
                 text: root.helperText
                 color: root.theme ? root.theme.mediaTileHintColor : "#909090"
-                font.pixelSize: 11
+                font.pixelSize: compactMode ? 10 : 11
                 wrapMode: Text.WordWrap
             }
         }
