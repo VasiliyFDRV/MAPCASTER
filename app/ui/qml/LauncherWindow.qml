@@ -916,15 +916,11 @@ Window {
                                             anchors.verticalCenter: parent.verticalCenter
                                             spacing: 5
 
-                                            NeumoIconButton {
-                                                theme: neumoTheme
+                                            LauncherRowActionButton {
                                                 width: 24
                                                 height: 24
                                                 enabled: !launcherWindow.adventureInlineActive
-                                                idleSurfaceOpacity: rowButton.hovered ? 1.0 : 0.0
-                                                activeSurfaceOpacity: 1.0
-                                                iconIdleColor: rowButton.hovered ? neumoTheme.textPrimary : "#717171"
-                                                iconHoverColor: neumoTheme.textPrimary
+                                                rowHovered: rowButton.hovered
                                                 iconSource: Qt.resolvedUrl("icons/scene_edit.svg")
                                                 toolTip: explorerDelegate.scenesMode ? "Изменить сцену" : "Переименовать приключение"
                                                 onClicked: {
@@ -936,15 +932,11 @@ Window {
                                                 }
                                             }
 
-                                            NeumoIconButton {
-                                                theme: neumoTheme
+                                            LauncherRowActionButton {
                                                 width: 24
                                                 height: 24
                                                 enabled: !launcherWindow.adventureInlineActive
-                                                idleSurfaceOpacity: rowButton.hovered ? 1.0 : 0.0
-                                                activeSurfaceOpacity: 1.0
-                                                iconIdleColor: rowButton.hovered ? neumoTheme.textPrimary : "#717171"
-                                                iconHoverColor: neumoTheme.textPrimary
+                                                rowHovered: rowButton.hovered
                                                 iconSource: Qt.resolvedUrl("icons/clear.svg")
                                                 toolTip: explorerDelegate.scenesMode ? "Удалить сцену" : "Удалить приключение"
                                                 onClicked: {
@@ -1116,19 +1108,19 @@ Window {
                                         anchors.verticalCenter: parent.verticalCenter
                                         spacing: 5
 
-                                        NeumoIconButton {
-                                            theme: neumoTheme
+                                        LauncherRowActionButton {
                                             width: 24
                                             height: 24
                                             enabled: false
+                                            rowHovered: true
                                             iconSource: Qt.resolvedUrl("icons/scene_edit.svg")
                                         }
 
-                                        NeumoIconButton {
-                                            theme: neumoTheme
+                                        LauncherRowActionButton {
                                             width: 24
                                             height: 24
                                             enabled: false
+                                            rowHovered: true
                                             iconSource: Qt.resolvedUrl("icons/clear.svg")
                                         }
                                     }
