@@ -7,6 +7,78 @@ QtObject {
     property color textPrimary: "#D0D0D0"
     property color textSecondary: "#909090"
 
+
+    property color dialogButtonTextColor: textPrimary
+    property color dialogButtonAccentTextColor: "#F7F7F8"
+    property color dialogButtonDisabledTextColor: "#8A8A8A"
+    property color dialogButtonBorderColor: "#505050"
+    property color dialogButtonAccentBorderColor: "#B4B4B4"
+    property color dialogButtonTopColor: "#363636"
+    property color dialogButtonTopHoverColor: "#3B3B3B"
+    property color dialogButtonTopPressedColor: "#323232"
+    property color dialogButtonBottomColor: "#2D2D2D"
+    property color dialogButtonBottomHoverColor: "#323232"
+    property color dialogButtonBottomPressedColor: "#292929"
+    property color dialogButtonAccentTopColor: "#7D7D7D"
+    property color dialogButtonAccentTopHoverColor: "#858585"
+    property color dialogButtonAccentTopPressedColor: "#727272"
+    property color dialogButtonAccentBottomColor: "#6E6E6E"
+    property color dialogButtonAccentBottomHoverColor: "#747474"
+    property color dialogButtonAccentBottomPressedColor: "#666666"
+    property real dialogButtonHoverScale: 1.025
+    property real dialogButtonPressScale: 0.97
+
+    property color fieldBackgroundColor: "#232323"
+    property color fieldBorderColor: "#4D4D4D"
+    property color fieldBorderHoverColor: "#626262"
+    property color fieldBorderFocusColor: "#ABABAB"
+    property color fieldSelectedTextColor: "#F4F4F6"
+    property color fieldSelectionColor: "#6C6C6C"
+    property color fieldPlaceholderColor: textSecondary
+
+    property color utilityIconHoverFillColor: "#555555"
+    property color utilityIconPressedFillColor: "#646464"
+    property color utilityIconBorderColor: "#969696"
+
+    property color toggleTrackColor: "#353535"
+    property color toggleTrackCheckedColor: "#646464"
+    property color toggleTrackBorderColor: "#5C5C5C"
+    property color toggleTrackCheckedBorderColor: "#A8A8A8"
+    property color toggleKnobColor: "#EAEAEA"
+    property color toggleKnobBorderColor: "#B2B2B2"
+
+    property color comboTextColor: textPrimary
+    property color comboIndicatorColor: "#C6C6C6"
+    property color comboBackgroundColor: fieldBackgroundColor
+    property color comboBorderColor: "#4D4D4D"
+    property color comboBorderHoverColor: "#707070"
+    property color comboBorderFocusColor: "#A7A7A7"
+    property color comboPopupColor: "#252525"
+    property color comboPopupBorderColor: "#595959"
+    property color comboDelegateTextColor: "#D1D1D1"
+    property color comboDelegateHighlightTextColor: "#F4F5F7"
+    property color comboDelegateHoverColor: "#3A3A3A"
+    property color comboDelegateHighlightColor: "#545454"
+
+    property color checkIndicatorColor: "#252931"
+    property color checkIndicatorCheckedColor: "#6D6D6D"
+    property color checkIndicatorBorderColor: "#545454"
+    property color checkIndicatorBorderHoverColor: "#7A7A7A"
+    property color checkIndicatorBorderCheckedColor: "#C1C1C1"
+    property color checkIndicatorMarkColor: "#F3F4F7"
+    property color checkTextColor: textSecondary
+
+    property color ghostActionIconIdleColor: "#6D6D6D"
+    property color ghostActionIconRowHoverColor: "#969696"
+    property color ghostActionIconHoverColor: "#F2F2F2"
+    property color ghostActionIconPressedColor: "#DADADA"
+    property color ghostActionShadowColor: shadowDarkBase
+    property real ghostActionShadowHoverAlpha: 0.18
+    property real ghostActionShadowPressedAlpha: 0.10
+    property real ghostActionShadowBlur: 6
+    property real ghostActionPressScale: 0.92
+    property real ghostActionPressYOffset: 1
+
     property color shadowDarkBase: "#151618"
     property color shadowLightBase: "#55565C"
     property color rimLightBase: baseColor

@@ -453,235 +453,6 @@ Window {
         }
     }
 
-    component AppButton: AbstractButton {
-        id: control
-        property bool accent: false
-        hoverEnabled: true
-        focusPolicy: Qt.NoFocus
-        activeFocusOnTab: false
-        implicitHeight: 36
-        font.pixelSize: 13
-
-        contentItem: Text {
-            text: control.text
-            color: control.enabled
-                ? (control.accent ? "#F7F7F8" : launcherWindow.textPrimary)
-                : "#8A8A8A"
-            horizontalAlignment: Text.AlignHCenter
-            verticalAlignment: Text.AlignVCenter
-            font.pixelSize: control.font.pixelSize
-            font.weight: control.accent ? Font.DemiBold : Font.Medium
-            elide: Text.ElideRight
-        }
-
-        background: Rectangle {
-            radius: 12
-            border.width: 1
-            border.color: control.accent ? "#B4B4B4" : "#505050"
-            opacity: control.enabled ? 1.0 : 0.5
-            gradient: Gradient {
-                GradientStop {
-                    position: 0
-                    color: control.accent
-                        ? (control.down ? "#727272" : (control.hovered ? "#858585" : "#7D7D7D"))
-                        : (control.down ? "#323232" : (control.hovered ? "#3B3B3B" : "#363636"))
-                }
-                GradientStop {
-                    position: 1
-                    color: control.accent
-                        ? (control.down ? "#666666" : (control.hovered ? "#747474" : "#6E6E6E"))
-                        : (control.down ? "#292929" : (control.hovered ? "#323232" : "#2D2D2D"))
-                }
-            }
-            scale: control.down ? 0.97 : (control.hovered ? 1.025 : 1.0)
-
-            Behavior on scale {
-                NumberAnimation { duration: 120; easing.type: Easing.OutCubic }
-            }
-            Behavior on opacity {
-                NumberAnimation { duration: 120 }
-            }
-            Behavior on border.color {
-                ColorAnimation { duration: 120 }
-            }
-        }
-    }
-
-    component AppTextField: TextField {
-        id: control
-        color: launcherWindow.textPrimary
-        selectedTextColor: "#F4F4F6"
-        selectionColor: "#6C6C6C"
-        placeholderTextColor: "#909090"
-        padding: 10
-
-        background: Rectangle {
-            radius: 11
-            color: "#232323"
-            border.width: 1
-            border.color: control.activeFocus ? "#ABABAB" : (control.hovered ? "#626262" : "#4D4D4D")
-            Behavior on border.color {
-                ColorAnimation { duration: 120 }
-            }
-        }
-    }
-
-    component IconButton: Item {
-        id: iconRoot
-        property string iconSource: ""
-        property string glyph: ""
-        property string toolTip: ""
-        property real tipX: 0
-        property real tipY: 0
-        signal clicked()
-        width: 24
-        height: 24
-
-        function updateTipPosition() {
-            if (!tipPopup.visible || !tipPopup.parent) {
-                return
-            }
-            var p = iconRoot.mapToItem(tipPopup.parent, iconRoot.width / 2, 0)
-            var xPos = Math.round(p.x - tipPopup.width / 2)
-            var yPos = Math.round(p.y - tipPopup.height - 8)
-            var maxX = Math.max(0, tipPopup.parent.width - tipPopup.width)
-            var maxY = Math.max(0, tipPopup.parent.height - tipPopup.height)
-            iconRoot.tipX = Math.max(0, Math.min(xPos, maxX))
-            iconRoot.tipY = Math.max(0, Math.min(yPos, maxY))
-        }
-
-        Rectangle {
-            anchors.fill: parent
-            radius: 6
-            color: hitArea.pressed ? "#646464" : (hitArea.containsMouse ? "#555555" : "transparent")
-            border.width: hitArea.containsMouse ? 1 : 0
-            border.color: "#969696"
-            Behavior on color { ColorAnimation { duration: 90 } }
-        }
-
-        Image {
-            anchors.centerIn: parent
-            width: 14
-            height: 14
-            visible: iconRoot.iconSource.length > 0
-            source: iconRoot.iconSource
-            fillMode: Image.PreserveAspectFit
-            smooth: true
-            mipmap: true
-        }
-
-        Text {
-            anchors.centerIn: parent
-            visible: iconRoot.iconSource.length === 0 && iconRoot.glyph.length > 0
-            text: iconRoot.glyph
-            color: "#E8E8E8"
-            font.pixelSize: 16
-            font.weight: Font.DemiBold
-        }
-
-        Popup {
-            id: tipPopup
-            parent: Overlay.overlay
-            modal: false
-            focus: false
-            closePolicy: Popup.NoAutoClose
-            visible: hitArea.containsMouse && iconRoot.toolTip.length > 0
-            x: iconRoot.tipX
-            y: iconRoot.tipY
-            padding: 8
-
-            onVisibleChanged: iconRoot.updateTipPosition()
-            onWidthChanged: iconRoot.updateTipPosition()
-            onHeightChanged: iconRoot.updateTipPosition()
-            Connections {
-                target: tipPopup.parent
-                enabled: tipPopup.visible && target !== null
-                function onWidthChanged() { iconRoot.updateTipPosition() }
-                function onHeightChanged() { iconRoot.updateTipPosition() }
-            }
-
-            contentItem: Text {
-                text: iconRoot.toolTip
-                color: "#E6E6E6"
-                font.pixelSize: 12
-            }
-            background: Rectangle {
-                radius: 8
-                color: "#2B2B2B"
-                border.width: 1
-                border.color: "#5E5E5E"
-            }
-        }
-
-        MouseArea {
-            id: hitArea
-            anchors.fill: parent
-            enabled: iconRoot.enabled
-            hoverEnabled: true
-            onPositionChanged: iconRoot.updateTipPosition()
-            onEntered: iconRoot.updateTipPosition()
-            onClicked: iconRoot.clicked()
-        }
-    }
-
-
-
-
-    component LauncherPanel: Item {
-        id: panel
-        property string title: ""
-        property bool addEnabled: true
-        signal addClicked()
-        default property alias contentData: contentContainer.data
-
-        NeumoRaisedSurface {
-            theme: neumoTheme
-            anchors.fill: parent
-            radius: 22
-            fillColor: launcherWindow.bgCard
-            shadowOffset: 6
-            shadowRadius: 13
-            shadowSamples: 27
-
-            ColumnLayout {
-                anchors.fill: parent
-                anchors.margins: 20
-                spacing: 14
-
-                RowLayout {
-                    Layout.fillWidth: true
-
-                    Label {
-                        text: panel.title
-                        color: "#E4E4E4"
-                        font.pixelSize: 18
-                        font.weight: Font.DemiBold
-                        Layout.fillWidth: true
-                        elide: Text.ElideRight
-                    }
-
-                    NeumoIconButton {
-                        theme: neumoTheme
-                        width: 30
-                        height: 30
-                        glyph: "+"
-                        fontSize: 20
-                        enabled: panel.addEnabled
-                        opacity: enabled ? 1.0 : 0.45
-                        onClicked: panel.addClicked()
-                    }
-                }
-
-                Item {
-                    id: contentContainer
-                    Layout.fillWidth: true
-                    Layout.fillHeight: true
-                }
-            }
-        }
-    }
-
-
     Rectangle {
         anchors.fill: parent
         color: launcherWindow.bgBase
@@ -822,8 +593,8 @@ Window {
                             clip: true
                             boundsBehavior: Flickable.StopAtBounds
                             model: launcherWindow.scenesMode ? appController.scenesModel : launcherWindow.adventureInlineModel
-                            ScrollBar.vertical: AppScrollBar {}
-                            ScrollBar.horizontal: AppScrollBar {}
+                            ScrollBar.vertical: NeumoScrollBar {}
+                            ScrollBar.horizontal: NeumoScrollBar {}
                             displaced: Transition {
                                 NumberAnimation { properties: "x,y"; duration: 170; easing.type: Easing.OutCubic }
                             }
@@ -916,7 +687,8 @@ Window {
                                             anchors.verticalCenter: parent.verticalCenter
                                             spacing: 5
 
-                                            LauncherRowActionButton {
+                                            NeumoGhostIconButton {
+                                                theme: neumoTheme
                                                 width: 24
                                                 height: 24
                                                 enabled: !launcherWindow.adventureInlineActive
@@ -932,7 +704,8 @@ Window {
                                                 }
                                             }
 
-                                            LauncherRowActionButton {
+                                            NeumoGhostIconButton {
+                                                theme: neumoTheme
                                                 width: 24
                                                 height: 24
                                                 enabled: !launcherWindow.adventureInlineActive
@@ -1108,7 +881,8 @@ Window {
                                         anchors.verticalCenter: parent.verticalCenter
                                         spacing: 5
 
-                                        LauncherRowActionButton {
+                                        NeumoGhostIconButton {
+                                            theme: neumoTheme
                                             width: 24
                                             height: 24
                                             enabled: false
@@ -1116,7 +890,8 @@ Window {
                                             iconSource: Qt.resolvedUrl("icons/scene_edit.svg")
                                         }
 
-                                        LauncherRowActionButton {
+                                        NeumoGhostIconButton {
+                                            theme: neumoTheme
                                             width: 24
                                             height: 24
                                             enabled: false
@@ -1189,8 +964,8 @@ Window {
             id: sceneDialogScroll
             clip: true
             padding: 12
-            ScrollBar.vertical: AppScrollBar {}
-            ScrollBar.horizontal: AppScrollBar {}
+            ScrollBar.vertical: NeumoScrollBar {}
+            ScrollBar.horizontal: NeumoScrollBar {}
             ColumnLayout {
                 id: sceneDialogContent
                 width: sceneDialogScroll.availableWidth
@@ -1204,12 +979,15 @@ Window {
                     Layout.fillWidth: true
                 }
 
-                AppTextField {
+                NeumoTextField {
+
+                    theme: neumoTheme
                     id: sceneNameField
                     placeholderText: "Название сцены"
                     Layout.fillWidth: true
                 }
-                AppTextField {
+                NeumoTextField {
+                    theme: neumoTheme
                     id: sceneOriginalName
                     visible: false
                 }
@@ -1220,7 +998,8 @@ Window {
                     Layout.fillWidth: true
                     spacing: 8
                     Label { text: "Карта"; color: launcherWindow.textPrimary; Layout.fillWidth: true }
-                    AppToggle {
+                    NeumoToggle {
+                        theme: neumoTheme
                         id: sceneMapEnabledSwitch
                         Layout.preferredWidth: implicitWidth
                         Layout.preferredHeight: implicitHeight
@@ -1260,7 +1039,8 @@ Window {
                             mediaFileDialog.open()
                         }
                     }
-                    IconButton {
+                    NeumoUtilityIconButton {
+                        theme: neumoTheme
                         width: 30
                         height: 30
                         enabled: sceneMapEnabled
@@ -1281,7 +1061,8 @@ Window {
                     Layout.fillWidth: true
                     spacing: 8
                     Label { text: "Фон"; color: launcherWindow.textPrimary; Layout.fillWidth: true }
-                    AppToggle {
+                    NeumoToggle {
+                        theme: neumoTheme
                         id: sceneBgEnabledSwitch
                         Layout.preferredWidth: implicitWidth
                         Layout.preferredHeight: implicitHeight
@@ -1321,7 +1102,8 @@ Window {
                             mediaFileDialog.open()
                         }
                     }
-                    IconButton {
+                    NeumoUtilityIconButton {
+                        theme: neumoTheme
                         width: 30
                         height: 30
                         enabled: sceneBgEnabled
@@ -1340,17 +1122,38 @@ Window {
 
                 Label { text: "Гекс-сетка"; color: launcherWindow.textPrimary }
                 Label { text: "Размер клетки (ft)"; color: launcherWindow.textSecondary }
-                AppTextField { id: sceneGridSize; Layout.fillWidth: true; text: "5.00" }
+                NeumoTextField {
+                    theme: neumoTheme
+                    id: sceneGridSize
+                    Layout.fillWidth: true
+                    text: "5.00"
+                }
                 Label { text: "Толщина линии (px)"; color: launcherWindow.textSecondary }
-                AppTextField { id: sceneGridThickness; Layout.fillWidth: true; text: "1.50" }
+                NeumoTextField {
+                    theme: neumoTheme
+                    id: sceneGridThickness
+                    Layout.fillWidth: true
+                    text: "1.50"
+                }
                 Label { text: "Прозрачность (0..1)"; color: launcherWindow.textSecondary }
-                AppTextField { id: sceneGridOpacity; Layout.fillWidth: true; text: "0.45" }
+                NeumoTextField {
+                    theme: neumoTheme
+                    id: sceneGridOpacity
+                    Layout.fillWidth: true
+                    text: "0.45"
+                }
                 Label { text: "Цвет сетки"; color: launcherWindow.textSecondary }
                 RowLayout {
                     Layout.fillWidth: true
                     spacing: 8
-                    AppTextField { id: sceneGridColor; Layout.fillWidth: true; text: "#9D9D9D" }
-                    IconButton {
+                    NeumoTextField {
+                        theme: neumoTheme
+                        id: sceneGridColor
+                        Layout.fillWidth: true
+                        text: "#9D9D9D"
+                    }
+                    NeumoUtilityIconButton {
+                        theme: neumoTheme
                         width: 30
                         height: 30
                         iconSource: Qt.resolvedUrl("icons/palette.svg")
@@ -1368,12 +1171,14 @@ Window {
                 RowLayout {
                     Layout.fillWidth: true
                     spacing: 8
-                    AppButton {
+                    NeumoDialogButton {
+                        theme: neumoTheme
                         text: "Отмена"
                         Layout.fillWidth: true
                         onClicked: sceneDialog.close()
                     }
-                    AppButton {
+                    NeumoDialogButton {
+                        theme: neumoTheme
                         text: "Сохранить"
                         accent: true
                         Layout.fillWidth: true
@@ -1411,48 +1216,6 @@ Window {
         }
     }
 
-    component AppToggle: Item {
-        id: toggleRoot
-        property bool checked: false
-        signal toggled(bool checked)
-        implicitWidth: 38
-        implicitHeight: 20
-        width: implicitWidth
-        height: implicitHeight
-
-        Rectangle {
-            id: track
-            anchors.fill: parent
-            radius: height / 2
-            color: toggleRoot.checked ? "#646464" : "#353535"
-            border.width: 1
-            border.color: toggleRoot.checked ? "#A8A8A8" : "#5C5C5C"
-            Behavior on color { ColorAnimation { duration: 120 } }
-            Behavior on border.color { ColorAnimation { duration: 120 } }
-        }
-
-        Rectangle {
-            id: knob
-            width: 14
-            height: 14
-            radius: 7
-            y: (toggleRoot.height - height) / 2
-            x: toggleRoot.checked ? (toggleRoot.width - width - 3) : 3
-            color: "#EAEAEA"
-            border.width: 1
-            border.color: "#B2B2B2"
-            Behavior on x { NumberAnimation { duration: 120; easing.type: Easing.OutCubic } }
-        }
-
-        MouseArea {
-            anchors.fill: parent
-            onClicked: {
-                toggleRoot.checked = !toggleRoot.checked
-                toggleRoot.toggled(toggleRoot.checked)
-            }
-        }
-    }
-
     ColorDialog {
         id: colorPickerDialog
         title: "Выбор цвета"
@@ -1467,150 +1230,6 @@ Window {
                 sceneMapValueText = value
                 sceneMapTypeValue = "color"
             }
-        }
-    }
-
-    component AppScrollBar: ScrollBar {
-        id: control
-        policy: ScrollBar.AlwaysOff
-        active: false
-        visible: false
-        hoverEnabled: false
-        implicitWidth: 0
-        implicitHeight: 0
-
-        contentItem: Rectangle {
-            implicitWidth: 0
-            implicitHeight: 0
-            opacity: 0.0
-            color: "transparent"
-        }
-
-        background: Rectangle {
-            implicitWidth: 0
-            implicitHeight: 0
-            opacity: 0.0
-            color: "transparent"
-            border.width: 0
-        }
-    }
-
-    component AppComboBox: ComboBox {
-        id: control
-        implicitHeight: 36
-        font.pixelSize: 13
-        leftPadding: 10
-        rightPadding: 28
-
-        contentItem: Text {
-            text: control.displayText
-            color: launcherWindow.textPrimary
-            verticalAlignment: Text.AlignVCenter
-            leftPadding: 2
-            elide: Text.ElideRight
-            font.pixelSize: control.font.pixelSize
-        }
-
-        indicator: Canvas {
-            x: control.width - width - 10
-            y: (control.height - height) / 2
-            width: 10
-            height: 6
-            contextType: "2d"
-            onPaint: {
-                var ctx = getContext("2d")
-                ctx.reset()
-                ctx.moveTo(0, 0)
-                ctx.lineTo(width, 0)
-                ctx.lineTo(width / 2, height)
-                ctx.closePath()
-                ctx.fillStyle = "#C6C6C6"
-                ctx.fill()
-            }
-        }
-
-        background: Rectangle {
-            radius: 10
-            color: "#232323"
-            border.width: 1
-            border.color: control.activeFocus ? "#A7A7A7" : (control.hovered ? "#707070" : "#4D4D4D")
-            Behavior on border.color {
-                ColorAnimation { duration: 120 }
-            }
-        }
-
-        delegate: ItemDelegate {
-            width: control.width - 8
-            height: 32
-            hoverEnabled: true
-            contentItem: Text {
-                text: control.textAt(index)
-                color: highlighted ? "#F4F5F7" : "#D1D1D1"
-                verticalAlignment: Text.AlignVCenter
-                elide: Text.ElideRight
-                font.pixelSize: 13
-            }
-            highlighted: control.highlightedIndex === index
-            background: Rectangle {
-                radius: 8
-                color: parent.highlighted ? "#545454" : (parent.hovered ? "#3A3A3A" : "transparent")
-            }
-        }
-
-        popup: Popup {
-            y: control.height + 6
-            width: control.width
-            padding: 4
-            implicitHeight: Math.min(contentItem.implicitHeight + 8, 220)
-            background: Rectangle {
-                radius: 10
-                color: "#252525"
-                border.width: 1
-                border.color: "#595959"
-            }
-            contentItem: ListView {
-                clip: true
-                implicitHeight: contentHeight
-                model: control.popup.visible ? control.delegateModel : null
-                currentIndex: control.highlightedIndex
-                ScrollBar.vertical: AppScrollBar {}
-            }
-        }
-    }
-
-    component AppCheckBox: CheckBox {
-        id: control
-        hoverEnabled: true
-        spacing: 8
-
-        indicator: Rectangle {
-            implicitWidth: 18
-            implicitHeight: 18
-            x: control.leftPadding
-            y: (control.height - height) / 2
-            radius: 5
-            color: control.checked ? "#6D6D6D" : "#252931"
-            border.width: 1
-            border.color: control.checked ? "#C1C1C1" : (control.hovered ? "#7A7A7A" : "#545454")
-            Behavior on color { ColorAnimation { duration: 120 } }
-            Behavior on border.color { ColorAnimation { duration: 120 } }
-
-            Rectangle {
-                anchors.centerIn: parent
-                width: 8
-                height: 8
-                radius: 3
-                visible: control.checked
-                color: "#F3F4F7"
-            }
-        }
-
-        contentItem: Text {
-            text: control.text
-            color: launcherWindow.textSecondary
-            leftPadding: control.indicator.width + control.spacing + 4
-            verticalAlignment: Text.AlignVCenter
-            font.pixelSize: 12
         }
     }
 
@@ -1646,8 +1265,8 @@ Window {
             anchors.fill: parent
             clip: true
             padding: 12
-            ScrollBar.vertical: AppScrollBar {}
-            ScrollBar.horizontal: AppScrollBar {}
+            ScrollBar.vertical: NeumoScrollBar {}
+            ScrollBar.horizontal: NeumoScrollBar {}
 
             ColumnLayout {
                 width: settingsScroll.availableWidth
@@ -1667,13 +1286,15 @@ Window {
                 }
 
                 Label { text: "Корневая папка приключений"; color: launcherWindow.textPrimary }
-                AppTextField {
+                NeumoTextField {
+                    theme: neumoTheme
                     id: adventuresRootField
                     text: appController.adventuresRoot
                     placeholderText: "Путь к папке приключений"
                     Layout.fillWidth: true
                 }
-                AppButton {
+                NeumoDialogButton {
+                    theme: neumoTheme
                     text: "Применить путь"
                     accent: true
                     onClicked: appController.update_adventures_root(adventuresRootField.text)
@@ -1706,18 +1327,21 @@ Window {
 
                 Label { text: "Левая панель"; color: launcherWindow.textPrimary }
                 Label { text: "Ширина панели (px)"; color: launcherWindow.textSecondary }
-                AppTextField {
+                NeumoTextField {
+                    theme: neumoTheme
                     id: panelWidthField
                     text: String(appController.leftPanelWidth)
                     Layout.fillWidth: true
                 }
                 Label { text: "Зона появления (px)"; color: launcherWindow.textSecondary }
-                AppTextField {
+                NeumoTextField {
+                    theme: neumoTheme
                     id: revealZoneField
                     text: String(appController.leftRevealZone)
                     Layout.fillWidth: true
                 }
-                AppButton {
+                NeumoDialogButton {
+                    theme: neumoTheme
                     text: "Применить панель"
                     onClicked: appController.update_panel(Number(panelWidthField.text), Number(revealZoneField.text))
                 }
@@ -1729,13 +1353,15 @@ Window {
 
                 RowLayout {
                     Layout.fillWidth: true
-                    AppButton {
+                    NeumoDialogButton {
+                        theme: neumoTheme
                         text: "Сохранить настройки"
                         accent: true
                         Layout.fillWidth: true
                         onClicked: appController.persist_settings()
                     }
-                    AppButton {
+                    NeumoDialogButton {
+                        theme: neumoTheme
                         text: "Закрыть"
                         Layout.fillWidth: true
                         onClicked: settingsDrawer.close()
@@ -1750,6 +1376,8 @@ Window {
         }
     }
 }
+
+
 
 
 
