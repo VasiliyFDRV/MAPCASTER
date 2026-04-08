@@ -921,6 +921,10 @@ Window {
                                                 width: 24
                                                 height: 24
                                                 enabled: !launcherWindow.adventureInlineActive
+                                                idleSurfaceOpacity: 0.0
+                                                activeSurfaceOpacity: 1.0
+                                                iconIdleColor: "#717171"
+                                                iconHoverColor: neumoTheme.textPrimary
                                                 iconSource: Qt.resolvedUrl("icons/scene_edit.svg")
                                                 toolTip: explorerDelegate.scenesMode ? "Изменить сцену" : "Переименовать приключение"
                                                 onClicked: {
@@ -937,6 +941,10 @@ Window {
                                                 width: 24
                                                 height: 24
                                                 enabled: !launcherWindow.adventureInlineActive
+                                                idleSurfaceOpacity: 0.0
+                                                activeSurfaceOpacity: 1.0
+                                                iconIdleColor: "#717171"
+                                                iconHoverColor: neumoTheme.textPrimary
                                                 iconSource: Qt.resolvedUrl("icons/clear.svg")
                                                 toolTip: explorerDelegate.scenesMode ? "Удалить сцену" : "Удалить приключение"
                                                 onClicked: {
