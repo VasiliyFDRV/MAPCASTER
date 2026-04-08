@@ -8,7 +8,7 @@ FocusScope {
     id: root
     clip: true
 
-    implicitHeight: compactMode ? 154 : 222
+    implicitHeight: compactMode ? 148 : 222
     implicitWidth: 280
 
     property var theme
@@ -103,28 +103,30 @@ FocusScope {
         theme: root.theme
         radius: compactMode ? 16 : 18
         fillColor: theme ? theme.baseColor : "#2D2D2D"
-        contentPadding: compactMode ? 9 : 12
+        contentPadding: compactMode ? 11 : 14
 
         ColumnLayout {
             anchors.fill: parent
-            spacing: compactMode ? 7 : 10
+            spacing: compactMode ? 8 : 11
 
             NeumoRaisedSurface {
                 id: previewTile
                 Layout.fillWidth: true
                 Layout.fillHeight: true
-                Layout.minimumHeight: compactMode ? 80 : 136
-                Layout.preferredHeight: compactMode ? 88 : 150
+                Layout.leftMargin: compactMode ? 6 : 8
+                Layout.rightMargin: compactMode ? 6 : 8
+                Layout.minimumHeight: compactMode ? 64 : 136
+                Layout.preferredHeight: compactMode ? 72 : 150
                 theme: root.theme
-                radius: compactMode ? 14 : 16
+                radius: compactMode ? 12 : 16
                 fillColor: theme ? theme.baseColor : "#2D2D2D"
-                shadowOffset: compactMode ? 2.6 : 4.4
-                shadowRadius: compactMode ? 5.8 : 9.4
-                shadowSamples: 21
+                shadowOffset: compactMode ? 1.8 : 4.0
+                shadowRadius: compactMode ? 4.4 : 8.6
+                shadowSamples: compactMode ? 19 : 21
 
                 Rectangle {
                     anchors.fill: parent
-                    radius: compactMode ? 14 : 16
+                    radius: compactMode ? 12 : 16
                     clip: true
                     color: theme ? theme.mediaTilePreviewFillColor : "#1E1F22"
                     border.width: 1
@@ -198,17 +200,25 @@ FocusScope {
 
             RowLayout {
                 Layout.fillWidth: true
+                Layout.leftMargin: compactMode ? 8 : 10
+                Layout.rightMargin: compactMode ? 8 : 10
+                Layout.topMargin: compactMode ? 1 : 2
                 spacing: compactMode ? 6 : 8
 
                 NeumoTextField {
                     id: valueField
                     theme: root.theme
-                    Layout.fillWidth: true
-                    Layout.minimumWidth: 0
+                    Layout.fillWidth: false
+                    Layout.minimumWidth: 120
+                    Layout.preferredWidth: Math.max(120, root.width * (compactMode ? 0.72 : 0.78))
                     text: String(root.previewValue || "")
                     placeholderText: root.valuePlaceholderText
                     onEditingFinished: root.valueEdited(text)
                     onAccepted: root.valueEdited(text)
+                }
+
+                Item {
+                    Layout.fillWidth: true
                 }
 
                 NeumoUtilityIconButton {

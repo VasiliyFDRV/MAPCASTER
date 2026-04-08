@@ -1,4 +1,4 @@
-﻿import QtQuick
+import QtQuick
 
 QtObject {
     id: theme
@@ -29,12 +29,19 @@ QtObject {
     property real dialogButtonPressScale: 0.97
 
     property color fieldBackgroundColor: "#232323"
+    property color fieldInsetFillColor: "#26282C"
     property color fieldBorderColor: "#4D4D4D"
     property color fieldBorderHoverColor: "#626262"
     property color fieldBorderFocusColor: "#ABABAB"
     property color fieldSelectedTextColor: "#F4F4F6"
     property color fieldSelectionColor: "#6C6C6C"
     property color fieldPlaceholderColor: textSecondary
+
+    property color mediaTilePreviewFillColor: "#202226"
+    property color mediaTilePreviewStrokeColor: "#4E525A"
+    property color mediaTileEmptyFillColor: "#1C1E22"
+    property color mediaTileHintColor: textSecondary
+    property color mediaTileValueTextColor: textPrimary
 
     property color utilityIconHoverFillColor: "#555555"
     property color utilityIconPressedFillColor: "#646464"

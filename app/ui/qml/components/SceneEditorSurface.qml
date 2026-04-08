@@ -36,8 +36,8 @@ Item {
     readonly property bool dirty: currentDraftFingerprint !== initialFingerprint
     readonly property bool narrowLayout: width < 360
     readonly property int sectionRadius: narrowLayout ? 18 : 20
-    readonly property int sectionPadding: narrowLayout ? 10 : 12
-    readonly property int sectionSpacing: narrowLayout ? 8 : 10
+    readonly property int sectionPadding: narrowLayout ? 12 : 15
+    readonly property int sectionSpacing: narrowLayout ? 10 : 13
     readonly property int headerTitleSize: narrowLayout ? 20 : 22
 
     signal backRequested(bool dirty)
@@ -297,7 +297,9 @@ Item {
                                 theme: root.theme
                                 Layout.fillWidth: true
                                 Layout.minimumWidth: 0
-                                Layout.topMargin: root.narrowLayout ? 4 : 2
+                                Layout.leftMargin: root.narrowLayout ? 4 : 8
+                                Layout.rightMargin: root.narrowLayout ? 4 : 8
+                                Layout.topMargin: root.narrowLayout ? 6 : 4
                                 compactMode: true
                                 mediaType: root.mapType
                                 previewValue: root.mapValue
@@ -315,16 +317,22 @@ Item {
                                 id: gridSection
                                 theme: root.theme
                                 Layout.fillWidth: true
+                                Layout.leftMargin: root.narrowLayout ? 4 : 8
+                                Layout.rightMargin: root.narrowLayout ? 4 : 8
+                                Layout.topMargin: root.narrowLayout ? 2 : 4
                                 Layout.preferredHeight: implicitHeight
                                 implicitHeight: gridSectionContent.implicitHeight + contentPadding * 2
-                                radius: root.narrowLayout ? 16 : 18
+                                radius: root.narrowLayout ? 15 : 16
                                 fillColor: root.theme ? root.theme.baseColor : "#2D2D2D"
+                                shadowOffset: root.narrowLayout ? 2.2 : 2.8
+                                shadowRadius: root.narrowLayout ? 6.0 : 7.2
+                                shadowSamples: 21
                                 contentPadding: root.sectionPadding
 
                                 ColumnLayout {
                                     id: gridSectionContent
                                     width: parent.width
-                                    spacing: 8
+                                    spacing: root.narrowLayout ? 7 : 8
 
                                     RowLayout {
                                         Layout.fillWidth: true
@@ -597,7 +605,9 @@ Item {
                                 theme: root.theme
                                 Layout.fillWidth: true
                                 Layout.minimumWidth: 0
-                                Layout.topMargin: root.narrowLayout ? 4 : 2
+                                Layout.leftMargin: root.narrowLayout ? 4 : 8
+                                Layout.rightMargin: root.narrowLayout ? 4 : 8
+                                Layout.topMargin: root.narrowLayout ? 6 : 4
                                 compactMode: true
                                 mediaType: root.backgroundType
                                 previewValue: root.backgroundValue
