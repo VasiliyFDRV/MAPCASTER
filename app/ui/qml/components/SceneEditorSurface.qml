@@ -65,6 +65,10 @@ FocusScope {
             || gridOpacityCompactField.editFieldHovered
     }
 
+    function clearEditorFocus() {
+        focusSink.forceActiveFocus(Qt.MouseFocusReason)
+    }
+
     function applyMediaValue(target, value, explicitType) {
         var nextValue = String(value || "").trim()
         var nextType = explicitType || MediaValueUtils.detectMediaTypeFromValue(nextValue, "color")
@@ -100,7 +104,6 @@ FocusScope {
         sceneNameField.text = sceneName
         gridColorField.text = gridColor
         initialFingerprint = currentDraftFingerprint
-        focusNameTimer.restart()
     }
 
     function currentDraft() {
@@ -159,21 +162,27 @@ FocusScope {
     onOpenTokenChanged: loadDraft(initialDraft)
     Component.onCompleted: loadDraft(initialDraft)
 
-    Timer {
-        id: focusNameTimer
-        interval: 30
-        repeat: false
-        onTriggered: {
-            sceneNameField.forceActiveFocus()
-        }
+    Item {
+        id: focusSink
+        width: 1
+        height: 1
+        opacity: 0
+        anchors.left: parent.left
+        anchors.top: parent.top
     }
 
-    TapHandler {
+    MouseArea {
+        anchors.fill: parent
         acceptedButtons: Qt.AllButtons
-        onTapped: {
+        hoverEnabled: true
+        propagateComposedEvents: true
+        preventStealing: false
+        z: 1000
+        onPressed: function(mouse) {
             if (!root.pointerOverEditableControl()) {
-                root.forceActiveFocus()
+                root.clearEditorFocus()
             }
+            mouse.accepted = false
         }
     }
 
@@ -214,7 +223,10 @@ FocusScope {
                         height: 30
                         iconSource: Qt.resolvedUrl("../icons/back.svg")
                         toolTip: "\u041d\u0430\u0437\u0430\u0434"
-                        onClicked: root.backRequested(root.dirty)
+                        onClicked: {
+                            root.clearEditorFocus()
+                            root.backRequested(root.dirty)
+                        }
                     }
                 }
 
@@ -287,7 +299,10 @@ FocusScope {
                             NeumoToggle {
                                 theme: root.theme
                                 checked: root.mapEnabled
-                                onToggled: function(next) { root.mapEnabled = next }
+                                onToggled: function(next) {
+                                    root.clearEditorFocus()
+                                    root.mapEnabled = next
+                                }
                             }
                         }
 
@@ -313,9 +328,15 @@ FocusScope {
                                 helperText: ""
                                 onDropValue: function(value) { root.applyMediaValue("map", value, null) }
                                 onPasteRequest: root.pasteRequested("map")
-                                onBrowseRequest: root.browseRequested("map")
+                                onBrowseRequest: {
+                                    root.clearEditorFocus()
+                                    root.browseRequested("map")
+                                }
                                 onValueEdited: function(value) { root.applyMediaValue("map", value, null) }
-                                onColorRequest: root.colorRequested("map", root.mapValue)
+                                onColorRequest: {
+                                    root.clearEditorFocus()
+                                    root.colorRequested("map", root.mapValue)
+                                }
                             }
 
                             NeumoRaisedSurface {
@@ -355,7 +376,10 @@ FocusScope {
                                             theme: root.theme
                                             checked: root.gridEnabled
                                             enabled: root.mapEnabled
-                                            onToggled: function(next) { root.gridEnabled = next }
+                                            onToggled: function(next) {
+                                                root.clearEditorFocus()
+                                                root.gridEnabled = next
+                                            }
                                         }
                                     }
 
@@ -565,7 +589,10 @@ FocusScope {
                                                     height: 28
                                                     iconSource: Qt.resolvedUrl("../icons/palette.svg")
                                                     toolTip: "\u0412\u044b\u0431\u0440\u0430\u0442\u044c \u0446\u0432\u0435\u0442 \u0441\u0435\u0442\u043a\u0438"
-                                                    onClicked: root.colorRequested("grid", root.gridColor)
+                                                    onClicked: {
+                                                        root.clearEditorFocus()
+                                                        root.colorRequested("grid", root.gridColor)
+                                                    }
                                                 }
                                             }
                                         }
@@ -612,7 +639,10 @@ FocusScope {
                             NeumoToggle {
                                 theme: root.theme
                                 checked: root.backgroundEnabled
-                                onToggled: function(next) { root.backgroundEnabled = next }
+                                onToggled: function(next) {
+                                    root.clearEditorFocus()
+                                    root.backgroundEnabled = next
+                                }
                             }
                         }
 
@@ -638,9 +668,15 @@ FocusScope {
                                 helperText: ""
                                 onDropValue: function(value) { root.applyMediaValue("background", value, null) }
                                 onPasteRequest: root.pasteRequested("background")
-                                onBrowseRequest: root.browseRequested("background")
+                                onBrowseRequest: {
+                                    root.clearEditorFocus()
+                                    root.browseRequested("background")
+                                }
                                 onValueEdited: function(value) { root.applyMediaValue("background", value, null) }
-                                onColorRequest: root.colorRequested("background", root.backgroundValue)
+                                onColorRequest: {
+                                    root.clearEditorFocus()
+                                    root.colorRequested("background", root.backgroundValue)
+                                }
                             }
                         }
                     }
@@ -674,7 +710,10 @@ FocusScope {
 
                         MouseArea {
                             anchors.fill: parent
-                            onClicked: root.saveRequested(root.currentDraft())
+                            onClicked: {
+                                root.clearEditorFocus()
+                                root.saveRequested(root.currentDraft())
+                            }
                         }
                     }
                 }

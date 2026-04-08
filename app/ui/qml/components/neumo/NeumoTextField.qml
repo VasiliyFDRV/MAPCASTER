@@ -8,6 +8,8 @@ TextField {
     property string visualStyle: "default" // default | launcherInline
     property real cornerRadius: 12
 
+    hoverEnabled: true
+
     readonly property bool launcherInlineStyle: visualStyle === "launcherInline"
 
     property color surfaceColor: launcherInlineStyle

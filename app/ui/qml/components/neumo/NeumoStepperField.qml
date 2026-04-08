@@ -218,6 +218,7 @@ FocusScope {
             horizontalAlignment: Text.AlignHCenter
             verticalAlignment: TextInput.AlignVCenter
             font.pixelSize: compactMode ? 12 : 13
+            hoverEnabled: true
             background: null
             padding: 0
             leftPadding: 0
