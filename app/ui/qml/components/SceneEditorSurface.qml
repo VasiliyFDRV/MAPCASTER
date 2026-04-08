@@ -197,22 +197,30 @@ Item {
 
             RowLayout {
                 Layout.fillWidth: true
-                Layout.leftMargin: root.sectionOuterGutter
-                Layout.rightMargin: root.sectionOuterGutter
-                Layout.topMargin: 2
+                Layout.leftMargin: root.sectionOuterGutter + 4
+                Layout.rightMargin: root.sectionOuterGutter + 4
+                Layout.topMargin: root.narrowLayout ? 8 : 10
                 spacing: 10
 
-                NeumoIconButton {
-                    theme: root.theme
-                    width: 30
-                    height: 30
-                    iconSource: Qt.resolvedUrl("../icons/back.svg")
-                    toolTip: "\u041d\u0430\u0437\u0430\u0434"
-                    onClicked: root.backRequested(root.dirty)
+                Item {
+                    Layout.preferredWidth: 38
+                    Layout.preferredHeight: 38
+                    Layout.alignment: Qt.AlignVCenter
+
+                    NeumoIconButton {
+                        anchors.centerIn: parent
+                        theme: root.theme
+                        width: 30
+                        height: 30
+                        iconSource: Qt.resolvedUrl("../icons/back.svg")
+                        toolTip: "\u041d\u0430\u0437\u0430\u0434"
+                        onClicked: root.backRequested(root.dirty)
+                    }
                 }
 
                 Label {
                     Layout.fillWidth: true
+                    Layout.alignment: Qt.AlignVCenter
                     text: root.modeTitle
                     color: root.theme ? root.theme.textPrimary : "#D0D0D0"
                     font.pixelSize: root.headerTitleSize
@@ -629,16 +637,21 @@ Item {
 
                 Item {
                     Layout.fillWidth: true
-                    Layout.leftMargin: root.sectionOuterGutter
-                    Layout.rightMargin: root.sectionOuterGutter
-                    Layout.topMargin: 6
-                    implicitHeight: 46
+                    Layout.leftMargin: root.sectionOuterGutter + 4
+                    Layout.rightMargin: root.sectionOuterGutter + 4
+                    Layout.topMargin: 8
+                    implicitHeight: 58
 
                     NeumoRaisedSurface {
                         anchors.fill: parent
+                        anchors.topMargin: 4
+                        anchors.bottomMargin: 4
                         theme: root.theme
                         radius: 16
                         fillColor: root.theme ? root.theme.baseColor : "#2D2D2D"
+                        shadowOffset: root.narrowLayout ? 2.8 : 3.4
+                        shadowRadius: root.narrowLayout ? 6.6 : 7.6
+                        shadowSamples: 21
 
                         Label {
                             anchors.centerIn: parent
