@@ -49,6 +49,14 @@ Window {
     property bool adventureInlinePendingFocus: false
     property var adventureInlineModel: []
     property bool adventureInlineActive: !scenesMode && adventureInlineMode !== "none"
+    property string sceneInlineMode: "none"
+    property string sceneInlineOriginalName: ""
+    property string sceneInlineDraftName: ""
+    property bool sceneInlinePendingFocus: false
+    property var sceneInlineModel: []
+    property var sceneInlineDraftPayload: ({})
+    property bool sceneInlineActive: scenesMode && sceneInlineMode !== "none"
+    property bool inlineEditActive: adventureInlineActive || sceneInlineActive
     property string listDragMode: "none"
     property string listDragName: ""
     property int listDragFromIndex: -1
@@ -133,6 +141,98 @@ Window {
         }
         applyDraftToDialog(appController.load_scene_draft_for_adventure(appController.launcherAdventure, sceneName))
         sceneDialog.open()
+    }
+
+    function refreshSceneInlineModel() {
+        var items = []
+        var source = appController.scenesModel || []
+        for (var i = 0; i < source.length; i++) {
+            var scene = source[i]
+            var name = scene && scene.name ? scene.name : ""
+            if (sceneInlineMode === "rename" && name === sceneInlineOriginalName) {
+                items.push({
+                    "name": name,
+                    "isInlineEditor": true,
+                    "inlineMode": "rename"
+                })
+            } else {
+                items.push({
+                    "name": name,
+                    "isInlineEditor": false,
+                    "inlineMode": "none"
+                })
+            }
+        }
+        sceneInlineModel = items
+    }
+
+    function beginRenameSceneInline(sceneName) {
+        if (!sceneName || appController.launcherAdventure.length === 0) {
+            return
+        }
+        var draft = appController.load_scene_draft_for_adventure(appController.launcherAdventure, sceneName)
+        if (!draft || !draft.name) {
+            return
+        }
+        sceneInlineMode = "rename"
+        sceneInlineOriginalName = sceneName
+        sceneInlineDraftName = sceneName
+        sceneInlineDraftPayload = JSON.parse(JSON.stringify(draft))
+        sceneInlinePendingFocus = true
+        refreshSceneInlineModel()
+    }
+
+    function cancelSceneInlineEdit() {
+        if (sceneInlineMode === "none") {
+            return
+        }
+        sceneInlineMode = "none"
+        sceneInlineOriginalName = ""
+        sceneInlineDraftName = ""
+        sceneInlineDraftPayload = ({})
+        sceneInlinePendingFocus = false
+        refreshSceneInlineModel()
+    }
+
+    function commitSceneInlineEdit() {
+        if (sceneInlineMode === "none") {
+            return
+        }
+        var trimmedName = String(sceneInlineDraftName || "").trim()
+        if (trimmedName === sceneInlineOriginalName) {
+            cancelSceneInlineEdit()
+            return
+        }
+        var draft = JSON.parse(JSON.stringify(sceneInlineDraftPayload || {}))
+        draft.name = trimmedName
+        draft.original_name = sceneInlineOriginalName
+        draft.mode = "edit"
+        appController.save_scene_draft_for_adventure(appController.launcherAdventure, draft)
+        var renamed = false
+        var oldStillExists = false
+        var renamedScenes = appController.scenesModel || []
+        for (var i = 0; i < renamedScenes.length; i++) {
+            if (!renamedScenes[i]) {
+                continue
+            }
+            if (renamedScenes[i].name === trimmedName) {
+                renamed = true
+            }
+            if (renamedScenes[i].name === sceneInlineOriginalName) {
+                oldStillExists = true
+            }
+        }
+        if (renamed && !oldStillExists) {
+            sceneInlineMode = "none"
+            sceneInlineOriginalName = ""
+            sceneInlineDraftName = ""
+            sceneInlineDraftPayload = ({})
+            sceneInlinePendingFocus = false
+        } else {
+            sceneInlineDraftName = trimmedName
+            sceneInlinePendingFocus = true
+        }
+        refreshSceneInlineModel()
     }
 
     function refreshAdventureInlineModel() {
@@ -495,7 +595,7 @@ Window {
                         theme: neumoTheme
                         width: 44
                         height: 44
-                        enabled: !launcherWindow.adventureInlineActive
+                        enabled: !launcherWindow.inlineEditActive
                         iconSource: Qt.resolvedUrl("icons/dice.svg")
                         toolTip: "Дайсы"
                         onClicked: appController.request_open_dice()
@@ -505,7 +605,7 @@ Window {
                         theme: neumoTheme
                         width: 44
                         height: 44
-                        enabled: !launcherWindow.adventureInlineActive
+                        enabled: !launcherWindow.inlineEditActive
                         iconSource: Qt.resolvedUrl("icons/settings.svg")
                         toolTip: "Настройки"
                         onClicked: settingsDrawer.open()
@@ -536,7 +636,7 @@ Window {
                             theme: neumoTheme
                             width: 30
                             height: 30
-                            enabled: visible && !launcherWindow.adventureInlineActive
+                            enabled: visible && !launcherWindow.inlineEditActive
                             iconSource: Qt.resolvedUrl("icons/back.svg")
                             toolTip: "Назад к приключениям"
                             visible: launcherWindow.scenesMode
@@ -556,7 +656,7 @@ Window {
                             theme: neumoTheme
                             width: 30
                             height: 30
-                            enabled: !launcherWindow.adventureInlineActive
+                            enabled: !launcherWindow.inlineEditActive
                             glyph: "+"
                             fontSize: 20
                             toolTip: launcherWindow.scenesMode ? "Добавить сцену" : "Добавить приключение"
@@ -592,7 +692,7 @@ Window {
                             cacheBuffer: Math.max(height * 3, 720)
                             clip: true
                             boundsBehavior: Flickable.StopAtBounds
-                            model: launcherWindow.scenesMode ? appController.scenesModel : launcherWindow.adventureInlineModel
+                            model: launcherWindow.scenesMode ? launcherWindow.sceneInlineModel : launcherWindow.adventureInlineModel
                             ScrollBar.vertical: NeumoScrollBar {}
                             ScrollBar.horizontal: NeumoScrollBar {}
                             displaced: Transition {
@@ -604,12 +704,14 @@ Window {
                                 id: explorerDelegate
                                 property bool scenesMode: launcherWindow.scenesMode
                                 property bool isAdventureInline: !explorerDelegate.scenesMode && modelData && modelData.isInlineEditor
+                                property bool isSceneInline: explorerDelegate.scenesMode && modelData && modelData.isInlineEditor
+                                property bool isInlineEditor: explorerDelegate.isAdventureInline || explorerDelegate.isSceneInline
                                 property string itemName: modelData && modelData.name ? modelData.name : ""
                                 property real dragY: 0
                                 property real dragDeltaY: 0
                                 property string dragMode: explorerDelegate.scenesMode ? "scene" : "adventure"
                                 property bool isDraggedDelegate: launcherWindow.listDragMode === explorerDelegate.dragMode && launcherWindow.listDragFromIndex === index
-                                property bool usesSmoothListDrag: explorerDelegate.scenesMode || !explorerDelegate.isAdventureInline
+                                property bool usesSmoothListDrag: explorerDelegate.scenesMode || !explorerDelegate.isInlineEditor
                                 property real slotDisplacement: explorerDelegate.usesSmoothListDrag
                                     ? launcherWindow.listDisplacementForIndex(explorerDelegate.dragMode, index, explorerDelegate.height + explorerView.spacing)
                                     : 0
@@ -634,7 +736,7 @@ Window {
                                     anchors.fill: parent
                                     anchors.margins: 1
                                     dragging: dragHandler.active && !explorerDelegate.isDraggedDelegate
-                                    visible: !explorerDelegate.isAdventureInline && !explorerDelegate.isDraggedDelegate
+                                    visible: !explorerDelegate.isInlineEditor && !explorerDelegate.isDraggedDelegate
 
                                     RowLayout {
                                         anchors.fill: parent
@@ -659,17 +761,13 @@ Window {
                                             MouseArea {
                                                 anchors.fill: parent
                                                 acceptedButtons: Qt.LeftButton
-                                                enabled: !launcherWindow.adventureInlineActive
-                                                onClicked: {
-                                                    if (explorerDelegate.scenesMode) {
-                                                        appController.open_scene(explorerDelegate.itemName)
-                                                    } else {
-                                                        singleClickTimer.restart()
-                                                    }
-                                                }
+                                                enabled: !launcherWindow.inlineEditActive
+                                                onClicked: singleClickTimer.restart()
                                                 onDoubleClicked: {
-                                                    if (!explorerDelegate.scenesMode) {
-                                                        singleClickTimer.stop()
+                                                    singleClickTimer.stop()
+                                                    if (explorerDelegate.scenesMode) {
+                                                        launcherWindow.beginRenameSceneInline(explorerDelegate.itemName)
+                                                    } else {
                                                         launcherWindow.beginRenameAdventureInline(explorerDelegate.itemName)
                                                     }
                                                 }
@@ -679,7 +777,13 @@ Window {
                                                 id: singleClickTimer
                                                 interval: 180
                                                 repeat: false
-                                                onTriggered: appController.enter_launcher_adventure(explorerDelegate.itemName)
+                                                onTriggered: {
+                                                    if (explorerDelegate.scenesMode) {
+                                                        appController.open_scene(explorerDelegate.itemName)
+                                                    } else {
+                                                        appController.enter_launcher_adventure(explorerDelegate.itemName)
+                                                    }
+                                                }
                                             }
                                         }
 
@@ -691,24 +795,19 @@ Window {
                                                 theme: neumoTheme
                                                 width: 24
                                                 height: 24
-                                                enabled: !launcherWindow.adventureInlineActive
+                                                visible: explorerDelegate.scenesMode
+                                                enabled: !launcherWindow.inlineEditActive
                                                 rowHovered: rowButton.hovered
                                                 iconSource: Qt.resolvedUrl("icons/scene_edit.svg")
-                                                toolTip: explorerDelegate.scenesMode ? "Изменить сцену" : "Переименовать приключение"
-                                                onClicked: {
-                                                    if (explorerDelegate.scenesMode) {
-                                                        launcherWindow.openEditSceneDialog(explorerDelegate.itemName)
-                                                    } else {
-                                                        launcherWindow.beginRenameAdventureInline(explorerDelegate.itemName)
-                                                    }
-                                                }
+                                                toolTip: "Изменить сцену"
+                                                onClicked: launcherWindow.openEditSceneDialog(explorerDelegate.itemName)
                                             }
 
                                             NeumoGhostIconButton {
                                                 theme: neumoTheme
                                                 width: 24
                                                 height: 24
-                                                enabled: !launcherWindow.adventureInlineActive
+                                                enabled: !launcherWindow.inlineEditActive
                                                 rowHovered: rowButton.hovered
                                                 iconSource: Qt.resolvedUrl("icons/clear.svg")
                                                 toolTip: explorerDelegate.scenesMode ? "Удалить сцену" : "Удалить приключение"
@@ -731,7 +830,7 @@ Window {
                                     radius: 13
                                     fillColor: launcherWindow.bgBase
                                     contentPadding: 0
-                                    visible: explorerDelegate.isAdventureInline
+                                    visible: explorerDelegate.isInlineEditor
 
                                     RowLayout {
                                         anchors.fill: parent
@@ -742,7 +841,7 @@ Window {
                                         TextField {
                                             id: inlineAdventureField
                                             Layout.fillWidth: true
-                                            text: launcherWindow.adventureInlineDraftName
+                                            text: explorerDelegate.isSceneInline ? launcherWindow.sceneInlineDraftName : launcherWindow.adventureInlineDraftName
                                             color: launcherWindow.textPrimary
                                             selectedTextColor: "#F4F4F6"
                                             selectionColor: "#6C6C6C"
@@ -756,16 +855,32 @@ Window {
                                             background: null
                                             verticalAlignment: Text.AlignVCenter
                                             font.pixelSize: 14
-                                            onTextChanged: launcherWindow.adventureInlineDraftName = text
-                                            onAccepted: launcherWindow.commitAdventureInlineEdit()
+                                            onTextChanged: {
+                                                if (explorerDelegate.isSceneInline) {
+                                                    launcherWindow.sceneInlineDraftName = text
+                                                } else {
+                                                    launcherWindow.adventureInlineDraftName = text
+                                                }
+                                            }
+                                            onAccepted: {
+                                                if (explorerDelegate.isSceneInline) {
+                                                    launcherWindow.commitSceneInlineEdit()
+                                                } else {
+                                                    launcherWindow.commitAdventureInlineEdit()
+                                                }
+                                            }
                                             onActiveFocusChanged: {
-                                                if (!activeFocus && explorerDelegate.isAdventureInline) {
+                                                if (!activeFocus && explorerDelegate.isInlineEditor) {
                                                     inlineFocusRestoreTimer.restart()
                                                 }
                                             }
                                             Keys.onEscapePressed: function(event) {
                                                 event.accepted = true
-                                                launcherWindow.cancelAdventureInlineEdit()
+                                                if (explorerDelegate.isSceneInline) {
+                                                    launcherWindow.cancelSceneInlineEdit()
+                                                } else {
+                                                    launcherWindow.cancelAdventureInlineEdit()
+                                                }
                                             }
 
                                             Timer {
@@ -773,7 +888,7 @@ Window {
                                                 interval: 0
                                                 repeat: false
                                                 onTriggered: {
-                                                    if (explorerDelegate.isAdventureInline) {
+                                                    if (explorerDelegate.isInlineEditor) {
                                                         inlineAdventureField.forceActiveFocus()
                                                     }
                                                 }
@@ -785,10 +900,14 @@ Window {
                                 Timer {
                                     id: inlineFocusTimer
                                     interval: 0
-                                    running: explorerDelegate.isAdventureInline && launcherWindow.adventureInlinePendingFocus
+                                    running: explorerDelegate.isInlineEditor && (explorerDelegate.isSceneInline ? launcherWindow.sceneInlinePendingFocus : launcherWindow.adventureInlinePendingFocus)
                                     repeat: false
                                     onTriggered: {
-                                        launcherWindow.adventureInlinePendingFocus = false
+                                        if (explorerDelegate.isSceneInline) {
+                                            launcherWindow.sceneInlinePendingFocus = false
+                                        } else {
+                                            launcherWindow.adventureInlinePendingFocus = false
+                                        }
                                         inlineAdventureField.forceActiveFocus()
                                         inlineAdventureField.selectAll()
                                     }
@@ -796,7 +915,7 @@ Window {
 
                                 DragHandler {
                                     id: dragHandler
-                                    enabled: !launcherWindow.adventureInlineActive && !explorerDelegate.isAdventureInline
+                                    enabled: !launcherWindow.inlineEditActive && !explorerDelegate.isInlineEditor
                                     target: null
                                     onActiveChanged: {
                                         if (active) {
@@ -885,6 +1004,7 @@ Window {
                                             theme: neumoTheme
                                             width: 24
                                             height: 24
+                                            visible: launcherWindow.scenesMode
                                             enabled: false
                                             rowHovered: true
                                             iconSource: Qt.resolvedUrl("icons/scene_edit.svg")
@@ -921,12 +1041,22 @@ Window {
     Component.onCompleted: {
         appController.refresh_library()
         refreshAdventureInlineModel()
+        refreshSceneInlineModel()
+    }
+
+    onScenesModeChanged: {
+        if (scenesMode) {
+            cancelAdventureInlineEdit()
+        } else {
+            cancelSceneInlineEdit()
+        }
     }
 
     Connections {
         target: appController
         function onLibraryChanged() {
             refreshAdventureInlineModel()
+            refreshSceneInlineModel()
         }
     }
 
