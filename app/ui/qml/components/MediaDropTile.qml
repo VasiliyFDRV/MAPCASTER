@@ -6,6 +6,7 @@ import "neumo"
 
 FocusScope {
     id: root
+    clip: true
 
     implicitHeight: compactMode ? 154 : 222
     implicitWidth: 280

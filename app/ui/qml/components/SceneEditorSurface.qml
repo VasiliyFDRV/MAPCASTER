@@ -224,11 +224,14 @@ Item {
             Layout.fillWidth: true
             Layout.fillHeight: true
             clip: true
+            contentWidth: availableWidth
+            contentHeight: editorContent.implicitHeight
             ScrollBar.vertical: NeumoScrollBar {}
             ScrollBar.horizontal: NeumoScrollBar {}
 
             ColumnLayout {
-                width: editorScroll.availableWidth
+                id: editorContent
+                width: editorScroll.availableWidth > 0 ? editorScroll.availableWidth : editorScroll.width
                 spacing: 12
 
                 Label {
@@ -337,76 +340,163 @@ Item {
                                         enabled: root.gridEnabled && root.mapEnabled
                                         spacing: 8
 
-                                        RowLayout {
+                                        ColumnLayout {
                                             Layout.fillWidth: true
+                                            visible: !root.narrowLayout
                                             spacing: 8
 
-                                            Label {
+                                            RowLayout {
                                                 Layout.fillWidth: true
-                                                text: "\u0420\u0430\u0437\u043c\u0435\u0440"
-                                                color: root.theme ? root.theme.textSecondary : "#909090"
-                                                font.pixelSize: 11
-                                                horizontalAlignment: Text.AlignHCenter
+                                                spacing: 8
+
+                                                Label {
+                                                    Layout.fillWidth: true
+                                                    text: "\u0420\u0430\u0437\u043c\u0435\u0440"
+                                                    color: root.theme ? root.theme.textSecondary : "#909090"
+                                                    font.pixelSize: 11
+                                                    horizontalAlignment: Text.AlignHCenter
+                                                }
+
+                                                Label {
+                                                    Layout.fillWidth: true
+                                                    text: "\u041b\u0438\u043d\u0438\u044f"
+                                                    color: root.theme ? root.theme.textSecondary : "#909090"
+                                                    font.pixelSize: 11
+                                                    horizontalAlignment: Text.AlignHCenter
+                                                }
+
+                                                Label {
+                                                    Layout.fillWidth: true
+                                                    text: "\u0410\u043b\u044c\u0444\u0430"
+                                                    color: root.theme ? root.theme.textSecondary : "#909090"
+                                                    font.pixelSize: 11
+                                                    horizontalAlignment: Text.AlignHCenter
+                                                }
                                             }
 
-                                            Label {
+                                            RowLayout {
                                                 Layout.fillWidth: true
-                                                text: "\u041b\u0438\u043d\u0438\u044f"
-                                                color: root.theme ? root.theme.textSecondary : "#909090"
-                                                font.pixelSize: 11
-                                                horizontalAlignment: Text.AlignHCenter
-                                            }
+                                                spacing: 8
 
-                                            Label {
-                                                Layout.fillWidth: true
-                                                text: "\u0410\u043b\u044c\u0444\u0430"
-                                                color: root.theme ? root.theme.textSecondary : "#909090"
-                                                font.pixelSize: 11
-                                                horizontalAlignment: Text.AlignHCenter
+                                                NeumoStepperField {
+                                                    theme: root.theme
+                                                    Layout.fillWidth: true
+                                                    Layout.minimumWidth: 0
+                                                    value: root.gridCellSize
+                                                    from: 0.1
+                                                    to: 100.0
+                                                    stepSize: 0.25
+                                                    decimals: 2
+                                                    onValueModified: function(value) { root.gridCellSize = value }
+                                                }
+
+                                                NeumoStepperField {
+                                                    theme: root.theme
+                                                    Layout.fillWidth: true
+                                                    Layout.minimumWidth: 0
+                                                    value: root.gridLineThickness
+                                                    from: 0.2
+                                                    to: 10.0
+                                                    stepSize: 0.1
+                                                    decimals: 2
+                                                    onValueModified: function(value) { root.gridLineThickness = value }
+                                                }
+
+                                                NeumoStepperField {
+                                                    theme: root.theme
+                                                    Layout.fillWidth: true
+                                                    Layout.minimumWidth: 0
+                                                    value: root.gridOpacity
+                                                    from: 0.0
+                                                    to: 1.0
+                                                    stepSize: 0.05
+                                                    decimals: 2
+                                                    onValueModified: function(value) { root.gridOpacity = value }
+                                                }
                                             }
                                         }
 
-                                        RowLayout {
+                                        ColumnLayout {
                                             Layout.fillWidth: true
+                                            visible: root.narrowLayout
                                             spacing: 8
 
-                                            NeumoStepperField {
-                                                theme: root.theme
+                                            RowLayout {
                                                 Layout.fillWidth: true
-                                                Layout.minimumWidth: 0
-                                                compactMode: root.narrowLayout
-                                                value: root.gridCellSize
-                                                from: 0.1
-                                                to: 100.0
-                                                stepSize: 0.25
-                                                decimals: 2
-                                                onValueModified: function(value) { root.gridCellSize = value }
+                                                spacing: 8
+
+                                                Label {
+                                                    Layout.preferredWidth: 82
+                                                    text: "\u0420\u0430\u0437\u043c\u0435\u0440"
+                                                    color: root.theme ? root.theme.textSecondary : "#909090"
+                                                    font.pixelSize: 12
+                                                    verticalAlignment: Text.AlignVCenter
+                                                }
+
+                                                NeumoStepperField {
+                                                    theme: root.theme
+                                                    Layout.fillWidth: true
+                                                    Layout.minimumWidth: 0
+                                                    compactMode: true
+                                                    value: root.gridCellSize
+                                                    from: 0.1
+                                                    to: 100.0
+                                                    stepSize: 0.25
+                                                    decimals: 2
+                                                    onValueModified: function(value) { root.gridCellSize = value }
+                                                }
                                             }
 
-                                            NeumoStepperField {
-                                                theme: root.theme
+                                            RowLayout {
                                                 Layout.fillWidth: true
-                                                Layout.minimumWidth: 0
-                                                compactMode: root.narrowLayout
-                                                value: root.gridLineThickness
-                                                from: 0.2
-                                                to: 10.0
-                                                stepSize: 0.1
-                                                decimals: 2
-                                                onValueModified: function(value) { root.gridLineThickness = value }
+                                                spacing: 8
+
+                                                Label {
+                                                    Layout.preferredWidth: 82
+                                                    text: "\u041b\u0438\u043d\u0438\u044f"
+                                                    color: root.theme ? root.theme.textSecondary : "#909090"
+                                                    font.pixelSize: 12
+                                                    verticalAlignment: Text.AlignVCenter
+                                                }
+
+                                                NeumoStepperField {
+                                                    theme: root.theme
+                                                    Layout.fillWidth: true
+                                                    Layout.minimumWidth: 0
+                                                    compactMode: true
+                                                    value: root.gridLineThickness
+                                                    from: 0.2
+                                                    to: 10.0
+                                                    stepSize: 0.1
+                                                    decimals: 2
+                                                    onValueModified: function(value) { root.gridLineThickness = value }
+                                                }
                                             }
 
-                                            NeumoStepperField {
-                                                theme: root.theme
+                                            RowLayout {
                                                 Layout.fillWidth: true
-                                                Layout.minimumWidth: 0
-                                                compactMode: root.narrowLayout
-                                                value: root.gridOpacity
-                                                from: 0.0
-                                                to: 1.0
-                                                stepSize: 0.05
-                                                decimals: 2
-                                                onValueModified: function(value) { root.gridOpacity = value }
+                                                spacing: 8
+
+                                                Label {
+                                                    Layout.preferredWidth: 82
+                                                    text: "\u0410\u043b\u044c\u0444\u0430"
+                                                    color: root.theme ? root.theme.textSecondary : "#909090"
+                                                    font.pixelSize: 12
+                                                    verticalAlignment: Text.AlignVCenter
+                                                }
+
+                                                NeumoStepperField {
+                                                    theme: root.theme
+                                                    Layout.fillWidth: true
+                                                    Layout.minimumWidth: 0
+                                                    compactMode: true
+                                                    value: root.gridOpacity
+                                                    from: 0.0
+                                                    to: 1.0
+                                                    stepSize: 0.05
+                                                    decimals: 2
+                                                    onValueModified: function(value) { root.gridOpacity = value }
+                                                }
                                             }
                                         }
 
