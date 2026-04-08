@@ -49,7 +49,9 @@ Item {
                 source: root.iconSource
                 fillMode: Image.PreserveAspectFit
                 smooth: true
-                mipmap: true
+                mipmap: false
+                sourceSize.width: Math.round(width * 2)
+                sourceSize.height: Math.round(height * 2)
                 opacity: 0.0
             }
             ColorOverlay {
@@ -91,7 +93,9 @@ Item {
             source: root.iconSource
             fillMode: Image.PreserveAspectFit
             smooth: true
-            mipmap: true
+            mipmap: false
+            sourceSize.width: Math.round(width * 2)
+            sourceSize.height: Math.round(height * 2)
             opacity: 0.0
         }
         ColorOverlay {
@@ -151,3 +155,4 @@ Item {
         onClicked: root.clicked()
     }
 }
+
