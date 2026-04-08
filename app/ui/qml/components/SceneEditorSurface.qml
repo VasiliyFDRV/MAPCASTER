@@ -177,17 +177,30 @@ Item {
         }
     }
 
-    ColumnLayout {
+
+    Flickable {
+        id: editorScroll
         anchors.fill: parent
-        spacing: 10
+        clip: true
+        boundsBehavior: Flickable.StopAtBounds
+        flickableDirection: Flickable.VerticalFlick
+        contentWidth: width
+        contentHeight: editorContent.implicitHeight
+        interactive: contentHeight > height
+        ScrollBar.vertical: NeumoScrollBar {}
+        ScrollBar.horizontal: ScrollBar { policy: ScrollBar.AlwaysOff }
 
         ColumnLayout {
-            Layout.fillWidth: true
-            spacing: 6
+            id: editorContent
+            width: editorScroll.width
+            spacing: 12
 
             RowLayout {
                 Layout.fillWidth: true
-                spacing: 8
+                Layout.leftMargin: root.sectionOuterGutter
+                Layout.rightMargin: root.sectionOuterGutter
+                Layout.topMargin: 2
+                spacing: 10
 
                 NeumoIconButton {
                     theme: root.theme
@@ -198,45 +211,16 @@ Item {
                     onClicked: root.backRequested(root.dirty)
                 }
 
-                Item {
+                Label {
                     Layout.fillWidth: true
-                }
-
-                NeumoDialogButton {
-                    theme: root.theme
-                    text: root.saveButtonText
-                    accent: true
-                    onClicked: root.saveRequested(root.currentDraft())
+                    text: root.modeTitle
+                    color: root.theme ? root.theme.textPrimary : "#D0D0D0"
+                    font.pixelSize: root.headerTitleSize
+                    font.weight: Font.DemiBold
+                    elide: Text.ElideRight
+                    verticalAlignment: Text.AlignVCenter
                 }
             }
-
-            Label {
-                Layout.fillWidth: true
-                text: root.modeTitle
-                color: root.theme ? root.theme.textPrimary : "#D0D0D0"
-                font.pixelSize: root.headerTitleSize
-                font.weight: Font.DemiBold
-                elide: Text.ElideRight
-            }
-        }
-
-        Flickable {
-            id: editorScroll
-            Layout.fillWidth: true
-            Layout.fillHeight: true
-            clip: true
-            boundsBehavior: Flickable.StopAtBounds
-            flickableDirection: Flickable.VerticalFlick
-            contentWidth: width
-            contentHeight: editorContent.implicitHeight
-            interactive: contentHeight > height
-            ScrollBar.vertical: NeumoScrollBar {}
-            ScrollBar.horizontal: ScrollBar { policy: ScrollBar.AlwaysOff }
-
-            ColumnLayout {
-                id: editorContent
-                width: editorScroll.width
-                spacing: 12
 
                 Label {
                     text: "\u041d\u0430\u0437\u0432\u0430\u043d\u0438\u0435 \u0441\u0446\u0435\u043d\u044b"
@@ -645,9 +629,36 @@ Item {
 
                 Item {
                     Layout.fillWidth: true
-                    Layout.preferredHeight: 2
+                    Layout.leftMargin: root.sectionOuterGutter
+                    Layout.rightMargin: root.sectionOuterGutter
+                    Layout.topMargin: 6
+                    implicitHeight: 46
+
+                    NeumoRaisedSurface {
+                        anchors.fill: parent
+                        theme: root.theme
+                        radius: 16
+                        fillColor: root.theme ? root.theme.baseColor : "#2D2D2D"
+
+                        Label {
+                            anchors.centerIn: parent
+                            text: root.saveButtonText
+                            color: root.theme ? root.theme.textPrimary : "#D0D0D0"
+                            font.pixelSize: 14
+                            font.weight: Font.DemiBold
+                        }
+
+                        MouseArea {
+                            anchors.fill: parent
+                            onClicked: root.saveRequested(root.currentDraft())
+                        }
+                    }
+                }
+
+                Item {
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: 10
                 }
             }
         }
     }
-}

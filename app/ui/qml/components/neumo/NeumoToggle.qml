@@ -10,17 +10,17 @@ Item {
     readonly property bool pressed: hitArea.pressed && toggleRoot.enabled
 
     property color knobBaseColor: checked
-        ? (theme ? theme.toggleKnobOnBaseColor : "#7A828F")
-        : (theme ? theme.toggleKnobOffBaseColor : "#565A62")
+        ? (theme ? theme.toggleKnobOnBaseColor : "#4A5260")
+        : (theme ? theme.toggleKnobOffBaseColor : "#343941")
     property color knobLightColor: checked
-        ? (theme ? theme.toggleKnobOnLightColor : "#C4CCD9")
-        : (theme ? theme.toggleKnobOffLightColor : "#7D838D")
+        ? (theme ? theme.toggleKnobOnLightColor : "#687285")
+        : (theme ? theme.toggleKnobOffLightColor : "#4B5160")
     property color knobDarkColor: checked
-        ? (theme ? theme.toggleKnobOnDarkColor : "#5A6372")
-        : (theme ? theme.toggleKnobOffDarkColor : "#3E444E")
+        ? (theme ? theme.toggleKnobOnDarkColor : "#38404D")
+        : (theme ? theme.toggleKnobOffDarkColor : "#272C34")
     property color knobBorderColor: checked
-        ? (theme ? theme.toggleKnobOnBorderColor : "#C1C9D8")
-        : (theme ? theme.toggleKnobOffBorderColor : "#6E7480")
+        ? (theme ? theme.toggleKnobOnBorderColor : "#788399")
+        : (theme ? theme.toggleKnobOffBorderColor : "#515968")
 
     signal toggled(bool checked)
 
@@ -29,7 +29,7 @@ Item {
     width: implicitWidth
     height: implicitHeight
 
-    scale: hovered ? (theme ? theme.toggleHoverScale : 1.015) : 1.0
+    scale: hovered ? (theme ? theme.toggleHoverScale : 1.01) : 1.0
 
     Behavior on scale {
         NumberAnimation { duration: 120; easing.type: Easing.OutCubic }
@@ -55,31 +55,16 @@ Item {
         anchors.fill: parent
         theme: toggleRoot.theme
         radius: height / 2
-        fillColor: theme ? theme.fieldInsetFillColor : "#262626"
+        fillColor: theme ? theme.toggleTrackColor : "#2D2D2D"
         contentPadding: 0
-    }
-
-    Rectangle {
-        anchors.fill: parent
-        radius: height / 2
-        color: "transparent"
-        border.width: 1
-        border.color: checked
-            ? (theme ? theme.toggleTrackCheckedBorderColor : "#6A6F78")
-            : (theme ? theme.toggleTrackNeutralBorderColor : "#5F646D")
-        opacity: 0.9
-
-        Behavior on border.color {
-            ColorAnimation { duration: 140 }
-        }
     }
 
     Rectangle {
         anchors.fill: parent
         anchors.margins: 2
         radius: height / 2
-        color: theme ? theme.toggleTrackCheckedTintColor : "#8A909A"
-        opacity: checked ? 0.13 : 0.0
+        color: theme ? theme.toggleTrackCheckedTintColor : "#7B8492"
+        opacity: checked ? 0.08 : 0.0
 
         Behavior on opacity {
             NumberAnimation { duration: 140 }
@@ -92,7 +77,7 @@ Item {
         height: width
         x: toggleRoot.checked ? toggleRoot.width - width - 4 : 4
         y: ((toggleRoot.height - height) / 2) + (toggleRoot.pressed ? (theme ? theme.togglePressYOffset : 1) : 0)
-        scale: toggleRoot.pressed ? (theme ? theme.togglePressScale : 0.97) : 1.0
+        scale: toggleRoot.pressed ? (theme ? theme.togglePressScale : 0.975) : 1.0
 
         Behavior on x {
             NumberAnimation { duration: 150; easing.type: Easing.OutCubic }
@@ -111,15 +96,15 @@ Item {
             theme: toggleRoot.theme
             radius: width / 2
             fillColor: knobBaseColor
-            shadowOffset: 2.1
-            shadowRadius: 4.8
+            shadowOffset: 2.0
+            shadowRadius: 4.4
             shadowSamples: 17
             shadowDarkColor: theme
-                ? Qt.rgba(theme.shadowDarkBase.r, theme.shadowDarkBase.g, theme.shadowDarkBase.b, 0.55)
-                : "#8C151618"
+                ? Qt.rgba(theme.shadowDarkBase.r, theme.shadowDarkBase.g, theme.shadowDarkBase.b, 0.50)
+                : "#80151618"
             shadowLightColor: theme
-                ? Qt.rgba(theme.shadowLightBase.r, theme.shadowLightBase.g, theme.shadowLightBase.b, 0.26)
-                : "#4255565C"
+                ? Qt.rgba(theme.shadowLightBase.r, theme.shadowLightBase.g, theme.shadowLightBase.b, 0.20)
+                : "#3355565C"
             contentPadding: 0
         }
 
@@ -143,13 +128,13 @@ Item {
                 ctx.clip()
 
                 var diag = ctx.createLinearGradient(width, 0, 0, height)
-                diag.addColorStop(0.0, toCanvasColor(toggleRoot.knobLightColor, 0.98))
-                diag.addColorStop(1.0, toCanvasColor(toggleRoot.knobDarkColor, 0.98))
+                diag.addColorStop(0.0, toCanvasColor(toggleRoot.knobLightColor, 0.94))
+                diag.addColorStop(1.0, toCanvasColor(toggleRoot.knobDarkColor, 0.94))
                 ctx.fillStyle = diag
                 ctx.fillRect(0, 0, width, height)
 
-                var gloss = ctx.createRadialGradient(width * 0.74, height * 0.26, 0, width * 0.74, height * 0.26, width * 0.72)
-                gloss.addColorStop(0.0, toCanvasColor(Qt.rgba(1, 1, 1, 1), 0.22))
+                var gloss = ctx.createRadialGradient(width * 0.72, height * 0.28, 0, width * 0.72, height * 0.28, width * 0.7)
+                gloss.addColorStop(0.0, toCanvasColor(Qt.rgba(1, 1, 1, 1), 0.10))
                 gloss.addColorStop(1.0, toCanvasColor(Qt.rgba(1, 1, 1, 0), 0.0))
                 ctx.fillStyle = gloss
                 ctx.fillRect(0, 0, width, height)
@@ -162,7 +147,7 @@ Item {
             color: "transparent"
             border.width: 1
             border.color: knobBorderColor
-            opacity: 0.9
+            opacity: 0.82
         }
     }
 

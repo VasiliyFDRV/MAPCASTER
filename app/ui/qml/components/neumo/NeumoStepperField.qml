@@ -12,6 +12,26 @@ FocusScope {
     property int decimals: 2
     property bool compactMode: false
     property bool wheelAdjustEnabled: false
+    property string visualStyle: "launcherInline" // launcherInline | default
+
+    readonly property bool launcherInlineStyle: visualStyle === "launcherInline"
+
+    property color surfaceColor: launcherInlineStyle
+        ? (theme ? theme.fieldInlineFillColor : "#2D2D2D")
+        : (theme ? theme.fieldInsetFillColor : "#262626")
+
+    property color outlineColor: launcherInlineStyle
+        ? (root.activeFocus
+            ? (theme ? theme.fieldInlineFocusColor : "#8C8C8C")
+            : "transparent")
+        : (root.activeFocus
+            ? (theme ? theme.fieldBorderFocusColor : "#ABABAB")
+            : (leftArea.containsMouse || rightArea.containsMouse || editor.hovered
+                ? (theme ? theme.fieldBorderHoverColor : "#626262")
+                : (theme ? theme.fieldBorderColor : "#4D4D4D")))
+
+    property real outlineWidth: launcherInlineStyle ? (root.activeFocus ? 1 : 0) : 1
+    property real outlineOpacity: launcherInlineStyle ? 0.9 : (root.enabled ? 1.0 : 0.55)
 
     signal valueModified(real value)
 
@@ -79,7 +99,7 @@ FocusScope {
         anchors.fill: parent
         theme: root.theme
         radius: compactMode ? 12 : 14
-        fillColor: theme ? theme.fieldInsetFillColor : "#262626"
+        fillColor: root.surfaceColor
         contentPadding: 0
     }
 
@@ -87,16 +107,16 @@ FocusScope {
         anchors.fill: parent
         radius: compactMode ? 12 : 14
         color: "transparent"
-        border.width: 1
-        border.color: root.activeFocus
-            ? (theme ? theme.fieldBorderFocusColor : "#ABABAB")
-            : (leftArea.containsMouse || rightArea.containsMouse || editor.hovered
-                ? (theme ? theme.fieldBorderHoverColor : "#626262")
-                : (theme ? theme.fieldBorderColor : "#4D4D4D"))
-        opacity: root.enabled ? 1.0 : 0.55
+        border.width: root.outlineWidth
+        border.color: root.outlineColor
+        opacity: root.outlineOpacity
 
         Behavior on border.color {
             ColorAnimation { duration: 120 }
+        }
+
+        Behavior on opacity {
+            NumberAnimation { duration: 120 }
         }
     }
 
@@ -121,7 +141,7 @@ FocusScope {
                 anchors.fill: parent
                 radius: compactMode ? 7 : 8
                 color: theme ? theme.baseColor : "#2D2D2D"
-                opacity: leftArea.pressed ? 0.34 : (leftArea.containsMouse ? 0.18 : 0.0)
+                opacity: leftArea.pressed ? 0.22 : (leftArea.containsMouse ? 0.12 : 0.0)
 
                 Behavior on opacity {
                     NumberAnimation { duration: 90 }
@@ -146,15 +166,6 @@ FocusScope {
             }
         }
 
-        Rectangle {
-            anchors.left: leftSegment.right
-            anchors.top: parent.top
-            anchors.bottom: parent.bottom
-            width: 1
-            color: theme ? theme.fieldBorderColor : "#4D4D4D"
-            opacity: 0.55
-        }
-
         Item {
             id: rightSegment
             anchors.right: parent.right
@@ -166,7 +177,7 @@ FocusScope {
                 anchors.fill: parent
                 radius: compactMode ? 7 : 8
                 color: theme ? theme.baseColor : "#2D2D2D"
-                opacity: rightArea.pressed ? 0.34 : (rightArea.containsMouse ? 0.18 : 0.0)
+                opacity: rightArea.pressed ? 0.22 : (rightArea.containsMouse ? 0.12 : 0.0)
 
                 Behavior on opacity {
                     NumberAnimation { duration: 90 }
@@ -191,15 +202,6 @@ FocusScope {
             }
         }
 
-        Rectangle {
-            anchors.right: rightSegment.left
-            anchors.top: parent.top
-            anchors.bottom: parent.bottom
-            width: 1
-            color: theme ? theme.fieldBorderColor : "#4D4D4D"
-            opacity: 0.55
-        }
-
         TextField {
             id: editor
             anchors.left: leftSegment.right
@@ -212,7 +214,7 @@ FocusScope {
             selectedTextColor: root.theme ? root.theme.fieldSelectedTextColor : "#F4F4F6"
             selectionColor: root.theme ? root.theme.fieldSelectionColor : "#6C6C6C"
             horizontalAlignment: Text.AlignHCenter
-            verticalAlignment: Text.AlignVCenter
+            verticalAlignment: TextInput.AlignVCenter
             font.pixelSize: compactMode ? 12 : 13
             background: null
             padding: 0
