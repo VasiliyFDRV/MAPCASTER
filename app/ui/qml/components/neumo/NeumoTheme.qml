@@ -51,16 +51,16 @@ QtObject {
 
     property color toggleTrackColor: fieldInlineFillColor
     property color toggleTrackCheckedColor: fieldInlineFillColor
-    property color toggleTrackCheckedTintColor: "#7B8492"
+    property color toggleTrackCheckedTintColor: "transparent"
 
-    property color toggleKnobOffBaseColor: "#343941"
-    property color toggleKnobOnBaseColor: "#4A5260"
-    property color toggleKnobOffLightColor: "#4B5160"
-    property color toggleKnobOffDarkColor: "#272C34"
-    property color toggleKnobOnLightColor: "#687285"
-    property color toggleKnobOnDarkColor: "#38404D"
-    property color toggleKnobOffBorderColor: "#515968"
-    property color toggleKnobOnBorderColor: "#788399"
+    property color toggleKnobOffBaseColor: baseColor
+    property color toggleKnobOnBaseColor: shadowLightBase
+    property color toggleKnobOffLightColor: shadowLightBase
+    property color toggleKnobOffDarkColor: shadowDarkBase
+    property color toggleKnobOnLightColor: textPrimary
+    property color toggleKnobOnDarkColor: baseColor
+    property color toggleKnobOffBorderColor: "transparent"
+    property color toggleKnobOnBorderColor: "transparent"
 
     property real toggleHoverScale: 1.01
     property real togglePressScale: 0.975

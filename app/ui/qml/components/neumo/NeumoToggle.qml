@@ -10,17 +10,14 @@ Item {
     readonly property bool pressed: hitArea.pressed && toggleRoot.enabled
 
     property color knobBaseColor: checked
-        ? (theme ? theme.toggleKnobOnBaseColor : "#4A5260")
-        : (theme ? theme.toggleKnobOffBaseColor : "#343941")
+        ? (theme ? theme.toggleKnobOnBaseColor : "#55565C")
+        : (theme ? theme.toggleKnobOffBaseColor : "#2D2D2D")
     property color knobLightColor: checked
-        ? (theme ? theme.toggleKnobOnLightColor : "#687285")
-        : (theme ? theme.toggleKnobOffLightColor : "#4B5160")
+        ? (theme ? theme.toggleKnobOnLightColor : "#D0D0D0")
+        : (theme ? theme.toggleKnobOffLightColor : "#55565C")
     property color knobDarkColor: checked
-        ? (theme ? theme.toggleKnobOnDarkColor : "#38404D")
-        : (theme ? theme.toggleKnobOffDarkColor : "#272C34")
-    property color knobBorderColor: checked
-        ? (theme ? theme.toggleKnobOnBorderColor : "#788399")
-        : (theme ? theme.toggleKnobOffBorderColor : "#515968")
+        ? (theme ? theme.toggleKnobOnDarkColor : "#2D2D2D")
+        : (theme ? theme.toggleKnobOffDarkColor : "#151618")
 
     signal toggled(bool checked)
 
@@ -47,28 +44,12 @@ Item {
         ColorAnimation { duration: 140 }
     }
 
-    Behavior on knobBorderColor {
-        ColorAnimation { duration: 140 }
-    }
-
     NeumoInsetSurface {
         anchors.fill: parent
         theme: toggleRoot.theme
         radius: height / 2
         fillColor: theme ? theme.toggleTrackColor : "#2D2D2D"
         contentPadding: 0
-    }
-
-    Rectangle {
-        anchors.fill: parent
-        anchors.margins: 2
-        radius: height / 2
-        color: theme ? theme.toggleTrackCheckedTintColor : "#7B8492"
-        opacity: checked ? 0.08 : 0.0
-
-        Behavior on opacity {
-            NumberAnimation { duration: 140 }
-        }
     }
 
     Item {
@@ -127,27 +108,18 @@ Item {
                 ctx.closePath()
                 ctx.clip()
 
-                var diag = ctx.createLinearGradient(width, 0, 0, height)
+                var diag = ctx.createLinearGradient(0, 0, width, height)
                 diag.addColorStop(0.0, toCanvasColor(toggleRoot.knobLightColor, 0.94))
                 diag.addColorStop(1.0, toCanvasColor(toggleRoot.knobDarkColor, 0.94))
                 ctx.fillStyle = diag
                 ctx.fillRect(0, 0, width, height)
 
-                var gloss = ctx.createRadialGradient(width * 0.72, height * 0.28, 0, width * 0.72, height * 0.28, width * 0.7)
-                gloss.addColorStop(0.0, toCanvasColor(Qt.rgba(1, 1, 1, 1), 0.10))
+                var gloss = ctx.createRadialGradient(width * 0.28, height * 0.22, 0, width * 0.28, height * 0.22, width * 0.72)
+                gloss.addColorStop(0.0, toCanvasColor(Qt.rgba(1, 1, 1, 1), 0.08))
                 gloss.addColorStop(1.0, toCanvasColor(Qt.rgba(1, 1, 1, 0), 0.0))
                 ctx.fillStyle = gloss
                 ctx.fillRect(0, 0, width, height)
             }
-        }
-
-        Rectangle {
-            anchors.fill: parent
-            radius: width / 2
-            color: "transparent"
-            border.width: 1
-            border.color: knobBorderColor
-            opacity: 0.82
         }
     }
 
