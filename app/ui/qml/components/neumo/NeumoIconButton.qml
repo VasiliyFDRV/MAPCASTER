@@ -45,6 +45,10 @@ Item {
         : (mediumButton ? (theme ? theme.iconInnerLightColorMedium : "#5A3B3C40") : (theme ? theme.iconInnerLightColorSmall : "#423B3C40"))
     property color iconColor: theme ? theme.textPrimary : "#CFCFCF"
     property color iconDisabledColor: "#7A7A7A"
+    property color iconIdleColor: iconColor
+    property color iconHoverColor: iconColor
+    property real idleSurfaceOpacity: 1.0
+    property real activeSurfaceOpacity: 1.0
     property real tipX: 0
     property real tipY: 0
     property bool hovered: hitArea.containsMouse && iconRoot.enabled && !hitArea.pressed
@@ -68,8 +72,13 @@ Item {
     Item {
         id: surfaceRoot
         anchors.fill: parent
+        opacity: (iconRoot.hovered || hitArea.pressed) ? iconRoot.activeSurfaceOpacity : iconRoot.idleSurfaceOpacity
         scale: iconRoot.hovered ? 1.045 : 1.0
         transformOrigin: Item.Center
+
+        Behavior on opacity {
+            NumberAnimation { duration: 140; easing.type: Easing.OutCubic }
+        }
 
         Behavior on scale {
             NumberAnimation { duration: 120; easing.type: Easing.OutCubic }
@@ -149,14 +158,19 @@ Item {
         anchors.fill: iconImage
         source: iconImage
         visible: iconImage.visible
-        color: iconRoot.enabled ? iconRoot.iconColor : iconRoot.iconDisabledColor
+        color: iconRoot.enabled
+            ? ((iconRoot.hovered || hitArea.pressed) ? iconRoot.iconHoverColor : iconRoot.iconIdleColor)
+            : iconRoot.iconDisabledColor
     }
 
     Text {
         anchors.centerIn: iconVisual
+        anchors.verticalCenterOffset: iconRoot.glyph === "+" ? -1 : 0
         visible: (!iconImage.visible || iconImage.status !== Image.Ready) && iconRoot.glyph.length > 0
         text: iconRoot.glyph
-        color: iconRoot.enabled ? iconRoot.iconColor : iconRoot.iconDisabledColor
+        color: iconRoot.enabled
+            ? ((iconRoot.hovered || hitArea.pressed) ? iconRoot.iconHoverColor : iconRoot.iconIdleColor)
+            : iconRoot.iconDisabledColor
         font.pixelSize: iconRoot.fontSize
         font.weight: Font.DemiBold
     }
