@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 from pathlib import Path
 from typing import Any
@@ -10,6 +10,7 @@ def build_default_settings(project_root: Path) -> dict[str, Any]:
         "adventures_root": str(adventures_root),
         "default_scene": {
             "map": {
+                "enabled": True,
                 "type": "color",
                 "value": "#2E2E2E",
                 "autoplay": True,
@@ -17,6 +18,7 @@ def build_default_settings(project_root: Path) -> dict[str, Any]:
                 "mute": True,
             },
             "background": {
+                "enabled": True,
                 "type": "color",
                 "value": "#1F1F1F",
                 "autoplay": True,
@@ -24,6 +26,7 @@ def build_default_settings(project_root: Path) -> dict[str, Any]:
                 "mute": True,
             },
             "grid": {
+                "enabled": True,
                 "cell_size_ft": 5.0,
                 "line_thickness_px": 1.5,
                 "opacity": 0.45,

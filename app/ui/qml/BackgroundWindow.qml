@@ -1,4 +1,4 @@
-import QtQuick
+﻿import QtQuick
 import QtQuick.Controls
 import QtQuick.Window
 import QtMultimedia
@@ -9,7 +9,7 @@ Window {
     height: 720
     visible: true
     color: "#111215"
-    title: "DnD Maps - Фон"
+    title: "DnD Maps - Р¤РѕРЅ"
 
     function toggleFullscreenMode() {
         visibility = visibility === Window.FullScreen ? Window.Windowed : Window.FullScreen
@@ -27,7 +27,7 @@ Window {
     Rectangle {
         anchors.fill: parent
         visible: opacity > 0
-        opacity: appController.activeBackgroundMediaType === "color" ? 1.0 : 0.0
+        opacity: appController.activeBackgroundEnabled && appController.activeBackgroundMediaType === "color" ? 1.0 : 0.0
         color: appController.activeBackgroundFillColor
         Behavior on opacity {
             NumberAnimation { duration: 240; easing.type: Easing.OutCubic }
@@ -38,8 +38,8 @@ Window {
         id: backgroundImageLayer
         anchors.fill: parent
         visible: opacity > 0
-        opacity: appController.activeBackgroundMediaType === "image" ? 1.0 : 0.0
-        source: appController.activeBackgroundMediaType === "image" ? appController.activeBackgroundMediaSource : ""
+        opacity: appController.activeBackgroundEnabled && appController.activeBackgroundMediaType === "image" ? 1.0 : 0.0
+        source: appController.activeBackgroundEnabled && appController.activeBackgroundMediaType === "image" ? appController.activeBackgroundMediaSource : ""
         fillMode: Image.PreserveAspectCrop
         smooth: true
         asynchronous: true
@@ -50,16 +50,16 @@ Window {
 
     MediaPlayer {
         id: backgroundPlayer
-        source: appController.activeBackgroundMediaType === "video" ? appController.activeBackgroundMediaSource : ""
+        source: appController.activeBackgroundEnabled && appController.activeBackgroundMediaType === "video" ? appController.activeBackgroundMediaSource : ""
         loops: appController.activeBackgroundMediaLoop ? MediaPlayer.Infinite : 1
-        autoPlay: appController.activeBackgroundMediaAutoplay && appController.activeBackgroundMediaType === "video"
+        autoPlay: appController.activeBackgroundEnabled && appController.activeBackgroundMediaAutoplay && appController.activeBackgroundMediaType === "video"
         videoOutput: backgroundVideoLayer
         // Avoid attaching audio pipeline while muted to reduce noisy ffmpeg audio warnings.
         audioOutput: appController.activeBackgroundMediaMute ? null : backgroundAudioOutput
         onErrorOccurred: function(error, errorString) {
             if (error !== MediaPlayer.NoError) {
                 stop()
-                console.warn("Ошибка фонового видео:", errorString)
+                console.warn("РћС€РёР±РєР° С„РѕРЅРѕРІРѕРіРѕ РІРёРґРµРѕ:", errorString)
             }
         }
         onMediaStatusChanged: {
@@ -79,7 +79,7 @@ Window {
         id: backgroundVideoLayer
         anchors.fill: parent
         visible: opacity > 0
-        opacity: appController.activeBackgroundMediaType === "video" ? 1.0 : 0.0
+        opacity: appController.activeBackgroundEnabled && appController.activeBackgroundMediaType === "video" ? 1.0 : 0.0
         fillMode: VideoOutput.PreserveAspectCrop
         Behavior on opacity {
             NumberAnimation { duration: 240; easing.type: Easing.OutCubic }
@@ -122,7 +122,7 @@ Window {
         anchors.leftMargin: 14
         anchors.topMargin: 10
         color: "#DADCE2"
-        text: appController.currentScene.length > 0 ? ("Сцена: " + appController.currentScene) : "Сцена: по умолчанию"
+        text: appController.currentScene.length > 0 ? ("РЎС†РµРЅР°: " + appController.currentScene) : "РЎС†РµРЅР°: РїРѕ СѓРјРѕР»С‡Р°РЅРёСЋ"
         font.pixelSize: 13
         opacity: 0.72
     }
@@ -130,7 +130,7 @@ Window {
     Connections {
         target: appController
         function onSceneViewChanged() {
-            if (appController.activeBackgroundMediaType === "video"
+            if (appController.activeBackgroundEnabled && appController.activeBackgroundMediaType === "video"
                     && appController.activeBackgroundMediaAutoplay
                     && backgroundPlayer.source
                     && backgroundPlayer.source.toString().length > 0) {
