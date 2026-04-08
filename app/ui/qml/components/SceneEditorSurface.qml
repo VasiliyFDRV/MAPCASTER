@@ -2,6 +2,7 @@ import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
 import "neumo"
+import "MediaValueUtils.js" as MediaValueUtils
 
 Item {
     id: root
@@ -47,40 +48,14 @@ Item {
     signal colorRequested(string target, string currentValue)
     signal pasteRequested(string target)
 
-    function detectMediaTypeFromValue(rawValue, fallbackType) {
-        var value = String(rawValue || "").trim().toLowerCase()
-        if (value.length === 0) {
-            return fallbackType || "color"
-        }
-        var clean = value.split("?")[0].split("#")[0]
-        if (clean.match(/\.(png|jpg|jpeg|webp|bmp|gif)$/)) {
-            return "image"
-        }
-        if (clean.match(/\.(mp4|webm|mkv|avi|mov|wmv|m4v)$/)) {
-            return "video"
-        }
-        return fallbackType || "color"
-    }
-
-    function normalizeColorValue(rawValue, fallbackColor) {
-        var value = String(rawValue || "").trim()
-        if (value.length === 0) {
-            return fallbackColor || "#000000"
-        }
-        if (value.length === 9 && value[0] === "#") {
-            return "#" + value.slice(3)
-        }
-        return value
-    }
-
     function applyMediaValue(target, value, explicitType) {
         var nextValue = String(value || "").trim()
-        var nextType = explicitType || detectMediaTypeFromValue(nextValue, "color")
+        var nextType = explicitType || MediaValueUtils.detectMediaTypeFromValue(nextValue, "color")
         if (target === "background") {
-            backgroundValue = nextType === "color" ? normalizeColorValue(nextValue, "#1F1F1F") : nextValue
+            backgroundValue = nextType === "color" ? MediaValueUtils.normalizeColorValue(nextValue, "#1F1F1F") : nextValue
             backgroundType = nextType
         } else {
-            mapValue = nextType === "color" ? normalizeColorValue(nextValue, "#2E2E2E") : nextValue
+            mapValue = nextType === "color" ? MediaValueUtils.normalizeColorValue(nextValue, "#2E2E2E") : nextValue
             mapType = nextType
         }
     }
@@ -97,14 +72,14 @@ Item {
         mapEnabled = draftMap.enabled === undefined ? true : Boolean(draftMap.enabled)
         backgroundEnabled = draftBackground.enabled === undefined ? true : Boolean(draftBackground.enabled)
         gridEnabled = draftGrid.enabled === undefined ? true : Boolean(draftGrid.enabled)
-        mapType = String(draftMap.type || detectMediaTypeFromValue(draftMap.value || "", "color"))
-        backgroundType = String(draftBackground.type || detectMediaTypeFromValue(draftBackground.value || "", "color"))
-        mapValue = mapType === "color" ? normalizeColorValue(draftMap.value || "#2E2E2E", "#2E2E2E") : String(draftMap.value || "")
-        backgroundValue = backgroundType === "color" ? normalizeColorValue(draftBackground.value || "#1F1F1F", "#1F1F1F") : String(draftBackground.value || "")
+        mapType = String(draftMap.type || MediaValueUtils.detectMediaTypeFromValue(draftMap.value || "", "color"))
+        backgroundType = String(draftBackground.type || MediaValueUtils.detectMediaTypeFromValue(draftBackground.value || "", "color"))
+        mapValue = mapType === "color" ? MediaValueUtils.normalizeColorValue(draftMap.value || "#2E2E2E", "#2E2E2E") : String(draftMap.value || "")
+        backgroundValue = backgroundType === "color" ? MediaValueUtils.normalizeColorValue(draftBackground.value || "#1F1F1F", "#1F1F1F") : String(draftBackground.value || "")
         gridCellSize = Number(draftGrid.cell_size_ft === undefined ? 5.0 : draftGrid.cell_size_ft)
         gridLineThickness = Number(draftGrid.line_thickness_px === undefined ? 1.5 : draftGrid.line_thickness_px)
         gridOpacity = Number(draftGrid.opacity === undefined ? 0.45 : draftGrid.opacity)
-        gridColor = normalizeColorValue(draftGrid.color || "#9D9D9D", "#9D9D9D")
+        gridColor = MediaValueUtils.normalizeColorValue(draftGrid.color || "#9D9D9D", "#9D9D9D")
         sceneNameField.text = sceneName
         gridColorField.text = gridColor
         initialFingerprint = currentDraftFingerprint
@@ -119,7 +94,7 @@ Item {
             "map": {
                 "enabled": mapEnabled,
                 "type": mapType,
-                "value": mapType === "color" ? normalizeColorValue(mapValue, "#2E2E2E") : String(mapValue || "").trim(),
+                "value": mapType === "color" ? MediaValueUtils.normalizeColorValue(mapValue, "#2E2E2E") : String(mapValue || "").trim(),
                 "autoplay": true,
                 "loop": true,
                 "mute": true
@@ -127,7 +102,7 @@ Item {
             "background": {
                 "enabled": backgroundEnabled,
                 "type": backgroundType,
-                "value": backgroundType === "color" ? normalizeColorValue(backgroundValue, "#1F1F1F") : String(backgroundValue || "").trim(),
+                "value": backgroundType === "color" ? MediaValueUtils.normalizeColorValue(backgroundValue, "#1F1F1F") : String(backgroundValue || "").trim(),
                 "autoplay": true,
                 "loop": true,
                 "mute": true
@@ -137,7 +112,7 @@ Item {
                 "cell_size_ft": Number(gridCellSize.toFixed(2)),
                 "line_thickness_px": Number(gridLineThickness.toFixed(2)),
                 "opacity": Number(gridOpacity.toFixed(2)),
-                "color": normalizeColorValue(gridColor, "#9D9D9D")
+                "color": MediaValueUtils.normalizeColorValue(gridColor, "#9D9D9D")
             }
         }
     }
@@ -155,7 +130,7 @@ Item {
     }
 
     function applyColorSelection(target, value) {
-        var normalized = normalizeColorValue(value, target === "background" ? "#1F1F1F" : "#2E2E2E")
+        var normalized = MediaValueUtils.normalizeColorValue(value, target === "background" ? "#1F1F1F" : "#2E2E2E")
         if (target === "grid") {
             gridColor = normalized
             gridColorField.text = normalized

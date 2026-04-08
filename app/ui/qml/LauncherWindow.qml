@@ -6,6 +6,7 @@ import QtQuick.Window
 import QtQuick.Effects
 import Qt5Compat.GraphicalEffects
 import "components"
+import "components/MediaValueUtils.js" as MediaValueUtils
 import "components/neumo"
 
 Window {
@@ -31,32 +32,6 @@ Window {
     property color textPrimary: "#D0D0D0"
     property color textSecondary: "#909090"
     property real explorerEdgeInset: 12
-
-    function detectMediaTypeFromValue(rawValue, fallbackType) {
-        var value = String(rawValue || "").trim().toLowerCase()
-        if (value.length === 0) {
-            return fallbackType || "color"
-        }
-        var clean = value.split("?")[0].split("#")[0]
-        if (clean.match(/\.(png|jpg|jpeg|webp|bmp|gif)$/)) {
-            return "image"
-        }
-        if (clean.match(/\.(mp4|webm|mkv|avi|mov|wmv|m4v)$/)) {
-            return "video"
-        }
-        return fallbackType || "color"
-    }
-
-    function normalizeColorValue(raw) {
-        var value = String(raw || "").trim()
-        if (value.length === 0) {
-            return "#000000"
-        }
-        if (value.length === 9 && value[0] === "#") {
-            return "#" + value.slice(3)
-        }
-        return value
-    }
 
     function openSceneEditor(draft) {
         if (!draft || !draft.map || !draft.background || !draft.grid) {
@@ -255,7 +230,7 @@ Window {
         id: colorPickerDialog
         title: "Выбор цвета"
         onAccepted: {
-            var value = normalizeColorValue(selectedColor)
+            var value = MediaValueUtils.normalizeColorValue(selectedColor, "#000000")
             if (launcherWindow.sceneEditorVisible) {
                 sceneEditorSurface.applyColorSelection(launcherWindow.pendingColorTarget, value)
             }

@@ -5,6 +5,7 @@ import QtQuick.Layouts
 import QtQuick.Window
 import QtMultimedia
 import "components"
+import "components/MediaValueUtils.js" as MediaValueUtils
 
 Window {
     id: mapWindow
@@ -393,26 +394,11 @@ Window {
         requestFullMapRepaint()
     }
 
-    function detectMediaTypeFromValue(rawValue, fallbackType) {
-        var value = String(rawValue || "").trim().toLowerCase()
-        if (value.length === 0) {
-            return fallbackType || "color"
-        }
-        var clean = value.split("?")[0].split("#")[0]
-        if (clean.match(/\.(png|jpg|jpeg|webp|bmp|gif)$/)) {
-            return "image"
-        }
-        if (clean.match(/\.(mp4|webm|mkv|avi|mov|wmv|m4v)$/)) {
-            return "video"
-        }
-        return fallbackType || "color"
-    }
-
     function applyDetectedMediaType(value, comboBox) {
         if (!comboBox) {
             return
         }
-        var detected = detectMediaTypeFromValue(value, comboBox.currentText || "color")
+        var detected = MediaValueUtils.detectMediaTypeFromValue(value, comboBox.currentText || "color")
         if (detected === "image") {
             comboBox.currentIndex = 1
         } else if (detected === "video") {

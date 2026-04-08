@@ -3,6 +3,7 @@ import QtQuick.Controls
 import QtQuick.Layouts
 import QtMultimedia
 import "neumo"
+import "MediaValueUtils.js" as MediaValueUtils
 
 FocusScope {
     id: root
@@ -15,12 +16,12 @@ FocusScope {
     property bool compactMode: false
     property string mediaType: "color"
     property string previewValue: ""
-    property string previewSourceUrl: previewSource(previewValue)
+    property string previewSourceUrl: MediaValueUtils.toPreviewSourceUrl(previewValue)
     property color fallbackColor: "#2A2A2A"
     property string placeholderText: "\u041f\u0435\u0440\u0435\u0442\u0430\u0449\u0438\u0442\u0435 \u0444\u0430\u0439\u043b, Ctrl+V \u0438\u043b\u0438 \u0434\u0432\u043e\u0439\u043d\u043e\u0439 \u043a\u043b\u0438\u043a"
     property string valuePlaceholderText: mediaType === "color" ? "#2E2E2E" : "\u041f\u0443\u0442\u044c \u0438\u043b\u0438 URL"
     property string helperText: "Ctrl+V, drag and drop, double click"
-    property string effectiveType: inferTypeFromValue(previewValue, mediaType)
+    property string effectiveType: MediaValueUtils.detectMediaTypeFromValue(previewValue, mediaType)
     property bool videoPreviewReady: false
     property bool videoPreviewPrimed: false
 
@@ -29,35 +30,6 @@ FocusScope {
     signal browseRequest()
     signal valueEdited(string value)
     signal colorRequest()
-
-    function previewSource(rawValue) {
-        var value = String(rawValue || "").trim()
-        if (value.length === 0) {
-            return ""
-        }
-        if (value.indexOf("file://") === 0
-                || value.indexOf("http://") === 0
-                || value.indexOf("https://") === 0
-                || value.indexOf("qrc:/") === 0) {
-            return value
-        }
-        return "file:///" + value.replace(/\\/g, "/")
-    }
-
-    function inferTypeFromValue(rawValue, fallbackType) {
-        var value = String(rawValue || "").trim().toLowerCase()
-        if (value.length === 0) {
-            return fallbackType || "color"
-        }
-        var clean = value.split("?")[0].split("#")[0]
-        if (clean.match(/\.(png|jpg|jpeg|webp|bmp|gif)$/)) {
-            return "image"
-        }
-        if (clean.match(/\.(mp4|webm|mkv|avi|mov|wmv|m4v)$/)) {
-            return "video"
-        }
-        return fallbackType || "color"
-    }
 
     function primeVideoPreview() {
         if (effectiveType !== "video" || previewSourceUrl.length === 0 || videoPreviewPrimed) {
@@ -142,7 +114,7 @@ FocusScope {
                         anchors.fill: parent
                         visible: root.effectiveType === "image" && String(root.previewValue || "").length > 0
                         fillMode: Image.PreserveAspectCrop
-                        source: visible ? root.previewSource(root.previewValue) : ""
+                        source: visible ? root.previewSourceUrl : ""
                         smooth: true
                         asynchronous: true
                         cache: false
