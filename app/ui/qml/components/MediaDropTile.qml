@@ -10,7 +10,8 @@ FocusScope {
     clip: true
 
     implicitHeight: compactMode ? 156 : 228
-    implicitWidth: 280
+    implicitWidth: 0
+    Layout.minimumWidth: 0
 
     property var theme
     property bool compactMode: false
@@ -183,21 +184,17 @@ FocusScope {
                     id: valueField
                     theme: root.theme
                     visualStyle: "launcherInline"
-                    Layout.fillWidth: false
-                    Layout.minimumWidth: 120
-                    Layout.preferredWidth: Math.max(120, root.width * (compactMode ? 0.72 : 0.78))
+                    Layout.fillWidth: true
+                    Layout.minimumWidth: 0
                     text: String(root.previewValue || "")
                     placeholderText: root.valuePlaceholderText
                     onEditingFinished: root.valueEdited(text)
                     onAccepted: root.valueEdited(text)
                 }
 
-                Item {
-                    Layout.fillWidth: true
-                }
-
-                NeumoUtilityIconButton {
+                NeumoGhostIconButton {
                     theme: root.theme
+                    rowHovered: true
                     width: compactMode ? 28 : 30
                     height: compactMode ? 28 : 30
                     iconSource: Qt.resolvedUrl("../icons/palette.svg")
