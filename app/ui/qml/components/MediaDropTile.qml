@@ -1,17 +1,23 @@
-import QtQuick
+﻿import QtQuick
 import QtQuick.Controls
+import QtQuick.Layouts
 import QtMultimedia
+import "neumo"
 
 FocusScope {
     id: root
-    implicitHeight: 102
-    implicitWidth: 260
 
+    implicitHeight: 222
+    implicitWidth: 280
+
+    property var theme
     property string mediaType: "color"
     property string previewValue: ""
     property string previewSourceUrl: previewSource(previewValue)
     property color fallbackColor: "#2A2A2A"
-    property string placeholderText: "Перетащите файл, Ctrl+V или двойной клик"
+    property string placeholderText: "\u041f\u0435\u0440\u0435\u0442\u0430\u0449\u0438\u0442\u0435 \u0444\u0430\u0439\u043b, Ctrl+V \u0438\u043b\u0438 \u0434\u0432\u043e\u0439\u043d\u043e\u0439 \u043a\u043b\u0438\u043a"
+    property string valuePlaceholderText: mediaType === "color" ? "#2E2E2E" : "\u041f\u0443\u0442\u044c \u0438\u043b\u0438 URL"
+    property string helperText: "Ctrl+V, drag and drop, double click"
     property string effectiveType: inferTypeFromValue(previewValue, mediaType)
     property bool videoPreviewReady: false
     property bool videoPreviewPrimed: false
@@ -19,6 +25,8 @@ FocusScope {
     signal dropValue(string value)
     signal pasteRequest()
     signal browseRequest()
+    signal valueEdited(string value)
+    signal colorRequest()
 
     function previewSource(rawValue) {
         var value = String(rawValue || "").trim()
@@ -50,10 +58,7 @@ FocusScope {
     }
 
     function primeVideoPreview() {
-        if (effectiveType !== "video" || previewSourceUrl.length === 0) {
-            return
-        }
-        if (videoPreviewPrimed) {
+        if (effectiveType !== "video" || previewSourceUrl.length === 0 || videoPreviewPrimed) {
             return
         }
         videoPreviewPrimed = true
@@ -72,6 +77,9 @@ FocusScope {
         videoPreviewReady = false
         videoPreviewPrimed = false
         previewPlayer.stop()
+        if (!valueField.activeFocus) {
+            valueField.text = String(previewValue || "")
+        }
     }
 
     onEffectiveTypeChanged: {
@@ -82,118 +90,153 @@ FocusScope {
         }
     }
 
-    Rectangle {
+    onPreviewValueChanged: {
+        if (!valueField.activeFocus) {
+            valueField.text = String(previewValue || "")
+        }
+    }
+
+    NeumoInsetSurface {
         anchors.fill: parent
-        radius: 10
-        color: "#232323"
-        border.width: 1
-        border.color: root.activeFocus ? "#A7A7A7" : "#4C4C4C"
+        theme: root.theme
+        radius: 18
+        fillColor: theme ? theme.baseColor : "#2D2D2D"
+        contentPadding: 12
 
-        Rectangle {
-            id: previewFrame
+        ColumnLayout {
             anchors.fill: parent
-            anchors.margins: 6
-            radius: 8
-            clip: true
-            color: "#1A1A1A"
-            border.width: 1
-            border.color: "#3F3F3F"
+            spacing: 10
 
-            Rectangle {
-                anchors.fill: parent
-                visible: root.effectiveType === "color"
-                color: String(root.previewValue || "").length > 0 ? root.previewValue : root.fallbackColor
-            }
+            NeumoRaisedSurface {
+                id: previewTile
+                Layout.fillWidth: true
+                Layout.fillHeight: true
+                Layout.minimumHeight: 136
+                Layout.preferredHeight: 150
+                theme: root.theme
+                radius: 16
+                fillColor: theme ? theme.baseColor : "#2D2D2D"
+                shadowOffset: 4.4
+                shadowRadius: 9.4
+                shadowSamples: 21
 
-            Image {
-                anchors.fill: parent
-                visible: root.effectiveType === "image" && String(root.previewValue || "").length > 0
-                fillMode: Image.PreserveAspectCrop
-                source: visible ? root.previewSource(root.previewValue) : ""
-                smooth: true
-                asynchronous: true
-                cache: false
-            }
-
-            Rectangle {
-                anchors.fill: parent
-                visible: root.effectiveType === "video" && String(root.previewValue || "").length > 0
-                color: "#171717"
-
-                VideoOutput {
-                    id: previewVideoOutput
+                Rectangle {
                     anchors.fill: parent
-                    fillMode: VideoOutput.PreserveAspectCrop
-                    visible: root.videoPreviewReady
-                }
+                    radius: 16
+                    clip: true
+                    color: theme ? theme.mediaTilePreviewFillColor : "#1E1F22"
+                    border.width: 1
+                    border.color: theme ? theme.mediaTilePreviewStrokeColor : "#41444B"
 
-                Text {
-                    anchors.centerIn: parent
-                    text: "VIDEO"
-                    color: "#CFCFCF"
-                    font.pixelSize: 14
-                    font.weight: Font.DemiBold
-                    visible: !root.videoPreviewReady
+                    Rectangle {
+                        anchors.fill: parent
+                        visible: root.effectiveType === "color"
+                        color: String(root.previewValue || "").length > 0 ? root.previewValue : root.fallbackColor
+                    }
+
+                    Image {
+                        anchors.fill: parent
+                        visible: root.effectiveType === "image" && String(root.previewValue || "").length > 0
+                        fillMode: Image.PreserveAspectCrop
+                        source: visible ? root.previewSource(root.previewValue) : ""
+                        smooth: true
+                        asynchronous: true
+                        cache: false
+                    }
+
+                    Rectangle {
+                        anchors.fill: parent
+                        visible: root.effectiveType === "video" && String(root.previewValue || "").length > 0
+                        color: theme ? theme.mediaTilePreviewFillColor : "#1E1F22"
+
+                        VideoOutput {
+                            id: previewVideoOutput
+                            anchors.fill: parent
+                            fillMode: VideoOutput.PreserveAspectCrop
+                            visible: root.videoPreviewReady
+                        }
+
+                        Text {
+                            anchors.centerIn: parent
+                            text: "VIDEO"
+                            color: root.theme ? root.theme.mediaTileValueTextColor : "#D0D0D0"
+                            font.pixelSize: 14
+                            font.weight: Font.DemiBold
+                            visible: !root.videoPreviewReady
+                        }
+                    }
+
+                    Rectangle {
+                        anchors.fill: parent
+                        visible: String(root.previewValue || "").length === 0
+                        color: theme ? theme.mediaTileEmptyFillColor : "#1A1B1E"
+
+                        Text {
+                            anchors.centerIn: parent
+                            width: parent.width - 26
+                            text: root.placeholderText
+                            color: root.theme ? root.theme.mediaTileHintColor : "#909090"
+                            font.pixelSize: 12
+                            wrapMode: Text.WordWrap
+                            horizontalAlignment: Text.AlignHCenter
+                        }
+                    }
+
+                    MouseArea {
+                        anchors.fill: parent
+                        acceptedButtons: Qt.LeftButton
+                        onClicked: root.forceActiveFocus()
+                        onDoubleClicked: {
+                            root.forceActiveFocus()
+                            root.browseRequest()
+                        }
+                    }
                 }
             }
 
-            Rectangle {
-                anchors.fill: parent
-                visible: String(root.previewValue || "").length === 0
-                color: "#1D1D1D"
+            RowLayout {
+                Layout.fillWidth: true
+                spacing: 8
 
-                Text {
-                    anchors.centerIn: parent
-                    width: parent.width - 20
-                    text: root.placeholderText
-                    color: "#9A9A9A"
-                    font.pixelSize: 12
-                    wrapMode: Text.WordWrap
-                    horizontalAlignment: Text.AlignHCenter
-                }
-            }
-
-            Rectangle {
-                anchors.left: parent.left
-                anchors.right: parent.right
-                anchors.bottom: parent.bottom
-                height: 24
-                color: "#151515"
-                opacity: 0.86
-                visible: String(root.previewValue || "").length > 0
-
-                Text {
-                    anchors.fill: parent
-                    anchors.leftMargin: 8
-                    anchors.rightMargin: 8
-                    verticalAlignment: Text.AlignVCenter
+                NeumoTextField {
+                    id: valueField
+                    theme: root.theme
+                    Layout.fillWidth: true
+                    Layout.minimumWidth: 0
                     text: String(root.previewValue || "")
-                    color: "#D2D2D2"
-                    elide: Text.ElideMiddle
-                    font.pixelSize: 11
+                    placeholderText: root.valuePlaceholderText
+                    onEditingFinished: root.valueEdited(text)
+                    onAccepted: root.valueEdited(text)
+                }
+
+                NeumoUtilityIconButton {
+                    theme: root.theme
+                    width: 30
+                    height: 30
+                    iconSource: Qt.resolvedUrl("../icons/palette.svg")
+                    toolTip: "\u0412\u044b\u0431\u0440\u0430\u0442\u044c \u0446\u0432\u0435\u0442"
+                    onClicked: root.colorRequest()
                 }
             }
-        }
 
-        DropArea {
-            anchors.fill: parent
-            onDropped: function(drop) {
-                if (!drop || !drop.urls || drop.urls.length === 0) {
-                    return
-                }
-                root.forceActiveFocus()
-                root.dropValue(drop.urls[0].toString())
+            Text {
+                Layout.fillWidth: true
+                text: root.helperText
+                color: root.theme ? root.theme.mediaTileHintColor : "#909090"
+                font.pixelSize: 11
+                wrapMode: Text.WordWrap
             }
         }
+    }
 
-        MouseArea {
-            anchors.fill: parent
-            acceptedButtons: Qt.LeftButton
-            onClicked: root.forceActiveFocus()
-            onDoubleClicked: {
-                root.forceActiveFocus()
-                root.browseRequest()
+    DropArea {
+        anchors.fill: parent
+        onDropped: function(drop) {
+            if (!drop || !drop.urls || drop.urls.length === 0) {
+                return
             }
+            root.forceActiveFocus()
+            root.dropValue(drop.urls[0].toString())
         }
     }
 
@@ -218,7 +261,7 @@ FocusScope {
             }
         }
 
-        onErrorOccurred: function(error, errorString) {
+        onErrorOccurred: function(error) {
             if (error !== MediaPlayer.NoError) {
                 root.videoPreviewReady = false
                 stop()

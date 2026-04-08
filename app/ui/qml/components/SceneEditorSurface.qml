@@ -1,0 +1,492 @@
+﻿import QtQuick
+import QtQuick.Controls
+import QtQuick.Layouts
+import "neumo"
+
+Item {
+    id: root
+
+    property var theme
+    property string modeCode: "create"
+    property string statusMessage: ""
+    property var initialDraft: ({})
+    property int openToken: 0
+
+    property string sceneName: ""
+    property string originalName: ""
+    property bool mapEnabled: true
+    property bool backgroundEnabled: false
+    property bool gridEnabled: true
+    property string mapType: "color"
+    property string backgroundType: "color"
+    property string mapValue: "#2E2E2E"
+    property string backgroundValue: "#1F1F1F"
+    property real gridCellSize: 5.0
+    property real gridLineThickness: 1.5
+    property real gridOpacity: 0.45
+    property string gridColor: "#9D9D9D"
+    property string initialFingerprint: ""
+    readonly property string modeTitle: modeCode === "edit"
+        ? "\u0420\u0435\u0434\u0430\u043a\u0442\u0438\u0440\u043e\u0432\u0430\u043d\u0438\u0435 \u0441\u0446\u0435\u043d\u044b"
+        : "\u0421\u043e\u0437\u0434\u0430\u043d\u0438\u0435 \u0441\u0446\u0435\u043d\u044b"
+    readonly property string currentDraftFingerprint: JSON.stringify(root.currentDraft())
+    readonly property bool dirty: currentDraftFingerprint !== initialFingerprint
+    readonly property bool showStatusMessage: statusMessage.length > 0 && statusMessage !== "\u0413\u043e\u0442\u043e\u0432\u043e"
+
+    signal backRequested(bool dirty)
+    signal saveRequested(var draft)
+    signal browseRequested(string target)
+    signal colorRequested(string target, string currentValue)
+    signal pasteRequested(string target)
+
+    function detectMediaTypeFromValue(rawValue, fallbackType) {
+        var value = String(rawValue || "").trim().toLowerCase()
+        if (value.length === 0) {
+            return fallbackType || "color"
+        }
+        var clean = value.split("?")[0].split("#")[0]
+        if (clean.match(/\.(png|jpg|jpeg|webp|bmp|gif)$/)) {
+            return "image"
+        }
+        if (clean.match(/\.(mp4|webm|mkv|avi|mov|wmv|m4v)$/)) {
+            return "video"
+        }
+        return fallbackType || "color"
+    }
+
+    function normalizeColorValue(rawValue, fallbackColor) {
+        var value = String(rawValue || "").trim()
+        if (value.length === 0) {
+            return fallbackColor || "#000000"
+        }
+        if (value.length === 9 && value[0] === "#") {
+            return "#" + value.slice(3)
+        }
+        return value
+    }
+
+    function applyMediaValue(target, value, explicitType) {
+        var nextValue = String(value || "").trim()
+        var nextType = explicitType || detectMediaTypeFromValue(nextValue, "color")
+        if (target === "background") {
+            backgroundValue = nextType === "color" ? normalizeColorValue(nextValue, "#1F1F1F") : nextValue
+            backgroundType = nextType
+        } else {
+            mapValue = nextType === "color" ? normalizeColorValue(nextValue, "#2E2E2E") : nextValue
+            mapType = nextType
+        }
+    }
+
+    function loadDraft(draft) {
+        var payload = draft || {}
+        var draftMap = payload.map || {}
+        var draftBackground = payload.background || {}
+        var draftGrid = payload.grid || {}
+
+        modeCode = payload.mode === "edit" ? "edit" : "create"
+        sceneName = String(payload.name || "")
+        originalName = String(payload.original_name || "")
+        mapEnabled = draftMap.enabled === undefined ? true : Boolean(draftMap.enabled)
+        backgroundEnabled = draftBackground.enabled === undefined ? true : Boolean(draftBackground.enabled)
+        gridEnabled = draftGrid.enabled === undefined ? true : Boolean(draftGrid.enabled)
+        mapType = String(draftMap.type || detectMediaTypeFromValue(draftMap.value || "", "color"))
+        backgroundType = String(draftBackground.type || detectMediaTypeFromValue(draftBackground.value || "", "color"))
+        mapValue = mapType === "color" ? normalizeColorValue(draftMap.value || "#2E2E2E", "#2E2E2E") : String(draftMap.value || "")
+        backgroundValue = backgroundType === "color" ? normalizeColorValue(draftBackground.value || "#1F1F1F", "#1F1F1F") : String(draftBackground.value || "")
+        gridCellSize = Number(draftGrid.cell_size_ft === undefined ? 5.0 : draftGrid.cell_size_ft)
+        gridLineThickness = Number(draftGrid.line_thickness_px === undefined ? 1.5 : draftGrid.line_thickness_px)
+        gridOpacity = Number(draftGrid.opacity === undefined ? 0.45 : draftGrid.opacity)
+        gridColor = normalizeColorValue(draftGrid.color || "#9D9D9D", "#9D9D9D")
+        sceneNameField.text = sceneName
+        gridColorField.text = gridColor
+        initialFingerprint = currentDraftFingerprint
+        focusNameTimer.restart()
+    }
+
+    function currentDraft() {
+        return {
+            "mode": modeCode,
+            "name": String(sceneName || "").trim(),
+            "original_name": String(originalName || "").trim(),
+            "map": {
+                "enabled": mapEnabled,
+                "type": mapType,
+                "value": mapType === "color" ? normalizeColorValue(mapValue, "#2E2E2E") : String(mapValue || "").trim(),
+                "autoplay": true,
+                "loop": true,
+                "mute": true
+            },
+            "background": {
+                "enabled": backgroundEnabled,
+                "type": backgroundType,
+                "value": backgroundType === "color" ? normalizeColorValue(backgroundValue, "#1F1F1F") : String(backgroundValue || "").trim(),
+                "autoplay": true,
+                "loop": true,
+                "mute": true
+            },
+            "grid": {
+                "enabled": gridEnabled,
+                "cell_size_ft": Number(gridCellSize.toFixed(2)),
+                "line_thickness_px": Number(gridLineThickness.toFixed(2)),
+                "opacity": Number(gridOpacity.toFixed(2)),
+                "color": normalizeColorValue(gridColor, "#9D9D9D")
+            }
+        }
+    }
+
+    function currentFingerprint() {
+        return currentDraftFingerprint
+    }
+
+    function applyFileSelection(target, value) {
+        applyMediaValue(target, value, null)
+    }
+
+    function applyPastedValue(target, value) {
+        applyMediaValue(target, value, null)
+    }
+
+    function applyColorSelection(target, value) {
+        var normalized = normalizeColorValue(value, target === "background" ? "#1F1F1F" : "#2E2E2E")
+        if (target === "grid") {
+            gridColor = normalized
+            gridColorField.text = normalized
+            return
+        }
+        applyMediaValue(target, normalized, "color")
+    }
+
+    onOpenTokenChanged: loadDraft(initialDraft)
+    Component.onCompleted: loadDraft(initialDraft)
+
+    Timer {
+        id: focusNameTimer
+        interval: 30
+        repeat: false
+        onTriggered: {
+            sceneNameField.forceActiveFocus()
+            sceneNameField.selectAll()
+        }
+    }
+
+    ColumnLayout {
+        anchors.fill: parent
+        spacing: 14
+
+        RowLayout {
+            Layout.fillWidth: true
+            spacing: 12
+
+            NeumoIconButton {
+                theme: root.theme
+                width: 30
+                height: 30
+                iconSource: Qt.resolvedUrl("../icons/back.svg")
+                toolTip: "\u041d\u0430\u0437\u0430\u0434"
+                onClicked: root.backRequested(root.dirty)
+            }
+
+            ColumnLayout {
+                Layout.fillWidth: true
+                spacing: 2
+
+                Label {
+                    text: root.modeTitle
+                    color: root.theme ? root.theme.textPrimary : "#D0D0D0"
+                    font.pixelSize: 22
+                    font.weight: Font.DemiBold
+                    Layout.fillWidth: true
+                    elide: Text.ElideRight
+                }
+
+                Label {
+                    visible: root.showStatusMessage
+                    text: root.statusMessage
+                    color: "#C9B07D"
+                    font.pixelSize: 12
+                    Layout.fillWidth: true
+                    wrapMode: Text.WordWrap
+                }
+            }
+
+            NeumoDialogButton {
+                theme: root.theme
+                text: "\u0421\u043e\u0445\u0440\u0430\u043d\u0438\u0442\u044c"
+                accent: true
+                onClicked: root.saveRequested(root.currentDraft())
+            }
+        }
+
+        ScrollView {
+            id: editorScroll
+            Layout.fillWidth: true
+            Layout.fillHeight: true
+            clip: true
+            ScrollBar.vertical: NeumoScrollBar {}
+            ScrollBar.horizontal: NeumoScrollBar {}
+
+            ColumnLayout {
+                width: editorScroll.availableWidth
+                spacing: 14
+
+                Label {
+                    text: "\u041d\u0430\u0437\u0432\u0430\u043d\u0438\u0435 \u0441\u0446\u0435\u043d\u044b"
+                    color: root.theme ? root.theme.textSecondary : "#909090"
+                    font.pixelSize: 12
+                    Layout.fillWidth: true
+                }
+
+                NeumoTextField {
+                    id: sceneNameField
+                    theme: root.theme
+                    Layout.fillWidth: true
+                    placeholderText: "\u041d\u0430\u0437\u0432\u0430\u043d\u0438\u0435 \u0441\u0446\u0435\u043d\u044b"
+                    text: root.sceneName
+                    onTextChanged: root.sceneName = text
+                }
+
+                NeumoRaisedSurface {
+                    theme: root.theme
+                    Layout.fillWidth: true
+                    radius: 20
+                    fillColor: root.theme ? root.theme.baseColor : "#2D2D2D"
+                    contentPadding: 16
+
+                    ColumnLayout {
+                        anchors.fill: parent
+                        spacing: 12
+
+                        RowLayout {
+                            Layout.fillWidth: true
+                            spacing: 10
+
+                            Label {
+                                Layout.fillWidth: true
+                                text: "\u041a\u0430\u0440\u0442\u0430"
+                                color: root.theme ? root.theme.textPrimary : "#D0D0D0"
+                                font.pixelSize: 18
+                                font.weight: Font.DemiBold
+                            }
+
+                            NeumoToggle {
+                                theme: root.theme
+                                checked: root.mapEnabled
+                                onToggled: function(next) { root.mapEnabled = next }
+                            }
+                        }
+
+                        ColumnLayout {
+                            visible: root.mapEnabled
+                            Layout.fillWidth: true
+                            spacing: 12
+
+                            MediaDropTile {
+                                theme: root.theme
+                                Layout.fillWidth: true
+                                mediaType: root.mapType
+                                previewValue: root.mapValue
+                                fallbackColor: "#2E2E2E"
+                                placeholderText: "\u041a\u0430\u0440\u0442\u0430: Ctrl+V, drag and drop, double click"
+                                helperText: "\u041c\u043e\u0436\u043d\u043e \u0432\u0441\u0442\u0430\u0432\u0438\u0442\u044c \u043f\u0443\u0442\u044c, \u0444\u0430\u0439\u043b \u0438\u043b\u0438 \u0432\u044b\u0431\u0440\u0430\u0442\u044c \u0446\u0432\u0435\u0442"
+                                onDropValue: function(value) { root.applyMediaValue("map", value, null) }
+                                onPasteRequest: root.pasteRequested("map")
+                                onBrowseRequest: root.browseRequested("map")
+                                onValueEdited: function(value) { root.applyMediaValue("map", value, null) }
+                                onColorRequest: root.colorRequested("map", root.mapValue)
+                            }
+
+                            NeumoRaisedSurface {
+                                theme: root.theme
+                                Layout.fillWidth: true
+                                radius: 18
+                                fillColor: root.theme ? root.theme.baseColor : "#2D2D2D"
+                                contentPadding: 14
+
+                                ColumnLayout {
+                                    anchors.fill: parent
+                                    spacing: 10
+
+                                    RowLayout {
+                                        Layout.fillWidth: true
+                                        spacing: 10
+
+                                        Label {
+                                            Layout.fillWidth: true
+                                            text: "\u0421\u0435\u0442\u043a\u0430"
+                                            color: root.theme ? root.theme.textPrimary : "#D0D0D0"
+                                            font.pixelSize: 16
+                                            font.weight: Font.DemiBold
+                                        }
+
+                                        NeumoToggle {
+                                            theme: root.theme
+                                            checked: root.gridEnabled
+                                            onToggled: function(next) { root.gridEnabled = next }
+                                        }
+                                    }
+
+                                    ColumnLayout {
+                                        visible: root.gridEnabled
+                                        Layout.fillWidth: true
+                                        spacing: 8
+
+                                        RowLayout {
+                                            Layout.fillWidth: true
+                                            spacing: 10
+
+                                            Label {
+                                                Layout.fillWidth: true
+                                                text: "\u0420\u0430\u0437\u043c\u0435\u0440 \u043a\u043b\u0435\u0442\u043a\u0438"
+                                                color: root.theme ? root.theme.textSecondary : "#909090"
+                                                font.pixelSize: 12
+                                            }
+
+                                            Label {
+                                                Layout.fillWidth: true
+                                                text: "\u0422\u043e\u043b\u0449\u0438\u043d\u0430 \u043b\u0438\u043d\u0438\u0438"
+                                                color: root.theme ? root.theme.textSecondary : "#909090"
+                                                font.pixelSize: 12
+                                            }
+
+                                            Label {
+                                                Layout.fillWidth: true
+                                                text: "\u041f\u0440\u043e\u0437\u0440\u0430\u0447\u043d\u043e\u0441\u0442\u044c"
+                                                color: root.theme ? root.theme.textSecondary : "#909090"
+                                                font.pixelSize: 12
+                                            }
+                                        }
+
+                                        RowLayout {
+                                            Layout.fillWidth: true
+                                            spacing: 10
+
+                                            NeumoStepperField {
+                                                theme: root.theme
+                                                Layout.fillWidth: true
+                                                value: root.gridCellSize
+                                                from: 0.1
+                                                to: 100.0
+                                                stepSize: 0.25
+                                                decimals: 2
+                                                onValueModified: function(value) { root.gridCellSize = value }
+                                            }
+
+                                            NeumoStepperField {
+                                                theme: root.theme
+                                                Layout.fillWidth: true
+                                                value: root.gridLineThickness
+                                                from: 0.2
+                                                to: 10.0
+                                                stepSize: 0.1
+                                                decimals: 2
+                                                onValueModified: function(value) { root.gridLineThickness = value }
+                                            }
+
+                                            NeumoStepperField {
+                                                theme: root.theme
+                                                Layout.fillWidth: true
+                                                value: root.gridOpacity
+                                                from: 0.0
+                                                to: 1.0
+                                                stepSize: 0.05
+                                                decimals: 2
+                                                onValueModified: function(value) { root.gridOpacity = value }
+                                            }
+                                        }
+
+                                        RowLayout {
+                                            Layout.fillWidth: true
+                                            spacing: 8
+
+                                            Label {
+                                                text: "\u0426\u0432\u0435\u0442 \u0441\u0435\u0442\u043a\u0438"
+                                                color: root.theme ? root.theme.textSecondary : "#909090"
+                                                font.pixelSize: 12
+                                            }
+
+                                            NeumoTextField {
+                                                id: gridColorField
+                                                theme: root.theme
+                                                Layout.fillWidth: true
+                                                text: root.gridColor
+                                                placeholderText: "#9D9D9D"
+                                                onTextChanged: root.gridColor = text
+                                            }
+
+                                            NeumoUtilityIconButton {
+                                                theme: root.theme
+                                                width: 30
+                                                height: 30
+                                                iconSource: Qt.resolvedUrl("../icons/palette.svg")
+                                                toolTip: "\u0412\u044b\u0431\u0440\u0430\u0442\u044c \u0446\u0432\u0435\u0442 \u0441\u0435\u0442\u043a\u0438"
+                                                onClicked: root.colorRequested("grid", root.gridColor)
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                NeumoRaisedSurface {
+                    theme: root.theme
+                    Layout.fillWidth: true
+                    radius: 20
+                    fillColor: root.theme ? root.theme.baseColor : "#2D2D2D"
+                    contentPadding: 16
+
+                    ColumnLayout {
+                        anchors.fill: parent
+                        spacing: 12
+
+                        RowLayout {
+                            Layout.fillWidth: true
+                            spacing: 10
+
+                            Label {
+                                Layout.fillWidth: true
+                                text: "\u0424\u043e\u043d"
+                                color: root.theme ? root.theme.textPrimary : "#D0D0D0"
+                                font.pixelSize: 18
+                                font.weight: Font.DemiBold
+                            }
+
+                            NeumoToggle {
+                                theme: root.theme
+                                checked: root.backgroundEnabled
+                                onToggled: function(next) { root.backgroundEnabled = next }
+                            }
+                        }
+
+                        ColumnLayout {
+                            visible: root.backgroundEnabled
+                            Layout.fillWidth: true
+                            spacing: 12
+
+                            MediaDropTile {
+                                theme: root.theme
+                                Layout.fillWidth: true
+                                mediaType: root.backgroundType
+                                previewValue: root.backgroundValue
+                                fallbackColor: "#1F1F1F"
+                                placeholderText: "\u0424\u043e\u043d: Ctrl+V, drag and drop, double click"
+                                helperText: "\u041c\u043e\u0436\u043d\u043e \u0437\u0430\u0434\u0430\u0442\u044c \u0446\u0432\u0435\u0442, \u0438\u0437\u043e\u0431\u0440\u0430\u0436\u0435\u043d\u0438\u0435 \u0438\u043b\u0438 \u0432\u0438\u0434\u0435\u043e"
+                                onDropValue: function(value) { root.applyMediaValue("background", value, null) }
+                                onPasteRequest: root.pasteRequested("background")
+                                onBrowseRequest: root.browseRequested("background")
+                                onValueEdited: function(value) { root.applyMediaValue("background", value, null) }
+                                onColorRequest: root.colorRequested("background", root.backgroundValue)
+                            }
+                        }
+                    }
+                }
+
+                Item {
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: 4
+                }
+            }
+        }
+    }
+}
