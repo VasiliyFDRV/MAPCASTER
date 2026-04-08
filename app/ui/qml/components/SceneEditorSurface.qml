@@ -203,12 +203,13 @@ Item {
                 spacing: 10
 
                 Item {
-                    Layout.preferredWidth: 44
+                    Layout.preferredWidth: 30
                     Layout.preferredHeight: 44
                     Layout.alignment: Qt.AlignVCenter
 
                     NeumoIconButton {
-                        anchors.centerIn: parent
+                        anchors.left: parent.left
+                        anchors.verticalCenter: parent.verticalCenter
                         theme: root.theme
                         width: 30
                         height: 30
