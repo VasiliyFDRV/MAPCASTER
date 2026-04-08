@@ -197,14 +197,14 @@ Item {
 
             RowLayout {
                 Layout.fillWidth: true
-                Layout.leftMargin: root.sectionOuterGutter + 4
-                Layout.rightMargin: root.sectionOuterGutter + 4
+                Layout.leftMargin: root.sectionOuterGutter
+                Layout.rightMargin: root.sectionOuterGutter
                 Layout.topMargin: root.narrowLayout ? 8 : 10
                 spacing: 10
 
                 Item {
-                    Layout.preferredWidth: 38
-                    Layout.preferredHeight: 38
+                    Layout.preferredWidth: 44
+                    Layout.preferredHeight: 44
                     Layout.alignment: Qt.AlignVCenter
 
                     NeumoIconButton {
@@ -637,21 +637,18 @@ Item {
 
                 Item {
                     Layout.fillWidth: true
-                    Layout.leftMargin: root.sectionOuterGutter + 4
-                    Layout.rightMargin: root.sectionOuterGutter + 4
+                    Layout.leftMargin: root.sectionOuterGutter
+                    Layout.rightMargin: root.sectionOuterGutter
                     Layout.topMargin: 8
-                    implicitHeight: 58
+                    implicitHeight: 68
 
                     NeumoRaisedSurface {
                         anchors.fill: parent
-                        anchors.topMargin: 4
-                        anchors.bottomMargin: 4
+                        anchors.topMargin: 8
+                        anchors.bottomMargin: 8
                         theme: root.theme
                         radius: 16
                         fillColor: root.theme ? root.theme.baseColor : "#2D2D2D"
-                        shadowOffset: root.narrowLayout ? 2.8 : 3.4
-                        shadowRadius: root.narrowLayout ? 6.6 : 7.6
-                        shadowSamples: 21
 
                         Label {
                             anchors.centerIn: parent
