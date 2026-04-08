@@ -23,13 +23,9 @@ Window {
     property bool scenesMode: appController.launcherAdventure.length > 0
     property string pendingFileTarget: "map"
     property string pendingColorTarget: "map"
-    property string sceneDialogModeCode: "create"
-    property bool sceneMapEnabled: true
-    property bool sceneBgEnabled: true
-    property string sceneMapTypeValue: "color"
-    property string sceneBgTypeValue: "color"
-    property string sceneMapValueText: "#000000"
-    property string sceneBgValueText: "#000000"
+    property bool sceneEditorVisible: false
+    property int sceneEditorOpenToken: 0
+    property var sceneEditorInitialDraft: ({})
     property color bgBase: "#2D2D2D"
     property color bgDeep: "#2D2D2D"
     property color bgCard: "#2D2D2D"
@@ -56,7 +52,7 @@ Window {
     property var sceneInlineModel: []
     property var sceneInlineDraftPayload: ({})
     property bool sceneInlineActive: scenesMode && sceneInlineMode !== "none"
-    property bool inlineEditActive: adventureInlineActive || sceneInlineActive
+    property bool inlineEditActive: adventureInlineActive || sceneInlineActive || sceneEditorVisible
     property string listDragMode: "none"
     property string listDragName: ""
     property int listDragFromIndex: -1
@@ -103,46 +99,44 @@ Window {
         return value
     }
 
-    function applyDraftToDialog(draft) {
+    function openSceneEditor(draft) {
         if (!draft || !draft.map || !draft.background || !draft.grid) {
             return
         }
-        sceneDialogModeCode = draft.mode === "edit" ? "edit" : "create"
-        sceneDialogMode.text = sceneDialogModeCode === "edit" ? "Редактирование сцены" : "Создание сцены"
-        sceneNameField.text = draft.name || ""
-        sceneOriginalName.text = draft.original_name || ""
-        sceneNameField.enabled = true
+        sceneEditorInitialDraft = JSON.parse(JSON.stringify(draft))
+        sceneEditorOpenToken += 1
+        sceneEditorVisible = true
+    }
 
-        sceneMapEnabled = draft.map.enabled === undefined ? true : Boolean(draft.map.enabled)
-        sceneMapTypeValue = draft.map.type || detectMediaTypeFromValue(draft.map.value || "", "color")
-        sceneMapValueText = normalizeColorValue(draft.map.value || "#000000")
+    function closeSceneEditor() {
+        sceneEditorVisible = false
+        sceneEditorInitialDraft = ({})
+    }
 
-        sceneBgEnabled = draft.background.enabled === undefined ? true : Boolean(draft.background.enabled)
-        sceneBgTypeValue = draft.background.type || detectMediaTypeFromValue(draft.background.value || "", "color")
-        sceneBgValueText = normalizeColorValue(draft.background.value || "#000000")
-
-        sceneGridSize.text = Number(draft.grid.cell_size_ft || 5).toFixed(2)
-        sceneGridThickness.text = Number(draft.grid.line_thickness_px || 1.5).toFixed(2)
-        sceneGridOpacity.text = Number(draft.grid.opacity || 0.45).toFixed(2)
-        sceneGridColor.text = draft.grid.color || "#9D9D9D"
+    function requestCloseSceneEditor(forceClose) {
+        if (!sceneEditorVisible) {
+            return
+        }
+        if (forceClose || !sceneEditorSurface.dirty) {
+            closeSceneEditor()
+            return
+        }
+        sceneEditorDiscardDialog.open()
     }
 
     function openCreateSceneDialog() {
         if (appController.launcherAdventure.length === 0) {
             return
         }
-        applyDraftToDialog(appController.build_new_scene_draft())
-        sceneDialog.open()
+        openSceneEditor(appController.build_new_scene_draft())
     }
 
     function openEditSceneDialog(sceneName) {
         if (!sceneName || appController.launcherAdventure.length === 0) {
             return
         }
-        applyDraftToDialog(appController.load_scene_draft_for_adventure(appController.launcherAdventure, sceneName))
-        sceneDialog.open()
+        openSceneEditor(appController.load_scene_draft_for_adventure(appController.launcherAdventure, sceneName))
     }
-
     function refreshSceneInlineModel() {
         var items = []
         var source = appController.scenesModel || []
@@ -519,40 +513,6 @@ Window {
         textField.text = drop.urls[0].toString()
     }
 
-    function collectDialogDraft() {
-        var mapValue = sceneMapEnabled ? sceneMapValueText : "#000000"
-        var bgValue = sceneBgEnabled ? sceneBgValueText : "#000000"
-        var mapType = sceneMapEnabled ? detectMediaTypeFromValue(mapValue, sceneMapTypeValue || "color") : "color"
-        var bgType = sceneBgEnabled ? detectMediaTypeFromValue(bgValue, sceneBgTypeValue || "color") : "color"
-        return {
-            "mode": sceneDialogModeCode,
-            "name": sceneNameField.text,
-            "original_name": sceneOriginalName.text,
-            "map": {
-                "enabled": sceneMapEnabled,
-                "type": mapType,
-                "value": mapValue,
-                "autoplay": true,
-                "loop": true,
-                "mute": true
-            },
-            "background": {
-                "enabled": sceneBgEnabled,
-                "type": bgType,
-                "value": bgValue,
-                "autoplay": true,
-                "loop": true,
-                "mute": true
-            },
-            "grid": {
-                "cell_size_ft": Number(sceneGridSize.text),
-                "line_thickness_px": Number(sceneGridThickness.text),
-                "opacity": Number(sceneGridOpacity.text),
-                "color": sceneGridColor.text
-            }
-        }
-    }
-
     Rectangle {
         anchors.fill: parent
         color: launcherWindow.bgBase
@@ -627,6 +587,7 @@ Window {
                     spacing: 16
 
                     RowLayout {
+                        visible: !launcherWindow.sceneEditorVisible
                         Layout.fillWidth: true
                         Layout.leftMargin: launcherWindow.explorerEdgeInset
                         Layout.rightMargin: launcherWindow.explorerEdgeInset
@@ -670,6 +631,7 @@ Window {
                         }
                     }
                     Item {
+                        visible: !launcherWindow.sceneEditorVisible
                         Layout.fillWidth: true
                         Layout.fillHeight: true
 
@@ -1034,6 +996,41 @@ Window {
                         }
                     }
                 }
+
+                SceneEditorSurface {
+                    id: sceneEditorSurface
+                    visible: launcherWindow.sceneEditorVisible
+                    Layout.fillWidth: true
+                    Layout.fillHeight: true
+                    theme: neumoTheme
+                    initialDraft: launcherWindow.sceneEditorInitialDraft
+                    openToken: launcherWindow.sceneEditorOpenToken
+                    statusMessage: appController.statusMessage
+                    onBackRequested: function(dirty) {
+                        launcherWindow.requestCloseSceneEditor(!dirty)
+                    }
+                    onSaveRequested: function(draft) {
+                        var ok = appController.save_scene_draft_for_adventure(appController.launcherAdventure, draft)
+                        if (ok) {
+                            launcherWindow.closeSceneEditor()
+                        }
+                    }
+                    onBrowseRequested: function(target) {
+                        launcherWindow.pendingFileTarget = target
+                        mediaFileDialog.open()
+                    }
+                    onColorRequested: function(target, currentValue) {
+                        launcherWindow.pendingColorTarget = target
+                        colorPickerDialog.selectedColor = currentValue
+                        colorPickerDialog.open()
+                    }
+                    onPasteRequested: function(target) {
+                        var pastedValue = appController.paste_media_value(target)
+                        if (pastedValue && pastedValue.length > 0) {
+                            sceneEditorSurface.applyPastedValue(target, pastedValue)
+                        }
+                    }
+                }
             }
         }
     }
@@ -1049,6 +1046,7 @@ Window {
             cancelAdventureInlineEdit()
         } else {
             cancelSceneInlineEdit()
+            closeSceneEditor()
         }
     }
 
@@ -1061,271 +1059,65 @@ Window {
     }
 
     Dialog {
-        id: sceneDialog
+        id: sceneEditorDiscardDialog
         modal: true
         x: Math.round((launcherWindow.width - width) / 2)
-        y: 16
-        width: Math.min(launcherWindow.width - 32, 960)
-        height: Math.min(launcherWindow.height - 32, 960)
+        y: Math.round((launcherWindow.height - height) / 2)
+        width: 360
         standardButtons: Dialog.NoButton
         closePolicy: Popup.CloseOnEscape
-        opacity: 1.0
-
-        enter: Transition {
-            NumberAnimation { property: "opacity"; from: 0.0; to: 1.0; duration: 170; easing.type: Easing.OutCubic }
-        }
-        exit: Transition {
-            NumberAnimation { property: "opacity"; from: 1.0; to: 0.0; duration: 130; easing.type: Easing.InCubic }
-        }
 
         background: Rectangle {
+            radius: 18
             color: "#262626"
-            border.color: "#626262"
             border.width: 1
-            radius: 12
-            gradient: Gradient {
-                orientation: Gradient.Vertical
-                GradientStop { position: 0.0; color: "#2E2E2E" }
-                GradientStop { position: 1.0; color: "#252525" }
-            }
+            border.color: "#5C5C5C"
         }
 
-        contentItem: ScrollView {
-            id: sceneDialogScroll
-            clip: true
-            padding: 12
-            ScrollBar.vertical: NeumoScrollBar {}
-            ScrollBar.horizontal: NeumoScrollBar {}
-            ColumnLayout {
-                id: sceneDialogContent
-                width: sceneDialogScroll.availableWidth
-                spacing: 10
+        contentItem: ColumnLayout {
+            spacing: 12
 
-                Label {
-                    id: sceneDialogMode
-                    text: "Создание сцены"
-                    color: launcherWindow.textPrimary
-                    font.pixelSize: 22
-                    Layout.fillWidth: true
-                }
+            Label {
+                text: "\u0415\u0441\u0442\u044c \u043d\u0435\u0441\u043e\u0445\u0440\u0430\u043d\u0435\u043d\u043d\u044b\u0435 \u0438\u0437\u043c\u0435\u043d\u0435\u043d\u0438\u044f"
+                color: launcherWindow.textPrimary
+                font.pixelSize: 18
+                font.weight: Font.DemiBold
+                Layout.fillWidth: true
+                wrapMode: Text.WordWrap
+            }
 
-                NeumoTextField {
+            Label {
+                text: "\u0417\u0430\u043a\u0440\u044b\u0442\u044c \u0440\u0435\u0434\u0430\u043a\u0442\u043e\u0440 \u0438 \u043f\u043e\u0442\u0435\u0440\u044f\u0442\u044c \u0432\u0432\u0435\u0434\u0435\u043d\u043d\u044b\u0435 \u043f\u0440\u0430\u0432\u043a\u0438?"
+                color: launcherWindow.textSecondary
+                font.pixelSize: 13
+                Layout.fillWidth: true
+                wrapMode: Text.WordWrap
+            }
 
+            RowLayout {
+                Layout.fillWidth: true
+                spacing: 8
+
+                NeumoDialogButton {
                     theme: neumoTheme
-                    id: sceneNameField
-                    placeholderText: "Название сцены"
+                    text: "\u0412\u0435\u0440\u043d\u0443\u0442\u044c\u0441\u044f"
                     Layout.fillWidth: true
+                    onClicked: sceneEditorDiscardDialog.close()
                 }
-                NeumoTextField {
+
+                NeumoDialogButton {
                     theme: neumoTheme
-                    id: sceneOriginalName
-                    visible: false
-                }
-
-                Rectangle { Layout.fillWidth: true; Layout.preferredHeight: 1; color: "#4C4C4C" }
-
-                RowLayout {
+                    text: "\u0417\u0430\u043a\u0440\u044b\u0442\u044c \u0431\u0435\u0437 \u0441\u043e\u0445\u0440\u0430\u043d\u0435\u043d\u0438\u044f"
+                    accent: true
                     Layout.fillWidth: true
-                    spacing: 8
-                    Label { text: "Карта"; color: launcherWindow.textPrimary; Layout.fillWidth: true }
-                    NeumoToggle {
-                        theme: neumoTheme
-                        id: sceneMapEnabledSwitch
-                        Layout.preferredWidth: implicitWidth
-                        Layout.preferredHeight: implicitHeight
-                        Layout.maximumWidth: implicitWidth
-                        Layout.maximumHeight: implicitHeight
-                        Layout.alignment: Qt.AlignRight | Qt.AlignVCenter
-                        checked: sceneMapEnabled
-                        onToggled: function(next) { sceneMapEnabled = next }
+                    onClicked: {
+                        sceneEditorDiscardDialog.close()
+                        launcherWindow.closeSceneEditor()
                     }
                 }
-                RowLayout {
-                    visible: sceneMapEnabled
-                    Layout.fillWidth: true
-                    spacing: 8
-                    MediaDropTile {
-                        id: sceneMapDrop
-                        Layout.fillWidth: true
-                        Layout.minimumWidth: 0
-                        Layout.preferredHeight: 92
-                        mediaType: sceneMapTypeValue
-                        previewValue: sceneMapValueText
-                        fallbackColor: "#000000"
-                        placeholderText: "Клик / Ctrl+V / Перетащить / Двойной клик"
-                        onDropValue: function(value) {
-                            sceneMapValueText = value
-                            sceneMapTypeValue = detectMediaTypeFromValue(value, "color")
-                        }
-                        onPasteRequest: {
-                            var pastedMap = appController.paste_media_value("map")
-                            if (pastedMap && pastedMap.length > 0) {
-                                sceneMapValueText = pastedMap
-                                sceneMapTypeValue = detectMediaTypeFromValue(pastedMap, "color")
-                            }
-                        }
-                        onBrowseRequest: {
-                            launcherWindow.pendingFileTarget = "map"
-                            mediaFileDialog.open()
-                        }
-                    }
-                    NeumoUtilityIconButton {
-                        theme: neumoTheme
-                        width: 30
-                        height: 30
-                        enabled: sceneMapEnabled
-                        opacity: enabled ? 1.0 : 0.4
-                        iconSource: Qt.resolvedUrl("icons/palette.svg")
-                        toolTip: "Выбрать цвет карты"
-                        onClicked: {
-                            launcherWindow.pendingColorTarget = "map"
-                            colorPickerDialog.selectedColor = sceneMapValueText
-                            colorPickerDialog.open()
-                        }
-                    }
-                }
-
-                Rectangle { Layout.fillWidth: true; Layout.preferredHeight: 1; color: "#4C4C4C" }
-
-                RowLayout {
-                    Layout.fillWidth: true
-                    spacing: 8
-                    Label { text: "Фон"; color: launcherWindow.textPrimary; Layout.fillWidth: true }
-                    NeumoToggle {
-                        theme: neumoTheme
-                        id: sceneBgEnabledSwitch
-                        Layout.preferredWidth: implicitWidth
-                        Layout.preferredHeight: implicitHeight
-                        Layout.maximumWidth: implicitWidth
-                        Layout.maximumHeight: implicitHeight
-                        Layout.alignment: Qt.AlignRight | Qt.AlignVCenter
-                        checked: sceneBgEnabled
-                        onToggled: function(next) { sceneBgEnabled = next }
-                    }
-                }
-                RowLayout {
-                    visible: sceneBgEnabled
-                    Layout.fillWidth: true
-                    spacing: 8
-                    MediaDropTile {
-                        id: sceneBgDrop
-                        Layout.fillWidth: true
-                        Layout.minimumWidth: 0
-                        Layout.preferredHeight: 92
-                        mediaType: sceneBgTypeValue
-                        previewValue: sceneBgValueText
-                        fallbackColor: "#000000"
-                        placeholderText: "Клик / Ctrl+V / Перетащить / Двойной клик"
-                        onDropValue: function(value) {
-                            sceneBgValueText = value
-                            sceneBgTypeValue = detectMediaTypeFromValue(value, "color")
-                        }
-                        onPasteRequest: {
-                            var pastedBg = appController.paste_media_value("background")
-                            if (pastedBg && pastedBg.length > 0) {
-                                sceneBgValueText = pastedBg
-                                sceneBgTypeValue = detectMediaTypeFromValue(pastedBg, "color")
-                            }
-                        }
-                        onBrowseRequest: {
-                            launcherWindow.pendingFileTarget = "background"
-                            mediaFileDialog.open()
-                        }
-                    }
-                    NeumoUtilityIconButton {
-                        theme: neumoTheme
-                        width: 30
-                        height: 30
-                        enabled: sceneBgEnabled
-                        opacity: enabled ? 1.0 : 0.4
-                        iconSource: Qt.resolvedUrl("icons/palette.svg")
-                        toolTip: "Выбрать цвет фона"
-                        onClicked: {
-                            launcherWindow.pendingColorTarget = "background"
-                            colorPickerDialog.selectedColor = sceneBgValueText
-                            colorPickerDialog.open()
-                        }
-                    }
-                }
-
-                Rectangle { Layout.fillWidth: true; Layout.preferredHeight: 1; color: "#4C4C4C" }
-
-                Label { text: "Гекс-сетка"; color: launcherWindow.textPrimary }
-                Label { text: "Размер клетки (ft)"; color: launcherWindow.textSecondary }
-                NeumoTextField {
-                    theme: neumoTheme
-                    id: sceneGridSize
-                    Layout.fillWidth: true
-                    text: "5.00"
-                }
-                Label { text: "Толщина линии (px)"; color: launcherWindow.textSecondary }
-                NeumoTextField {
-                    theme: neumoTheme
-                    id: sceneGridThickness
-                    Layout.fillWidth: true
-                    text: "1.50"
-                }
-                Label { text: "Прозрачность (0..1)"; color: launcherWindow.textSecondary }
-                NeumoTextField {
-                    theme: neumoTheme
-                    id: sceneGridOpacity
-                    Layout.fillWidth: true
-                    text: "0.45"
-                }
-                Label { text: "Цвет сетки"; color: launcherWindow.textSecondary }
-                RowLayout {
-                    Layout.fillWidth: true
-                    spacing: 8
-                    NeumoTextField {
-                        theme: neumoTheme
-                        id: sceneGridColor
-                        Layout.fillWidth: true
-                        text: "#9D9D9D"
-                    }
-                    NeumoUtilityIconButton {
-                        theme: neumoTheme
-                        width: 30
-                        height: 30
-                        iconSource: Qt.resolvedUrl("icons/palette.svg")
-                        toolTip: "Выбрать цвет сетки"
-                        onClicked: {
-                            launcherWindow.pendingColorTarget = "grid"
-                            colorPickerDialog.selectedColor = sceneGridColor.text
-                            colorPickerDialog.open()
-                        }
-                    }
-                }
-
-                Item { Layout.fillWidth: true; Layout.preferredHeight: 6 }
-
-                RowLayout {
-                    Layout.fillWidth: true
-                    spacing: 8
-                    NeumoDialogButton {
-                        theme: neumoTheme
-                        text: "Отмена"
-                        Layout.fillWidth: true
-                        onClicked: sceneDialog.close()
-                    }
-                    NeumoDialogButton {
-                        theme: neumoTheme
-                        text: "Сохранить"
-                        accent: true
-                        Layout.fillWidth: true
-                        onClicked: {
-                            var ok = appController.save_scene_draft_for_adventure(appController.launcherAdventure, launcherWindow.collectDialogDraft())
-                            if (ok) {
-                                sceneDialog.close()
-                            }
-                        }
-                    }
-                }
-
-                Item { Layout.fillWidth: true; Layout.preferredHeight: 4 }
             }
         }
     }
-
     FileDialog {
         id: mediaFileDialog
         title: "Выберите медиафайл"
@@ -1336,12 +1128,8 @@ Window {
         ]
         onAccepted: {
             var selected = selectedFile.toString()
-            if (launcherWindow.pendingFileTarget === "background") {
-                sceneBgValueText = selected
-                sceneBgTypeValue = detectMediaTypeFromValue(selected, "color")
-            } else {
-                sceneMapValueText = selected
-                sceneMapTypeValue = detectMediaTypeFromValue(selected, "color")
+            if (launcherWindow.sceneEditorVisible) {
+                sceneEditorSurface.applyFileSelection(launcherWindow.pendingFileTarget, selected)
             }
         }
     }
@@ -1351,14 +1139,8 @@ Window {
         title: "Выбор цвета"
         onAccepted: {
             var value = normalizeColorValue(selectedColor)
-            if (launcherWindow.pendingColorTarget === "background") {
-                sceneBgValueText = value
-                sceneBgTypeValue = "color"
-            } else if (launcherWindow.pendingColorTarget === "grid") {
-                sceneGridColor.text = value
-            } else {
-                sceneMapValueText = value
-                sceneMapTypeValue = "color"
+            if (launcherWindow.sceneEditorVisible) {
+                sceneEditorSurface.applyColorSelection(launcherWindow.pendingColorTarget, value)
             }
         }
     }
@@ -1506,12 +1288,3 @@ Window {
         }
     }
 }
-
-
-
-
-
-
-
-
-
