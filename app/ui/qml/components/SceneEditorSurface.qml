@@ -44,7 +44,7 @@ FocusScope {
     readonly property string gridSizeLabel: "\u0420\u0430\u0437\u043c\u0435\u0440 \u043a\u043b\u0435\u0442\u043a\u0438"
     readonly property string gridLineThicknessLabel: "\u0422\u043e\u043b\u0449\u0438\u043d\u0430 \u043b\u0438\u043d\u0438\u0438"
     readonly property string gridOpacityLabel: "\u041f\u0440\u043e\u0437\u0440\u0430\u0447\u043d\u043e\u0441\u0442\u044c \u0441\u0435\u0442\u043a\u0438"
-    readonly property int compactGridLabelWidth: narrowLayout ? 132 : 0
+    readonly property int compactGridLabelWidth: narrowLayout ? 112 : 118
 
     signal backRequested(bool dirty)
     signal saveRequested(var draft)
@@ -391,7 +391,7 @@ FocusScope {
 
                                         ColumnLayout {
                                             Layout.fillWidth: true
-                                            visible: !root.narrowLayout
+                                            visible: false
                                             spacing: 8
 
                                             RowLayout {
@@ -473,8 +473,8 @@ FocusScope {
 
                                         ColumnLayout {
                                             Layout.fillWidth: true
-                                            visible: root.narrowLayout
-                                            spacing: 8
+                                            visible: true
+                                            spacing: 7
 
                                             RowLayout {
                                                 Layout.fillWidth: true
@@ -493,7 +493,7 @@ FocusScope {
                                                     theme: root.theme
                                                     Layout.fillWidth: true
                                                     Layout.minimumWidth: 0
-                                                    compactMode: true
+                                                    compactMode: false
                                                     value: root.gridCellSize
                                                     from: 0.1
                                                     to: 100.0
@@ -520,7 +520,7 @@ FocusScope {
                                                     theme: root.theme
                                                     Layout.fillWidth: true
                                                     Layout.minimumWidth: 0
-                                                    compactMode: true
+                                                    compactMode: false
                                                     value: root.gridLineThickness
                                                     from: 0.2
                                                     to: 10.0
@@ -547,7 +547,7 @@ FocusScope {
                                                     theme: root.theme
                                                     Layout.fillWidth: true
                                                     Layout.minimumWidth: 0
-                                                    compactMode: true
+                                                    compactMode: false
                                                     value: root.gridOpacity
                                                     from: 0.0
                                                     to: 1.0
@@ -558,41 +558,38 @@ FocusScope {
                                             }
                                         }
 
-                                        ColumnLayout {
+                                        RowLayout {
                                             Layout.fillWidth: true
-                                            spacing: 6
+                                            spacing: 8
 
                                             Label {
+                                                Layout.preferredWidth: root.compactGridLabelWidth
                                                 text: "\u0426\u0432\u0435\u0442 \u0441\u0435\u0442\u043a\u0438"
                                                 color: root.theme ? root.theme.textSecondary : "#909090"
                                                 font.pixelSize: 12
+                                                verticalAlignment: Text.AlignVCenter
                                             }
 
-                                            RowLayout {
+                                            NeumoTextField {
+                                                id: gridColorField
+                                                theme: root.theme
+                                                visualStyle: "launcherInline"
                                                 Layout.fillWidth: true
-                                                spacing: 8
+                                                Layout.minimumWidth: 0
+                                                text: root.gridColor
+                                                placeholderText: "#000000"
+                                                onTextChanged: root.gridColor = text
+                                            }
 
-                                                NeumoTextField {
-                                                    id: gridColorField
-                                                    theme: root.theme
-                                                    visualStyle: "launcherInline"
-                                                    Layout.fillWidth: true
-                                                    Layout.minimumWidth: 0
-                                                    text: root.gridColor
-                                                    placeholderText: "#000000"
-                                                    onTextChanged: root.gridColor = text
-                                                }
-
-                                                NeumoUtilityIconButton {
-                                                    theme: root.theme
-                                                    width: 28
-                                                    height: 28
-                                                    iconSource: Qt.resolvedUrl("../icons/palette.svg")
-                                                    toolTip: "\u0412\u044b\u0431\u0440\u0430\u0442\u044c \u0446\u0432\u0435\u0442 \u0441\u0435\u0442\u043a\u0438"
-                                                    onClicked: {
-                                                        root.clearEditorFocus()
-                                                        root.colorRequested("grid", root.gridColor)
-                                                    }
+                                            NeumoUtilityIconButton {
+                                                theme: root.theme
+                                                width: 28
+                                                height: 28
+                                                iconSource: Qt.resolvedUrl("../icons/palette.svg")
+                                                toolTip: "\u0412\u044b\u0431\u0440\u0430\u0442\u044c \u0446\u0432\u0435\u0442 \u0441\u0435\u0442\u043a\u0438"
+                                                onClicked: {
+                                                    root.clearEditorFocus()
+                                                    root.colorRequested("grid", root.gridColor)
                                                 }
                                             }
                                         }

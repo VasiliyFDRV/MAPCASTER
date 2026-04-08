@@ -37,7 +37,7 @@ FocusScope {
 
     signal valueModified(real value)
 
-    implicitWidth: compactMode ? 126 : 156
+    implicitWidth: compactMode ? 116 : 144
     implicitHeight: compactMode ? 38 : 42
 
     function decimalsFactor() {
@@ -125,12 +125,12 @@ FocusScope {
     Item {
         id: body
         anchors.fill: parent
-        anchors.leftMargin: compactMode ? 4 : 6
-        anchors.rightMargin: compactMode ? 4 : 6
-        anchors.topMargin: compactMode ? 4 : 6
-        anchors.bottomMargin: compactMode ? 4 : 6
+        anchors.leftMargin: compactMode ? 3 : 4
+        anchors.rightMargin: compactMode ? 3 : 4
+        anchors.topMargin: compactMode ? 4 : 5
+        anchors.bottomMargin: compactMode ? 4 : 5
 
-        readonly property int segmentWidth: compactMode ? 24 : 28
+        readonly property int segmentWidth: compactMode ? 18 : 20
 
         Item {
             id: leftSegment
@@ -210,8 +210,8 @@ FocusScope {
             anchors.right: rightSegment.left
             anchors.top: parent.top
             anchors.bottom: parent.bottom
-            anchors.leftMargin: compactMode ? 6 : 8
-            anchors.rightMargin: compactMode ? 6 : 8
+            anchors.leftMargin: compactMode ? 4 : 5
+            anchors.rightMargin: compactMode ? 4 : 5
             color: root.theme ? root.theme.textPrimary : "#D0D0D0"
             selectedTextColor: root.theme ? root.theme.fieldSelectedTextColor : "#F4F4F6"
             selectionColor: root.theme ? root.theme.fieldSelectionColor : "#6C6C6C"
