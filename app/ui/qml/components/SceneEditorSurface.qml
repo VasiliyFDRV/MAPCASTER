@@ -174,7 +174,7 @@ FocusScope {
     MouseArea {
         anchors.fill: parent
         acceptedButtons: Qt.AllButtons
-        hoverEnabled: true
+        hoverEnabled: false
         propagateComposedEvents: true
         preventStealing: false
         z: 1000
@@ -581,8 +581,9 @@ FocusScope {
                                                 onTextChanged: root.gridColor = text
                                             }
 
-                                            NeumoUtilityIconButton {
+                                            NeumoGhostIconButton {
                                                 theme: root.theme
+                                                rowHovered: true
                                                 width: 28
                                                 height: 28
                                                 iconSource: Qt.resolvedUrl("../icons/palette.svg")
@@ -687,15 +688,39 @@ FocusScope {
                     implicitHeight: 68
 
                     NeumoRaisedSurface {
+                        id: saveAction
                         anchors.fill: parent
                         anchors.topMargin: 8
                         anchors.bottomMargin: 8
                         theme: root.theme
                         radius: 16
                         fillColor: root.theme ? root.theme.baseColor : "#2D2D2D"
-                        shadowOffset: root.narrowLayout ? 5.0 : 5.4
-                        shadowRadius: root.narrowLayout ? 10.8 : 11.2
+                        shadowOffset: saveHit.pressed
+                            ? (root.narrowLayout ? 4.2 : 4.5)
+                            : (saveHit.containsMouse ? (root.narrowLayout ? 5.7 : 6.2) : (root.narrowLayout ? 5.0 : 5.4))
+                        shadowRadius: saveHit.pressed
+                            ? (root.narrowLayout ? 9.8 : 10.2)
+                            : (saveHit.containsMouse ? (root.narrowLayout ? 12.0 : 12.6) : (root.narrowLayout ? 10.8 : 11.2))
                         shadowSamples: 23
+                        shadowDarkColor: saveHit.containsMouse
+                            ? (root.theme ? root.theme.raisedShadowDarkColorHover : "#FC151618")
+                            : (root.theme ? root.theme.raisedShadowDarkColor : "#B8151618")
+                        shadowLightColor: saveHit.containsMouse
+                            ? (root.theme ? root.theme.raisedShadowLightColorHover : "#AD55565C")
+                            : (root.theme ? root.theme.raisedShadowLightColor : "#703B3C40")
+                        scale: saveHit.pressed ? 0.985 : (saveHit.containsMouse ? 1.012 : 1.0)
+
+                        Behavior on scale {
+                            NumberAnimation { duration: 110; easing.type: Easing.OutCubic }
+                        }
+
+                        Behavior on shadowOffset {
+                            NumberAnimation { duration: 120; easing.type: Easing.OutCubic }
+                        }
+
+                        Behavior on shadowRadius {
+                            NumberAnimation { duration: 120; easing.type: Easing.OutCubic }
+                        }
 
                         Label {
                             anchors.centerIn: parent
@@ -706,7 +731,10 @@ FocusScope {
                         }
 
                         MouseArea {
+                            id: saveHit
                             anchors.fill: parent
+                            hoverEnabled: true
+                            cursorShape: Qt.PointingHandCursor
                             onClicked: {
                                 root.clearEditorFocus()
                                 root.saveRequested(root.currentDraft())

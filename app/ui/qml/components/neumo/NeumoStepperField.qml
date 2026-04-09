@@ -15,23 +15,42 @@ FocusScope {
     property string visualStyle: "launcherInline" // launcherInline | default
 
     readonly property bool launcherInlineStyle: visualStyle === "launcherInline"
+    readonly property bool inlineHovered: fieldHover.hovered || leftArea.containsMouse || rightArea.containsMouse || editor.hovered
+    readonly property bool inlineInteractive: launcherInlineStyle && (inlineHovered || root.activeFocus)
+    readonly property real inlineInsetDarkAlpha: Math.min(
+        1.0,
+        (root.theme && root.theme.insetDarkAlpha !== undefined ? root.theme.insetDarkAlpha : 0.86)
+            + (root.inlineInteractive ? 0.20 : 0.0)
+    )
+    readonly property real inlineInsetLightAlpha: Math.min(
+        1.0,
+        (root.theme && root.theme.insetLightAlpha !== undefined ? root.theme.insetLightAlpha : 0.60)
+            + (root.inlineInteractive ? 0.14 : 0.0)
+    )
 
     property color surfaceColor: launcherInlineStyle
         ? (theme ? theme.fieldInlineFillColor : "#2D2D2D")
         : (theme ? theme.fieldInsetFillColor : "#262626")
 
+    property color inlineOutlineColor: theme ? theme.fieldInlineFocusColor : "#8C8C8C"
+
     property color outlineColor: launcherInlineStyle
         ? (root.activeFocus
-            ? (theme ? theme.fieldInlineFocusColor : "#8C8C8C")
-            : "transparent")
+            ? inlineOutlineColor
+            : (inlineHovered ? inlineOutlineColor : "transparent"))
         : (root.activeFocus
             ? (theme ? theme.fieldBorderFocusColor : "#ABABAB")
-            : (leftArea.containsMouse || rightArea.containsMouse || editor.hovered
+            : (inlineHovered
                 ? (theme ? theme.fieldBorderHoverColor : "#626262")
                 : (theme ? theme.fieldBorderColor : "#4D4D4D")))
 
-    property real outlineWidth: launcherInlineStyle ? (root.activeFocus ? 1 : 0) : 1
-    property real outlineOpacity: launcherInlineStyle ? 0.9 : (root.enabled ? 1.0 : 0.55)
+    property real outlineWidth: launcherInlineStyle
+        ? (root.activeFocus ? 0.65 : (inlineHovered ? 0.45 : 0.0))
+        : 1
+
+    property real outlineOpacity: launcherInlineStyle
+        ? ((root.activeFocus ? 0.44 : (inlineHovered ? 0.24 : 0.0)) * (root.enabled ? 1.0 : 0.55))
+        : (root.enabled ? 1.0 : 0.55)
 
     readonly property bool editFieldHovered: editor.hovered
 
@@ -97,12 +116,26 @@ FocusScope {
         editor.text = formatValue(value)
     }
 
+    HoverHandler {
+        id: fieldHover
+    }
+
     NeumoInsetSurface {
         anchors.fill: parent
         theme: root.theme
         radius: compactMode ? 12 : 14
         fillColor: root.surfaceColor
         contentPadding: 0
+        insetOffset: root.theme ? root.theme.insetOffset : 6
+        insetDarkRadius: root.theme ? root.theme.insetDarkRadius : 9.5
+        insetDarkColor: root.theme
+            ? Qt.rgba(root.theme.shadowDarkBase.r, root.theme.shadowDarkBase.g, root.theme.shadowDarkBase.b, root.inlineInsetDarkAlpha)
+            : "#CC151618"
+        insetLightOffset: root.theme ? root.theme.insetLightOffset : -6
+        insetLightRadius: root.theme ? root.theme.insetLightRadius : 7.5
+        insetLightColor: root.theme
+            ? Qt.rgba(root.theme.shadowLightBase.r, root.theme.shadowLightBase.g, root.theme.shadowLightBase.b, root.inlineInsetLightAlpha)
+            : "#663B3C40"
     }
 
     Rectangle {
@@ -130,7 +163,7 @@ FocusScope {
         anchors.topMargin: compactMode ? 4 : 5
         anchors.bottomMargin: compactMode ? 4 : 5
 
-        readonly property int segmentWidth: compactMode ? 18 : 20
+        readonly property int segmentWidth: compactMode ? 16 : 18
 
         Item {
             id: leftSegment
@@ -143,7 +176,7 @@ FocusScope {
                 anchors.fill: parent
                 radius: compactMode ? 7 : 8
                 color: theme ? theme.baseColor : "#2D2D2D"
-                opacity: leftArea.pressed ? 0.22 : (leftArea.containsMouse ? 0.12 : 0.0)
+                opacity: leftArea.pressed ? 0.32 : (leftArea.containsMouse ? 0.22 : 0.0)
 
                 Behavior on opacity {
                     NumberAnimation { duration: 90 }
@@ -164,6 +197,7 @@ FocusScope {
                 anchors.fill: parent
                 enabled: root.enabled
                 hoverEnabled: true
+                cursorShape: Qt.PointingHandCursor
                 onClicked: root.stepBy(-1)
             }
         }
@@ -179,7 +213,7 @@ FocusScope {
                 anchors.fill: parent
                 radius: compactMode ? 7 : 8
                 color: theme ? theme.baseColor : "#2D2D2D"
-                opacity: rightArea.pressed ? 0.22 : (rightArea.containsMouse ? 0.12 : 0.0)
+                opacity: rightArea.pressed ? 0.32 : (rightArea.containsMouse ? 0.22 : 0.0)
 
                 Behavior on opacity {
                     NumberAnimation { duration: 90 }
@@ -200,6 +234,7 @@ FocusScope {
                 anchors.fill: parent
                 enabled: root.enabled
                 hoverEnabled: true
+                cursorShape: Qt.PointingHandCursor
                 onClicked: root.stepBy(1)
             }
         }

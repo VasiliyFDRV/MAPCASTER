@@ -1,8 +1,9 @@
-import QtQuick
+﻿import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
 import QtQuick.Window
 import QtWebEngine
+import "components/neumo"
 Window {
     id: diceWindow
     objectName: "diceWindow"
@@ -11,7 +12,7 @@ Window {
     minimumWidth: 400
     minimumHeight: 640
     visible: true
-    color: "#111111"
+    color: neumoTheme ? neumoTheme.baseColor : "#2D2D2D"
     title: "DnD Maps - Дайсы"
 
     TapHandler {
@@ -42,6 +43,33 @@ Window {
     property color textSecondary: "#B0B0B0"
     property color panelColor: "#242424"
     property color panelBorder: "#4A4A4A"
+    property var neumoTheme: NeumoTheme {
+        baseColor: "#2D2D2D"
+        textPrimary: diceWindow.textPrimary
+        textSecondary: diceWindow.textSecondary
+    }
+    readonly property bool narrowLayout: width < 500
+    readonly property int sectionGutter: narrowLayout ? 6 : 8
+    readonly property int sectionSpacing: narrowLayout ? 10 : 12
+    readonly property int cardRadius: narrowLayout ? 16 : 18
+    readonly property int cardPadding: narrowLayout ? 10 : 12
+    readonly property real cardShadowOffset: narrowLayout ? 3.5 : 4.4
+    readonly property real cardShadowRadius: narrowLayout ? 8.0 : 9.4
+    readonly property int cardShadowSamples: 23
+    readonly property int innerCardRadius: 12
+    readonly property int innerCardPadding: 6
+    readonly property real innerShadowOffset: 2.4
+    readonly property real innerShadowRadius: 5.6
+    readonly property int innerShadowSamples: 17
+    readonly property color innerShadowDarkColor: Qt.rgba(neumoTheme.shadowDarkBase.r, neumoTheme.shadowDarkBase.g, neumoTheme.shadowDarkBase.b, 0.55)
+    readonly property color innerShadowLightColor: Qt.rgba(neumoTheme.shadowLightBase.r, neumoTheme.shadowLightBase.g, neumoTheme.shadowLightBase.b, 0.22)
+    readonly property int standardLabelWidth: narrowLayout ? 78 : 86
+    readonly property int standardStepperWidth: narrowLayout ? 90 : 102
+    readonly property int d20LabelWidth: narrowLayout ? 78 : 86
+    readonly property int d20StepperWidth: narrowLayout ? 90 : 102
+    readonly property int ghostIconSize: 26
+    readonly property int actionButtonHeight: narrowLayout ? 48 : 52
+    readonly property int standardPreviewSize: narrowLayout ? 40 : 42
     property var dieStyles: ({})
     property var dieStyleTemplates: ({"user": [], "damage": []})
     property var damageTemplateIconNames: ([
@@ -1546,6 +1574,60 @@ Window {
         Component.onCompleted: templateCanvas.requestPaint()
     }
 
+    component DiePreviewTile: Item {
+        id: tile
+        property string dieType: "d6"
+        property int tileSize: 46
+        signal clicked()
+
+        implicitWidth: tile.tileSize
+        implicitHeight: tile.tileSize
+
+        HoverHandler {
+            id: tileHover
+        }
+
+        NeumoInsetSurface {
+            id: tileInset
+            anchors.fill: parent
+            theme: neumoTheme
+            radius: diceWindow.narrowLayout ? 12 : 14
+            contentPadding: 6
+            fillColor: neumoTheme.baseColor
+            insetDarkColor: neumoTheme
+                ? Qt.rgba(neumoTheme.shadowDarkBase.r, neumoTheme.shadowDarkBase.g, neumoTheme.shadowDarkBase.b,
+                    Math.min(1.0, neumoTheme.insetDarkAlpha + (tileHover.hovered ? 0.18 : 0.0)))
+                : "#CC151618"
+            insetLightColor: neumoTheme
+                ? Qt.rgba(neumoTheme.shadowLightBase.r, neumoTheme.shadowLightBase.g, neumoTheme.shadowLightBase.b,
+                    Math.min(1.0, neumoTheme.insetLightAlpha + (tileHover.hovered ? 0.12 : 0.0)))
+                : "#663B3C40"
+        }
+
+        TemplateStylePreview {
+            anchors.fill: tileInset
+            anchors.margins: 7
+            dieType: tile.dieType
+            styleData: diceWindow.styleForDie(tile.dieType)
+            labelText: diceWindow.previewLabelForDieType(tile.dieType)
+            opacity: tile.enabled ? 1.0 : 0.55
+            scale: tilePress.pressed ? 0.96 : 1.0
+
+            Behavior on scale {
+                NumberAnimation { duration: 90; easing.type: Easing.OutCubic }
+            }
+        }
+
+        MouseArea {
+            id: tilePress
+            anchors.fill: parent
+            hoverEnabled: true
+            enabled: tile.enabled
+            cursorShape: Qt.PointingHandCursor
+            onClicked: tile.clicked()
+        }
+    }
+
     component TemplateSlotButton: Item {
         id: slot
         property string rowKey: "user"
@@ -1655,103 +1737,6 @@ Window {
     }
 
 
-    component CountStepper: RowLayout {
-        id: stepper
-        property int from: 0
-        property int to: 20
-        property int value: 0
-
-        function clamp(v) {
-            return Math.max(from, Math.min(to, v))
-        }
-
-        spacing: 4
-
-        Rectangle {
-            implicitWidth: 20
-            implicitHeight: 20
-            radius: 6
-            color: leftHit.pressed ? "#4D4D4D" : (leftHit.containsMouse ? "#444444" : "#3A3A3A")
-            border.width: 1
-            border.color: leftHit.pressed ? "#767676" : "#595959"
-
-            Text {
-                anchors.centerIn: parent
-                text: "◀"
-                color: "#E7E7EA"
-                font.pixelSize: 9
-                font.weight: Font.DemiBold
-            }
-
-            MouseArea {
-                id: leftHit
-                anchors.fill: parent
-                hoverEnabled: true
-                onClicked: stepper.value = stepper.clamp(stepper.value - 1)
-            }
-        }
-
-        Rectangle {
-            implicitWidth: 28
-            implicitHeight: 20
-            radius: 5
-            color: "#1F1F1F"
-            border.color: "#4C4C4C"
-            border.width: 1
-
-            TextInput {
-                id: stepperInput
-                anchors.fill: parent
-                anchors.margins: 1
-                text: String(stepper.value)
-                color: "#EFEFF2"
-                horizontalAlignment: Text.AlignHCenter
-                verticalAlignment: Text.AlignVCenter
-                font.pixelSize: 11
-                validator: RegularExpressionValidator { regularExpression: /[+-]?\d*/ }
-                selectByMouse: true
-
-                onEditingFinished: {
-                    var n = parseInt(text)
-                    if (isNaN(n)) {
-                        n = stepper.from
-                    }
-                    stepper.value = stepper.clamp(n)
-                }
-            }
-        }
-
-        Rectangle {
-            implicitWidth: 20
-            implicitHeight: 20
-            radius: 6
-            color: rightHit.pressed ? "#4D4D4D" : (rightHit.containsMouse ? "#444444" : "#3A3A3A")
-            border.width: 1
-            border.color: rightHit.pressed ? "#767676" : "#595959"
-
-            Text {
-                anchors.centerIn: parent
-                text: "▶"
-                color: "#E7E7EA"
-                font.pixelSize: 9
-                font.weight: Font.DemiBold
-            }
-
-            MouseArea {
-                id: rightHit
-                anchors.fill: parent
-                hoverEnabled: true
-                onClicked: stepper.value = stepper.clamp(stepper.value + 1)
-            }
-        }
-
-        onValueChanged: {
-            if (stepperInput.text !== String(stepper.value)) {
-                stepperInput.text = String(stepper.value)
-            }
-        }
-    }
-
     component StandardDieRow: RowLayout {
         id: root
         property int sides: 6
@@ -1759,44 +1744,55 @@ Window {
         property alias countValue: qty.value
 
         Layout.fillWidth: true
-        spacing: 8
+        spacing: 10
 
-        DieGlyph {
+        HoverHandler {
+            id: rowHover
+        }
+
+        DiePreviewTile {
             dieType: root.dieKey
-            label: root.dieKey
-            implicitWidth: 38
-            implicitHeight: 38
-            MouseArea {
-                anchors.fill: parent
-                cursorShape: Qt.PointingHandCursor
-                onClicked: {
-                    if (root.sides === 4) rollSingleStandardDie(4, d4Count)
-                    else if (root.sides === 6) rollSingleStandardDie(6, d6Count)
-                    else if (root.sides === 8) rollSingleStandardDie(8, d8Count)
-                    else if (root.sides === 10) rollSingleStandardDie(10, d10Count)
-                    else if (root.sides === 12) rollSingleStandardDie(12, d12Count)
-                }
+            tileSize: diceWindow.standardPreviewSize
+            Layout.alignment: Qt.AlignVCenter
+            onClicked: {
+                if (root.sides === 4) rollSingleStandardDie(4, d4Count)
+                else if (root.sides === 6) rollSingleStandardDie(6, d6Count)
+                else if (root.sides === 8) rollSingleStandardDie(8, d8Count)
+                else if (root.sides === 10) rollSingleStandardDie(10, d10Count)
+                else if (root.sides === 12) rollSingleStandardDie(12, d12Count)
             }
         }
 
         Label {
-            text: "\u041a\u043e\u043b\u0438\u0447\u0435\u0441\u0442\u0432\u043e:"
+            text: "Количество:"
             color: textSecondary
-            font.pixelSize: 11
+            font.pixelSize: 12
+            Layout.preferredWidth: diceWindow.standardLabelWidth
+            Layout.alignment: Qt.AlignVCenter
         }
 
-        CountStepper {
+        NeumoStepperField {
             id: qty
+            theme: neumoTheme
             from: 0
             to: 20
+            stepSize: 1
+            decimals: 0
             value: 0
+            compactMode: true
+            visualStyle: "launcherInline"
+            Layout.preferredWidth: diceWindow.standardStepperWidth
+            Layout.alignment: Qt.AlignVCenter
         }
 
-
-        AppButton {
-            text: "🖌"
-            implicitWidth: 26
-            implicitHeight: 22
+        NeumoGhostIconButton {
+            theme: neumoTheme
+            rowHovered: rowHover.hovered
+            width: diceWindow.ghostIconSize
+            height: diceWindow.ghostIconSize
+            iconSource: Qt.resolvedUrl("../icons/scene_edit.svg")
+            toolTip: "Редактировать стиль"
+            Layout.alignment: Qt.AlignVCenter
             onClicked: openDieEditor(root.dieKey)
         }
 
@@ -1805,334 +1801,577 @@ Window {
 
     ColumnLayout {
         anchors.fill: parent
-        anchors.margins: 10
-        spacing: 8
+        anchors.margins: 16
+        spacing: 0
 
-        ScrollView {
+        Flickable {
+            id: diceScroll
             Layout.fillWidth: true
             Layout.fillHeight: true
             clip: true
-
+            boundsBehavior: Flickable.StopAtBounds
+            flickableDirection: Flickable.VerticalFlick
+            contentWidth: width
+            contentHeight: diceContent.implicitHeight
+            interactive: contentHeight > height
+            ScrollBar.vertical: NeumoScrollBar {}
+            ScrollBar.horizontal: NeumoScrollBar {}
 
             ColumnLayout {
-                width: Math.max(220, diceWindow.width - 32)
-                spacing: 8
+                    id: diceContent
+                    width: diceScroll.width
+                    spacing: diceWindow.sectionSpacing
 
-                AppPanel {
-                    Layout.fillWidth: true
-                    Layout.preferredHeight: resultsColumn.implicitHeight + 14
-                    color: "#0F0F10"
-                    border.color: "#2D2D2D"
+                    NeumoRaisedSurface {
+                        id: resultsCard
+                        theme: neumoTheme
+                        Layout.fillWidth: true
+                        Layout.leftMargin: diceWindow.sectionGutter
+                        Layout.rightMargin: diceWindow.sectionGutter
+                        radius: diceWindow.cardRadius
+                        fillColor: neumoTheme.baseColor
+                        shadowOffset: diceWindow.cardShadowOffset
+                        shadowRadius: diceWindow.cardShadowRadius
+                        shadowSamples: diceWindow.cardShadowSamples
+                        contentPadding: diceWindow.cardPadding
+                        implicitHeight: resultsContent.implicitHeight + contentPadding * 2
 
-                    ColumnLayout {
-                        id: resultsColumn
-                        anchors.fill: parent
-                        anchors.margins: 8
-                        spacing: 7
+                        ColumnLayout {
+                            id: resultsContent
+                            width: parent.width
+                            spacing: 8
 
-                        Label {
-                            text: "Результаты"
-                            color: textPrimary
-                            font.pixelSize: 15
-                            font.weight: Font.DemiBold
-                        }
-
-                        Item {
-                            id: resultsViewport
-                            Layout.fillWidth: true
-                            Layout.minimumHeight: 85
-                            Layout.preferredHeight: Math.max(85, resultsRow.implicitHeight)
-                            clip: true
-
-                            Rectangle {
-                                anchors.fill: parent
-                                visible: !(d20Result && d20Result.active) && !(standardResult && standardResult.active) && !(d100Result && d100Result.active)
-                                radius: 9
-                                color: "#0C0C0D"
-                                border.width: 1
-                                border.color: "#373737"
-                                Text {
-                                    anchors.centerIn: parent
-                                    text: waitingStandardPhysicsResult
-                                        ? "\u041e\u0436\u0438\u0434\u0430\u043d\u0438\u0435 \u0440\u0435\u0437\u0443\u043b\u044c\u0442\u0430\u0442\u043e\u0432..."
-                                        : "\u0411\u0440\u043e\u0441\u043a\u043e\u0432 \u043f\u043e\u043a\u0430 \u043d\u0435\u0442"
-                                    color: textSecondary
-                                    font.pixelSize: 12
-                                }
+                            Label {
+                                text: "Результаты"
+                                color: textPrimary
+                                font.pixelSize: 15
+                                font.weight: Font.DemiBold
                             }
 
-                            RowLayout {
-                                id: resultsRow
-                                anchors.left: parent.left
-                                anchors.right: parent.right
-                                anchors.top: parent.top
-                                visible: (d20Result && d20Result.active) || (standardResult && standardResult.active) || (d100Result && d100Result.active)
-                                spacing: 8
+                            NeumoInsetSurface {
+                                id: resultsViewport
+                                theme: neumoTheme
+                                Layout.fillWidth: true
+                                Layout.minimumHeight: 96
+                                Layout.preferredHeight: Math.max(96, resultsRow.implicitHeight + 12)
+                                radius: diceWindow.innerCardRadius
+                                fillColor: "#0C0C0D"
+                                contentPadding: diceWindow.innerCardPadding
+                                insetDarkColor: Qt.rgba(neumoTheme.shadowDarkBase.r, neumoTheme.shadowDarkBase.g, neumoTheme.shadowDarkBase.b, 0.92)
+                                insetLightColor: Qt.rgba(neumoTheme.shadowLightBase.r, neumoTheme.shadowLightBase.g, neumoTheme.shadowLightBase.b, 0.34)
 
-                                AppPanel {
-                                    visible: d20Result && d20Result.active
-                                    Layout.fillWidth: true
-                                    Layout.preferredHeight: d20ResCol.implicitHeight + 10
-                                    clip: true
+                                Item {
+                                    anchors.fill: parent
 
-                                    ColumnLayout {
-                                        id: d20ResCol
+                                    Label {
+                                        anchors.centerIn: parent
+                                        visible: !(d20Result && d20Result.active) && !(standardResult && standardResult.active) && !(d100Result && d100Result.active)
+                                        text: waitingStandardPhysicsResult
+                                            ? "Ожидание результатов..."
+                                            : "Бросков пока нет"
+                                        color: textSecondary
+                                        font.pixelSize: 12
+                                    }
+                                    RowLayout {
+                                        id: resultsRow
                                         anchors.fill: parent
-                                        anchors.margins: 5
-                                        spacing: 3
-                                        Label { text: String(d20Result ? d20Result.formula : "") + ":"; color: textSecondary; font.pixelSize: 10; wrapMode: Text.WordWrap; Layout.fillWidth: true }
-                                        Label { text: d20Result ? String(d20Result.total) : ""; color: (d20Result && d20Result.rolls && d20Result.rolls.length === 1 && d20Result.rolls[0].type === "single") ? d20CritColor(Number(d20Result.rolls[0].value || 0)) : textPrimary; font.pixelSize: 20; font.weight: Font.Bold }
-                                        Flow {
+                                        visible: (d20Result && d20Result.active) || (standardResult && standardResult.active) || (d100Result && d100Result.active)
+                                        spacing: 8
+
+                                        NeumoRaisedSurface {
+                                            visible: d20Result && d20Result.active
                                             Layout.fillWidth: true
-                                            spacing: 3
-                                            Repeater {
-                                                model: d20Result ? d20Result.rolls : []
-                                                delegate: Item {
-                                                    width: modelData.type === "pair" ? 56 : 28
-                                                    height: 28
-                                                    Row {
-                                                        anchors.fill: parent
-                                                        spacing: 2
-                                                        DieGlyph {
-                                                            dieType: "d20"
-                                                            label: modelData.type === "pair" ? String(modelData.first) : String(modelData.value)
-                                                            implicitWidth: 27
-                                                            implicitHeight: 27
-                                                            valueOpacity: modelData.type === "pair" && modelData.first !== modelData.picked ? 0.35 : 1.0
-                                                            textColor: modelData.type === "pair" ? d20PairDieColor(modelData, "first") : d20SingleDieColor(modelData)
-                                                            lineColor: modelData.type === "pair" ? d20PairDieColor(modelData, "first") : d20SingleDieColor(modelData)
-                                                        }
-                                                        DieGlyph {
-                                                            visible: modelData.type === "pair"
-                                                            dieType: "d20"
-                                                            label: modelData.type === "pair" ? String(modelData.second) : ""
-                                                            implicitWidth: 27
-                                                            implicitHeight: 27
-                                                            valueOpacity: modelData.type === "pair" && modelData.second !== modelData.picked ? 0.35 : 1.0
-                                                            textColor: d20PairDieColor(modelData, "second")
-                                                            lineColor: d20PairDieColor(modelData, "second")
+                                            radius: diceWindow.innerCardRadius
+                                            fillColor: "#121214"
+                                            shadowOffset: diceWindow.innerShadowOffset
+                                            shadowRadius: diceWindow.innerShadowRadius
+                                            shadowSamples: diceWindow.innerShadowSamples
+                                            shadowDarkColor: diceWindow.innerShadowDarkColor
+                                            shadowLightColor: diceWindow.innerShadowLightColor
+                                            contentPadding: diceWindow.innerCardPadding
+                                            implicitHeight: d20ResCol.implicitHeight + contentPadding * 2
+                                            clip: true
+
+                                            ColumnLayout {
+                                                id: d20ResCol
+                                                width: parent.width
+                                                spacing: 4
+                                                Label { text: String(d20Result ? d20Result.formula : "") + ":"; color: textSecondary; font.pixelSize: 10; wrapMode: Text.WordWrap; Layout.fillWidth: true }
+                                                Label { text: d20Result ? String(d20Result.total) : ""; color: (d20Result && d20Result.rolls && d20Result.rolls.length === 1 && d20Result.rolls[0].type === "single") ? d20CritColor(Number(d20Result.rolls[0].value || 0)) : textPrimary; font.pixelSize: 20; font.weight: Font.Bold }
+                                                Flow {
+                                                    Layout.fillWidth: true
+                                                    spacing: 3
+                                                    Repeater {
+                                                        model: d20Result ? d20Result.rolls : []
+                                                        delegate: Item {
+                                                            width: modelData.type === "pair" ? 56 : 28
+                                                            height: 28
+                                                            Row {
+                                                                anchors.fill: parent
+                                                                spacing: 2
+                                                                DieGlyph {
+                                                                    dieType: "d20"
+                                                                    label: modelData.type === "pair" ? String(modelData.first) : String(modelData.value)
+                                                                    implicitWidth: 27
+                                                                    implicitHeight: 27
+                                                                    valueOpacity: modelData.type === "pair" && modelData.first !== modelData.picked ? 0.35 : 1.0
+                                                                    textColor: modelData.type === "pair" ? d20PairDieColor(modelData, "first") : d20SingleDieColor(modelData)
+                                                                    lineColor: modelData.type === "pair" ? d20PairDieColor(modelData, "first") : d20SingleDieColor(modelData)
+                                                                }
+                                                                DieGlyph {
+                                                                    visible: modelData.type === "pair"
+                                                                    dieType: "d20"
+                                                                    label: modelData.type === "pair" ? String(modelData.second) : ""
+                                                                    implicitWidth: 27
+                                                                    implicitHeight: 27
+                                                                    valueOpacity: modelData.type === "pair" && modelData.second !== modelData.picked ? 0.35 : 1.0
+                                                                    textColor: d20PairDieColor(modelData, "second")
+                                                                    lineColor: d20PairDieColor(modelData, "second")
+                                                                }
+                                                            }
                                                         }
                                                     }
                                                 }
                                             }
                                         }
-                                    }
-                                }
 
-                                AppPanel {
-                                    visible: standardResult && standardResult.active
-                                    Layout.fillWidth: true
-                                    Layout.preferredHeight: stdResCol.implicitHeight + 10
-                                    clip: true
-
-                                    ColumnLayout {
-                                        id: stdResCol
-                                        anchors.fill: parent
-                                        anchors.margins: 5
-                                        spacing: 3
-                                        Label { text: String(standardResult ? standardResult.formula : "") + ":"; color: textSecondary; font.pixelSize: 10; wrapMode: Text.WordWrap; Layout.fillWidth: true }
-                                        Label { text: standardResult ? String(standardResult.total) : ""; color: textPrimary; font.pixelSize: 20; font.weight: Font.Bold }
-                                        Flow {
+                                        NeumoRaisedSurface {
+                                            visible: standardResult && standardResult.active
                                             Layout.fillWidth: true
-                                            spacing: 3
-                                            Repeater {
-                                                model: standardResult ? standardResult.rolls : []
-                                                delegate: DieGlyph {
-                                                    dieType: "d" + String(modelData.sides)
-                                                    label: String(modelData.value)
-                                                    implicitWidth: 26
-                                                    implicitHeight: 26
+                                            radius: diceWindow.innerCardRadius
+                                            fillColor: "#121214"
+                                            shadowOffset: diceWindow.innerShadowOffset
+                                            shadowRadius: diceWindow.innerShadowRadius
+                                            shadowSamples: diceWindow.innerShadowSamples
+                                            shadowDarkColor: diceWindow.innerShadowDarkColor
+                                            shadowLightColor: diceWindow.innerShadowLightColor
+                                            contentPadding: diceWindow.innerCardPadding
+                                            implicitHeight: stdResCol.implicitHeight + contentPadding * 2
+                                            clip: true
+
+                                            ColumnLayout {
+                                                id: stdResCol
+                                                width: parent.width
+                                                spacing: 4
+                                                Label { text: String(standardResult ? standardResult.formula : "") + ":"; color: textSecondary; font.pixelSize: 10; wrapMode: Text.WordWrap; Layout.fillWidth: true }
+                                                Label { text: standardResult ? String(standardResult.total) : ""; color: textPrimary; font.pixelSize: 20; font.weight: Font.Bold }
+                                                Flow {
+                                                    Layout.fillWidth: true
+                                                    spacing: 3
+                                                    Repeater {
+                                                        model: standardResult ? standardResult.rolls : []
+                                                        delegate: DieGlyph {
+                                                            dieType: "d" + String(modelData.sides)
+                                                            label: String(modelData.value)
+                                                            implicitWidth: 26
+                                                            implicitHeight: 26
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
+
+                                        NeumoRaisedSurface {
+                                            visible: d100Result && d100Result.active
+                                            Layout.preferredWidth: diceWindow.narrowLayout ? 78 : 86
+                                            radius: diceWindow.innerCardRadius
+                                            fillColor: "#121214"
+                                            shadowOffset: diceWindow.innerShadowOffset
+                                            shadowRadius: diceWindow.innerShadowRadius
+                                            shadowSamples: diceWindow.innerShadowSamples
+                                            shadowDarkColor: diceWindow.innerShadowDarkColor
+                                            shadowLightColor: diceWindow.innerShadowLightColor
+                                            contentPadding: diceWindow.innerCardPadding
+                                            implicitHeight: d100ResCol.implicitHeight + contentPadding * 2
+                                            clip: true
+
+                                            ColumnLayout {
+                                                id: d100ResCol
+                                                width: parent.width
+                                                spacing: 3
+                                                DieGlyph {
+                                                    dieType: "d100"
+                                                    label: d100Result ? String(d100Result.total) : ""
+                                                    implicitWidth: 34
+                                                    implicitHeight: 34
+                                                    Layout.alignment: Qt.AlignHCenter
+                                                }
+                                                Label {
+                                                    text: d100Result ? String(d100Result.total) : ""
+                                                    color: textPrimary
+                                                    font.pixelSize: 19
+                                                    font.weight: Font.Bold
+                                                    horizontalAlignment: Text.AlignHCenter
+                                                    Layout.fillWidth: true
                                                 }
                                             }
                                         }
                                     }
                                 }
+                            }
+                        }
+                    }
+                    NeumoRaisedSurface {
+                        id: d20Card
+                        theme: neumoTheme
+                        Layout.fillWidth: true
+                        Layout.leftMargin: diceWindow.sectionGutter
+                        Layout.rightMargin: diceWindow.sectionGutter
+                        radius: diceWindow.cardRadius
+                        fillColor: neumoTheme.baseColor
+                        shadowOffset: diceWindow.cardShadowOffset
+                        shadowRadius: diceWindow.cardShadowRadius
+                        shadowSamples: diceWindow.cardShadowSamples
+                        contentPadding: diceWindow.cardPadding
+                        implicitHeight: d20Content.implicitHeight + contentPadding * 2
 
-                                AppPanel {
-                                    visible: d100Result && d100Result.active
-                                    Layout.preferredWidth: 70
-                                    Layout.preferredHeight: d100ResCol.implicitHeight + 10
-                                    clip: true
+                        ColumnLayout {
+                            id: d20Content
+                            width: parent.width
+                            spacing: 8
+
+                            RowLayout {
+                                Layout.fillWidth: true
+                                spacing: 10
+                                visible: !diceWindow.narrowLayout
+
+                                DiePreviewTile {
+                                    dieType: "d20"
+                                    tileSize: 46
+                                    Layout.alignment: Qt.AlignVCenter
+                                    onClicked: rollD20Only()
+                                }
+
+                                ColumnLayout {
+                                    spacing: 4
+                                    Layout.alignment: Qt.AlignVCenter
+                                    NeumoIconButton {
+                                        theme: neumoTheme
+                                        width: 24
+                                        height: 24
+                                        glyph: "▲"
+                                        fontSize: 10
+                                        iconIdleColor: d20Mode === "advantage" ? "#2F8B4B" : (neumoTheme ? neumoTheme.textSecondary : "#909090")
+                                        iconHoverColor: d20Mode === "advantage" ? "#2F8B4B" : (neumoTheme ? neumoTheme.textPrimary : "#D0D0D0")
+                                        idleSurfaceOpacity: d20Mode === "advantage" ? 1.0 : 0.9
+                                        onClicked: setD20Mode("advantage")
+                                    }
+                                    NeumoIconButton {
+                                        theme: neumoTheme
+                                        width: 24
+                                        height: 24
+                                        glyph: "▼"
+                                        fontSize: 10
+                                        iconIdleColor: d20Mode === "disadvantage" ? "#A33C3C" : (neumoTheme ? neumoTheme.textSecondary : "#909090")
+                                        iconHoverColor: d20Mode === "disadvantage" ? "#A33C3C" : (neumoTheme ? neumoTheme.textPrimary : "#D0D0D0")
+                                        idleSurfaceOpacity: d20Mode === "disadvantage" ? 1.0 : 0.9
+                                        onClicked: setD20Mode("disadvantage")
+                                    }
+                                }
+
+                                Label { text: "Количество:"; color: textSecondary; font.pixelSize: 12; Layout.preferredWidth: diceWindow.d20LabelWidth; Layout.alignment: Qt.AlignVCenter }
+                                NeumoStepperField {
+                                    theme: neumoTheme
+                                    from: 0
+                                    to: 20
+                                    stepSize: 1
+                                    decimals: 0
+                                    value: d20Count
+                                    compactMode: true
+                                    visualStyle: "launcherInline"
+                                    Layout.preferredWidth: diceWindow.d20StepperWidth
+                                    Layout.alignment: Qt.AlignVCenter
+                                    onValueModified: d20Count = Math.round(value)
+                                }
+
+                                NeumoGhostIconButton {
+                                    theme: neumoTheme
+                                    rowHovered: d20WideHover.hovered
+                                    width: diceWindow.ghostIconSize
+                                    height: diceWindow.ghostIconSize
+                                    iconSource: Qt.resolvedUrl("../icons/scene_edit.svg")
+                                    toolTip: "Редактировать стиль"
+                                    Layout.alignment: Qt.AlignVCenter
+                                    onClicked: openDieEditor("d20")
+                                }
+
+                                Label { text: "Бонус:"; color: textSecondary; font.pixelSize: 12; Layout.preferredWidth: diceWindow.d20LabelWidth; Layout.alignment: Qt.AlignVCenter }
+                                NeumoStepperField {
+                                    theme: neumoTheme
+                                    from: -20
+                                    to: 20
+                                    stepSize: 1
+                                    decimals: 0
+                                    value: d20Bonus
+                                    compactMode: true
+                                    visualStyle: "launcherInline"
+                                    Layout.preferredWidth: diceWindow.d20StepperWidth
+                                    Layout.alignment: Qt.AlignVCenter
+                                    onValueModified: d20Bonus = Math.round(value)
+                                }
+
+                                NeumoRaisedActionButton {
+                                    theme: neumoTheme
+                                    text: "Бросить d20"
+                                    compactMode: true
+                                    Layout.preferredHeight: diceWindow.actionButtonHeight
+                                    Layout.preferredWidth: 120
+                                    enabled: d20Count > 0
+                                    onClicked: rollD20Only()
+                                }
+
+                                Item { Layout.fillWidth: true }
+
+                                HoverHandler { id: d20WideHover }
+                            }
+
+                            ColumnLayout {
+                                visible: diceWindow.narrowLayout
+                                spacing: 8
+
+                                RowLayout {
+                                    Layout.fillWidth: true
+                                    spacing: 10
+
+                                    DiePreviewTile {
+                                        dieType: "d20"
+                                        tileSize: 46
+                                        Layout.alignment: Qt.AlignVCenter
+                                        onClicked: rollD20Only()
+                                    }
 
                                     ColumnLayout {
-                                        id: d100ResCol
-                                        anchors.fill: parent
-                                        anchors.margins: 5
-                                        spacing: 3
-                                        DieGlyph {
-                                            dieType: "d100"
-                                            label: d100Result ? String(d100Result.total) : ""
-                                            implicitWidth: 34
-                                            implicitHeight: 34
-                                            Layout.alignment: Qt.AlignHCenter
+                                        spacing: 4
+                                        Layout.alignment: Qt.AlignVCenter
+                                        NeumoIconButton {
+                                            theme: neumoTheme
+                                            width: 24
+                                            height: 24
+                                            glyph: "▲"
+                                            fontSize: 10
+                                            iconIdleColor: d20Mode === "advantage" ? "#2F8B4B" : (neumoTheme ? neumoTheme.textSecondary : "#909090")
+                                            iconHoverColor: d20Mode === "advantage" ? "#2F8B4B" : (neumoTheme ? neumoTheme.textPrimary : "#D0D0D0")
+                                            idleSurfaceOpacity: d20Mode === "advantage" ? 1.0 : 0.9
+                                            onClicked: setD20Mode("advantage")
                                         }
-                                        Label {
-                                            text: d100Result ? String(d100Result.total) : ""
-                                            color: textPrimary
-                                            font.pixelSize: 19
-                                            font.weight: Font.Bold
-                                            horizontalAlignment: Text.AlignHCenter
-                                            Layout.fillWidth: true
+                                        NeumoIconButton {
+                                            theme: neumoTheme
+                                            width: 24
+                                            height: 24
+                                            glyph: "▼"
+                                            fontSize: 10
+                                            iconIdleColor: d20Mode === "disadvantage" ? "#A33C3C" : (neumoTheme ? neumoTheme.textSecondary : "#909090")
+                                            iconHoverColor: d20Mode === "disadvantage" ? "#A33C3C" : (neumoTheme ? neumoTheme.textPrimary : "#D0D0D0")
+                                            idleSurfaceOpacity: d20Mode === "disadvantage" ? 1.0 : 0.9
+                                            onClicked: setD20Mode("disadvantage")
                                         }
+                                    }
+
+                                    Label { text: "Количество:"; color: textSecondary; font.pixelSize: 12; Layout.preferredWidth: diceWindow.d20LabelWidth; Layout.alignment: Qt.AlignVCenter }
+                                    NeumoStepperField {
+                                        theme: neumoTheme
+                                        from: 0
+                                        to: 20
+                                        stepSize: 1
+                                        decimals: 0
+                                        value: d20Count
+                                        compactMode: true
+                                        visualStyle: "launcherInline"
+                                        Layout.preferredWidth: diceWindow.d20StepperWidth
+                                        Layout.alignment: Qt.AlignVCenter
+                                        onValueModified: d20Count = Math.round(value)
+                                    }
+
+                                    NeumoGhostIconButton {
+                                        theme: neumoTheme
+                                        rowHovered: d20NarrowHover.hovered
+                                        width: diceWindow.ghostIconSize
+                                        height: diceWindow.ghostIconSize
+                                        iconSource: Qt.resolvedUrl("../icons/scene_edit.svg")
+                                        toolTip: "Редактировать стиль"
+                                        Layout.alignment: Qt.AlignVCenter
+                                        onClicked: openDieEditor("d20")
+                                    }
+
+                                    HoverHandler { id: d20NarrowHover }
+                                }
+
+                                RowLayout {
+                                    Layout.fillWidth: true
+                                    spacing: 10
+
+                                    Item {
+                                        Layout.preferredWidth: 46
+                                        Layout.preferredHeight: 1
+                                    }
+
+                                    Label { text: "Бонус:"; color: textSecondary; font.pixelSize: 12; Layout.preferredWidth: diceWindow.d20LabelWidth; Layout.alignment: Qt.AlignVCenter }
+                                    NeumoStepperField {
+                                        theme: neumoTheme
+                                        from: -20
+                                        to: 20
+                                        stepSize: 1
+                                        decimals: 0
+                                        value: d20Bonus
+                                        compactMode: true
+                                        visualStyle: "launcherInline"
+                                        Layout.preferredWidth: diceWindow.d20StepperWidth
+                                        Layout.alignment: Qt.AlignVCenter
+                                        onValueModified: d20Bonus = Math.round(value)
+                                    }
+
+                                    NeumoRaisedActionButton {
+                                        theme: neumoTheme
+                                        text: "Бросить d20"
+                                        compactMode: true
+                                        Layout.preferredHeight: diceWindow.actionButtonHeight
+                                        Layout.fillWidth: true
+                                        enabled: d20Count > 0
+                                        onClicked: rollD20Only()
                                     }
                                 }
                             }
                         }
                     }
-                }
+                    NeumoRaisedSurface {
+                        id: standardCard
+                        theme: neumoTheme
+                        Layout.fillWidth: true
+                        Layout.leftMargin: diceWindow.sectionGutter
+                        Layout.rightMargin: diceWindow.sectionGutter
+                        radius: diceWindow.cardRadius
+                        fillColor: neumoTheme.baseColor
+                        shadowOffset: diceWindow.cardShadowOffset
+                        shadowRadius: diceWindow.cardShadowRadius
+                        shadowSamples: diceWindow.cardShadowSamples
+                        contentPadding: diceWindow.cardPadding
+                        implicitHeight: standardContent.implicitHeight + contentPadding * 2
 
-                AppPanel {
-                    Layout.fillWidth: true
-                    Layout.preferredHeight: d20Column.implicitHeight + 14
-
-                    ColumnLayout {
-                        id: d20Column
-                        anchors.fill: parent
-                        anchors.margins: 8
-                        spacing: 6
-
-                        RowLayout {
-                            Layout.fillWidth: true
+                        ColumnLayout {
+                            id: standardContent
+                            width: parent.width
                             spacing: 8
 
-                            DieGlyph {
-                                dieType: "d20"
-                                label: "d20"
-                                implicitWidth: 46
-                                implicitHeight: 46
-                                MouseArea {
-                                    anchors.fill: parent
-                                    cursorShape: Qt.PointingHandCursor
-                                    onClicked: rollD20Only()
+                            StandardDieRow { sides: 4; countValue: d4Count; onCountValueChanged: d4Count = Math.round(countValue) }
+                            StandardDieRow { sides: 6; countValue: d6Count; onCountValueChanged: d6Count = Math.round(countValue) }
+                            StandardDieRow { sides: 8; countValue: d8Count; onCountValueChanged: d8Count = Math.round(countValue) }
+                            StandardDieRow { sides: 10; countValue: d10Count; onCountValueChanged: d10Count = Math.round(countValue) }
+                            StandardDieRow { sides: 12; countValue: d12Count; onCountValueChanged: d12Count = Math.round(countValue) }
+
+                            RowLayout {
+                                Layout.fillWidth: true
+                                spacing: 10
+                                Label {
+                                    text: "Бонус:"
+                                    color: textSecondary
+                                    font.pixelSize: 12
+                                    Layout.preferredWidth: diceWindow.standardLabelWidth
+                                    Layout.alignment: Qt.AlignVCenter
                                 }
-                            }
-
-                            ColumnLayout {
-                                spacing: 4
-                                ModeArrowButton {
-                                    arrowText: "\u25B2"
-                                    active: d20Mode === "advantage"
-                                    activeColor: "#2F8B4B"
-                                    onClicked: setD20Mode("advantage")
+                                NeumoStepperField {
+                                    theme: neumoTheme
+                                    from: -20
+                                    to: 20
+                                    stepSize: 1
+                                    decimals: 0
+                                    value: standardBonus
+                                    compactMode: true
+                                    visualStyle: "launcherInline"
+                                    Layout.preferredWidth: diceWindow.standardStepperWidth
+                                    Layout.alignment: Qt.AlignVCenter
+                                    onValueModified: standardBonus = Math.round(value)
                                 }
-                                ModeArrowButton {
-                                    arrowText: "\u25BC"
-                                    active: d20Mode === "disadvantage"
-                                    activeColor: "#A33C3C"
-                                    onClicked: setD20Mode("disadvantage")
-                                }
+                                Item { Layout.fillWidth: true }
                             }
 
-                            Label { text: "\u041a\u043e\u043b\u0438\u0447\u0435\u0441\u0442\u0432\u043e:"; color: textSecondary; font.pixelSize: 11 }
-                            CountStepper {
-                                from: 0
-                                to: 20
-                                value: d20Count
-                                onValueChanged: d20Count = value
+                            NeumoRaisedActionButton {
+                                theme: neumoTheme
+                                text: "Бросить D4-D12"
+                                Layout.fillWidth: true
+                                Layout.preferredHeight: diceWindow.actionButtonHeight
+                                enabled: canRollStandard()
+                                onClicked: rollStandardOnly()
                             }
-
-
-                            AppButton {
-                                text: "🖌"
-                                implicitWidth: 26
-                                implicitHeight: 22
-                                onClicked: openDieEditor("d20")
-                            }
-
-                            Label { text: "\u0411\u043e\u043d\u0443\u0441:"; color: textSecondary; font.pixelSize: 11 }
-                            CountStepper {
-                                from: -20
-                                to: 20
-                                value: d20Bonus
-                                onValueChanged: d20Bonus = value
-                            }
-
-                            Item { Layout.fillWidth: true }
                         }
                     }
-                }
 
-                AppPanel {
-                    Layout.fillWidth: true
-                    Layout.preferredHeight: standardColumn.implicitHeight + 14
-
-                    ColumnLayout {
-                        id: standardColumn
-                        anchors.fill: parent
-                        anchors.margins: 8
-                        spacing: 6
-
-                        StandardDieRow { sides: 4; countValue: d4Count; onCountValueChanged: d4Count = countValue }
-                        StandardDieRow { sides: 6; countValue: d6Count; onCountValueChanged: d6Count = countValue }
-                        StandardDieRow { sides: 8; countValue: d8Count; onCountValueChanged: d8Count = countValue }
-                        StandardDieRow { sides: 10; countValue: d10Count; onCountValueChanged: d10Count = countValue }
-                        StandardDieRow { sides: 12; countValue: d12Count; onCountValueChanged: d12Count = countValue }
+                    NeumoRaisedSurface {
+                        id: d100Card
+                        theme: neumoTheme
+                        Layout.fillWidth: true
+                        Layout.leftMargin: diceWindow.sectionGutter
+                        Layout.rightMargin: diceWindow.sectionGutter
+                        radius: diceWindow.cardRadius
+                        fillColor: neumoTheme.baseColor
+                        shadowOffset: diceWindow.cardShadowOffset
+                        shadowRadius: diceWindow.cardShadowRadius
+                        shadowSamples: diceWindow.cardShadowSamples
+                        contentPadding: diceWindow.cardPadding
+                        implicitHeight: d100Content.implicitHeight + contentPadding * 2
 
                         RowLayout {
-                            Layout.fillWidth: true
-                            spacing: 8
-                            Label { text: "\u0411\u043e\u043d\u0443\u0441:"; color: textSecondary; font.pixelSize: 11 }
-                            CountStepper {
-                                from: -20
-                                to: 20
-                                value: standardBonus
-                                onValueChanged: standardBonus = value
-                            }
-                            Item { Layout.fillWidth: true }
-                        }
+                            id: d100Content
+                            width: parent.width
+                            spacing: 10
 
-                        AppButton {
-                            Layout.fillWidth: true
-                            text: "\u0411\u0440\u043e\u0441\u0438\u0442\u044c D4-D12"
-                            enabled: canRollStandard()
-                            onClicked: rollStandardOnly()
-                        }
-                    }
-                }
-
-                AppPanel {
-                    Layout.fillWidth: true
-                    Layout.preferredHeight: 70
-                    RowLayout {
-                        anchors.fill: parent
-                        anchors.margins: 8
-                        spacing: 8
-
-                        DieGlyph {
-                            dieType: "d100"
-                            label: "d100"
-                            implicitWidth: 42
-                            implicitHeight: 42
-                            MouseArea {
-                                anchors.fill: parent
-                                cursorShape: Qt.PointingHandCursor
+                            DiePreviewTile {
+                                dieType: "d100"
+                                tileSize: 44
+                                Layout.alignment: Qt.AlignVCenter
                                 onClicked: rollD100Only()
                             }
-                        }
 
-                        AppButton {
-                            text: "🖌"
-                            implicitWidth: 26
-                            implicitHeight: 22
-                            onClicked: openDieEditor("d100")
-                        }
+                            Label {
+                                text: "d100"
+                                color: textSecondary
+                                font.pixelSize: 12
+                                Layout.preferredWidth: diceWindow.d20LabelWidth
+                                Layout.alignment: Qt.AlignVCenter
+                            }
 
-                        AppButton {
-                            Layout.fillWidth: true
-                            text: "\u0411\u0440\u043e\u0441\u0438\u0442\u044c D100"
-                            onClicked: rollD100Only()
+                            NeumoGhostIconButton {
+                                theme: neumoTheme
+                                rowHovered: d100Hover.hovered
+                                width: diceWindow.ghostIconSize
+                                height: diceWindow.ghostIconSize
+                                iconSource: Qt.resolvedUrl("../icons/scene_edit.svg")
+                                toolTip: "Редактировать стиль"
+                                Layout.alignment: Qt.AlignVCenter
+                                onClicked: openDieEditor("d100")
+                            }
+
+                            Item { Layout.fillWidth: true }
+
+                            NeumoRaisedActionButton {
+                                theme: neumoTheme
+                                text: "Бросить D100"
+                                compactMode: true
+                                Layout.preferredHeight: diceWindow.actionButtonHeight
+                                Layout.preferredWidth: 140
+                                onClicked: rollD100Only()
+                            }
+
+                            HoverHandler { id: d100Hover }
                         }
+                    }
+
+                    NeumoRaisedActionButton {
+                        theme: neumoTheme
+                        text: "Бросить все"
+                        Layout.fillWidth: true
+                        Layout.leftMargin: diceWindow.sectionGutter
+                        Layout.rightMargin: diceWindow.sectionGutter
+                        Layout.preferredHeight: diceWindow.actionButtonHeight + 2
+                        enabled: canRollAll()
+                        onClicked: rollAll()
+                    }
+
+                    Item {
+                        Layout.fillWidth: true
+                        Layout.preferredHeight: diceWindow.sectionSpacing
                     }
                 }
             }
-        }
-
-        AppButton {
-            Layout.fillWidth: true
-            text: "Бросить все"
-            accent: true
-            enabled: canRollAll()
-            onClicked: rollAll()
         }
     }
 
@@ -2229,7 +2468,7 @@ Window {
                 color: "#121214"
                 border.width: 1
                 border.color: "#353535"
-                clip: true
+            clip: true
 
                 Item {
                     id: previewStage
@@ -2278,10 +2517,10 @@ Window {
                 id: styleEditorScroll
                 Layout.fillWidth: true
                 Layout.fillHeight: true
-                clip: true
+            clip: true
                 ScrollBar.vertical.policy: ScrollBar.AsNeeded
 
-                ColumnLayout {
+            ColumnLayout {
                     id: styleEditorContent
                     width: styleEditorScroll.availableWidth > 0 ? styleEditorScroll.availableWidth : styleEditorScroll.width
                     spacing: 8
@@ -2702,3 +2941,6 @@ Window {
         }
     }
 }
+
+
+

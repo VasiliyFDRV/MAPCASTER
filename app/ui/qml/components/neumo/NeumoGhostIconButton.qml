@@ -1,4 +1,4 @@
-﻿import QtQuick
+import QtQuick
 import QtQuick.Controls
 import Qt5Compat.GraphicalEffects
 Item {
@@ -28,7 +28,7 @@ Item {
     Item {
         id: motionRoot
         anchors.fill: parent
-        scale: hitArea.pressed ? (root.theme ? root.theme.ghostActionPressScale : 0.92) : 1.0
+        scale: hitArea.pressed ? (root.theme ? root.theme.ghostActionPressScale : 0.92) : (root.hovered ? ((root.theme && root.theme.ghostActionHoverScale !== undefined) ? root.theme.ghostActionHoverScale : 1.03) : 1.0)
         y: hitArea.pressed ? (root.theme ? root.theme.ghostActionPressYOffset : 1) : 0
         Behavior on scale {
             NumberAnimation { duration: 120; easing.type: Easing.OutCubic }
@@ -150,9 +150,9 @@ Item {
         anchors.fill: parent
         enabled: root.enabled
         hoverEnabled: true
+        cursorShape: Qt.PointingHandCursor
         onPositionChanged: root.updateTipPosition()
         onEntered: root.updateTipPosition()
         onClicked: root.clicked()
     }
 }
-

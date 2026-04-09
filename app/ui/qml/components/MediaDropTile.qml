@@ -2,6 +2,7 @@ import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
 import QtMultimedia
+import Qt5Compat.GraphicalEffects
 import "neumo"
 import "MediaValueUtils.js" as MediaValueUtils
 
@@ -26,6 +27,8 @@ FocusScope {
     property bool videoPreviewReady: false
     property bool videoPreviewPrimed: false
     readonly property bool inputFieldHovered: valueField.hovered
+    readonly property bool previewHovered: previewHit.containsMouse
+    readonly property bool previewPressed: previewHit.pressed
 
     signal dropValue(string value)
     signal pasteRequest()
@@ -94,17 +97,50 @@ FocusScope {
                 theme: root.theme
                 radius: compactMode ? 12 : 16
                 fillColor: theme ? theme.baseColor : "#2D2D2D"
-                shadowOffset: compactMode ? 1.8 : 4.0
-                shadowRadius: compactMode ? 4.4 : 8.6
+                shadowOffset: root.previewPressed
+                    ? (compactMode ? 1.5 : 3.6)
+                    : (root.previewHovered ? (compactMode ? 2.6 : 4.9) : (compactMode ? 1.8 : 4.0))
+                shadowRadius: root.previewPressed
+                    ? (compactMode ? 4.0 : 8.0)
+                    : (root.previewHovered ? (compactMode ? 5.3 : 9.8) : (compactMode ? 4.4 : 8.6))
                 shadowSamples: compactMode ? 19 : 21
+                scale: root.previewPressed ? 0.992 : (root.previewHovered ? 1.01 : 1.0)
+
+                Behavior on shadowOffset {
+                    NumberAnimation { duration: 120; easing.type: Easing.OutCubic }
+                }
+
+                Behavior on shadowRadius {
+                    NumberAnimation { duration: 120; easing.type: Easing.OutCubic }
+                }
+
+                Behavior on scale {
+                    NumberAnimation { duration: 100; easing.type: Easing.OutCubic }
+                }
 
                 Rectangle {
+                    id: previewMask
                     anchors.fill: parent
                     radius: compactMode ? 12 : 16
-                    clip: true
-                    color: theme ? theme.mediaTilePreviewFillColor : "#1E1F22"
-                    border.width: 1
-                    border.color: theme ? theme.mediaTilePreviewStrokeColor : "#41444B"
+                    visible: false
+                }
+
+                Item {
+                    id: previewLayer
+                    anchors.fill: parent
+                    layer.enabled: true
+                    layer.smooth: true
+                    layer.effect: OpacityMask {
+                        maskSource: previewMask
+                    }
+
+                    Rectangle {
+                        anchors.fill: parent
+                        radius: compactMode ? 12 : 16
+                        color: theme ? theme.mediaTilePreviewFillColor : "#1E1F22"
+                        border.width: 1
+                        border.color: theme ? theme.mediaTilePreviewStrokeColor : "#41444B"
+                    }
 
                     Rectangle {
                         anchors.fill: parent
@@ -159,15 +195,18 @@ FocusScope {
                             horizontalAlignment: Text.AlignHCenter
                         }
                     }
+                }
 
-                    MouseArea {
-                        anchors.fill: parent
-                        acceptedButtons: Qt.LeftButton
-                        onClicked: root.forceActiveFocus()
-                        onDoubleClicked: {
-                            root.forceActiveFocus()
-                            root.browseRequest()
-                        }
+                MouseArea {
+                    id: previewHit
+                    anchors.fill: parent
+                    acceptedButtons: Qt.LeftButton
+                    hoverEnabled: true
+                    cursorShape: Qt.PointingHandCursor
+                    onClicked: root.forceActiveFocus()
+                    onDoubleClicked: {
+                        root.forceActiveFocus()
+                        root.browseRequest()
                     }
                 }
             }
@@ -268,3 +307,6 @@ FocusScope {
         }
     }
 }
+
+
+
