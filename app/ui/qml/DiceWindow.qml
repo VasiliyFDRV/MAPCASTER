@@ -1591,6 +1591,7 @@ Window {
         id: tile
         property string dieType: "d6"
         property int tileSize: 46
+        property bool useInset: true
         signal clicked()
 
         implicitWidth: tile.tileSize
@@ -1603,6 +1604,7 @@ Window {
         NeumoInsetSurface {
             id: tileInset
             anchors.fill: parent
+            visible: tile.useInset
             theme: neumoTheme
             radius: diceWindow.narrowLayout ? 12 : 14
             contentPadding: 6
@@ -1617,9 +1619,31 @@ Window {
                 : "#663B3C40"
         }
 
+        Item {
+            id: tileFlat
+            anchors.fill: parent
+            visible: !tile.useInset
+        }
+
         TemplateStylePreview {
             anchors.fill: tileInset
             anchors.margins: 7
+            visible: tile.useInset
+            dieType: tile.dieType
+            styleData: diceWindow.styleForDie(tile.dieType)
+            labelText: diceWindow.previewLabelForDieType(tile.dieType)
+            opacity: tile.enabled ? 1.0 : 0.55
+            scale: tilePress.pressed ? 0.96 : 1.0
+
+            Behavior on scale {
+                NumberAnimation { duration: 90; easing.type: Easing.OutCubic }
+            }
+        }
+
+        TemplateStylePreview {
+            anchors.fill: tileFlat
+            anchors.margins: 4
+            visible: !tile.useInset
             dieType: tile.dieType
             styleData: diceWindow.styleForDie(tile.dieType)
             labelText: diceWindow.previewLabelForDieType(tile.dieType)
@@ -1803,7 +1827,7 @@ Window {
             rowHovered: rowHover.hovered
             width: diceWindow.ghostIconSize
             height: diceWindow.ghostIconSize
-            iconSource: Qt.resolvedUrl("../icons/scene_edit.svg")
+            iconSource: Qt.resolvedUrl("../icons/brush.svg")
             toolTip: "Редактировать стиль"
             Layout.alignment: Qt.AlignVCenter
             onClicked: openDieEditor(root.dieKey)
@@ -2026,208 +2050,133 @@ Window {
                         ColumnLayout {
                             id: d20Content
                             width: parent.width
-                            spacing: 8
+                            spacing: 10
 
                             RowLayout {
                                 Layout.fillWidth: true
-                                spacing: 10
-                                visible: !diceWindow.narrowLayout
+                                spacing: 12
 
-                                DiePreviewTile {
-                                    dieType: "d20"
-                                    tileSize: 46
+                                NeumoInsetSurface {
+                                    id: d20ModePanel
+                                    theme: neumoTheme
+                                    radius: diceWindow.innerCardRadius
+                                    fillColor: neumoTheme.baseColor
+                                    contentPadding: 6
                                     Layout.alignment: Qt.AlignVCenter
-                                    onClicked: rollD20Only()
+
+                                    RowLayout {
+                                        anchors.fill: parent
+                                        spacing: 6
+
+                                        DiePreviewTile {
+                                            dieType: "d20"
+                                            tileSize: 38
+                                            useInset: false
+                                            Layout.alignment: Qt.AlignVCenter
+                                            onClicked: rollD20Only()
+                                        }
+
+                                        ColumnLayout {
+                                            spacing: 4
+                                            Layout.alignment: Qt.AlignVCenter
+                                            NeumoIconButton {
+                                                theme: neumoTheme
+                                                width: 24
+                                                height: 24
+                                                glyph: "▲"
+                                                fontSize: 10
+                                                iconIdleColor: d20Mode === "advantage" ? "#2F8B4B" : (neumoTheme ? neumoTheme.textSecondary : "#909090")
+                                                iconHoverColor: d20Mode === "advantage" ? "#2F8B4B" : (neumoTheme ? neumoTheme.textPrimary : "#D0D0D0")
+                                                idleSurfaceOpacity: d20Mode === "advantage" ? 1.0 : 0.9
+                                                onClicked: setD20Mode("advantage")
+                                            }
+                                            NeumoIconButton {
+                                                theme: neumoTheme
+                                                width: 24
+                                                height: 24
+                                                glyph: "▼"
+                                                fontSize: 10
+                                                iconIdleColor: d20Mode === "disadvantage" ? "#A33C3C" : (neumoTheme ? neumoTheme.textSecondary : "#909090")
+                                                iconHoverColor: d20Mode === "disadvantage" ? "#A33C3C" : (neumoTheme ? neumoTheme.textPrimary : "#D0D0D0")
+                                                idleSurfaceOpacity: d20Mode === "disadvantage" ? 1.0 : 0.9
+                                                onClicked: setD20Mode("disadvantage")
+                                            }
+                                        }
+                                    }
                                 }
 
                                 ColumnLayout {
-                                    spacing: 4
-                                    Layout.alignment: Qt.AlignVCenter
-                                    NeumoIconButton {
-                                        theme: neumoTheme
-                                        width: 24
-                                        height: 24
-                                        glyph: "▲"
-                                        fontSize: 10
-                                        iconIdleColor: d20Mode === "advantage" ? "#2F8B4B" : (neumoTheme ? neumoTheme.textSecondary : "#909090")
-                                        iconHoverColor: d20Mode === "advantage" ? "#2F8B4B" : (neumoTheme ? neumoTheme.textPrimary : "#D0D0D0")
-                                        idleSurfaceOpacity: d20Mode === "advantage" ? 1.0 : 0.9
-                                        onClicked: setD20Mode("advantage")
-                                    }
-                                    NeumoIconButton {
-                                        theme: neumoTheme
-                                        width: 24
-                                        height: 24
-                                        glyph: "▼"
-                                        fontSize: 10
-                                        iconIdleColor: d20Mode === "disadvantage" ? "#A33C3C" : (neumoTheme ? neumoTheme.textSecondary : "#909090")
-                                        iconHoverColor: d20Mode === "disadvantage" ? "#A33C3C" : (neumoTheme ? neumoTheme.textPrimary : "#D0D0D0")
-                                        idleSurfaceOpacity: d20Mode === "disadvantage" ? 1.0 : 0.9
-                                        onClicked: setD20Mode("disadvantage")
-                                    }
-                                }
+                                    id: d20Fields
+                                    Layout.fillWidth: true
+                                    spacing: 8
 
-                                Label { text: "Количество:"; color: textSecondary; font.pixelSize: 12; Layout.preferredWidth: diceWindow.d20LabelWidth; Layout.alignment: Qt.AlignVCenter }
-                                NeumoStepperField {
-                                    theme: neumoTheme
-                                    from: 0
-                                    to: 20
-                                    stepSize: 1
-                                    decimals: 0
-                                    value: d20Count
-                                    compactMode: true
-                                    visualStyle: "launcherInline"
-                                    Layout.preferredWidth: diceWindow.d20StepperWidth
-                                    Layout.alignment: Qt.AlignVCenter
-                                    onValueModified: d20Count = Math.round(value)
+                                    RowLayout {
+                                        Layout.fillWidth: true
+                                        spacing: 10
+                                        Label {
+                                            text: "Количество:"
+                                            color: textSecondary
+                                            font.pixelSize: 12
+                                            horizontalAlignment: Text.AlignRight
+                                            Layout.preferredWidth: diceWindow.d20LabelWidth
+                                            Layout.alignment: Qt.AlignVCenter
+                                        }
+                                        NeumoStepperField {
+                                            theme: neumoTheme
+                                            from: 0
+                                            to: 20
+                                            stepSize: 1
+                                            decimals: 0
+                                            value: d20Count
+                                            compactMode: true
+                                            visualStyle: "launcherInline"
+                                            Layout.fillWidth: true
+                                            Layout.minimumWidth: 90
+                                            Layout.alignment: Qt.AlignVCenter
+                                            onValueModified: d20Count = Math.round(value)
+                                        }
+                                    }
+
+                                    RowLayout {
+                                        Layout.fillWidth: true
+                                        spacing: 10
+                                        Label {
+                                            text: "Бонус:"
+                                            color: textSecondary
+                                            font.pixelSize: 12
+                                            horizontalAlignment: Text.AlignRight
+                                            Layout.preferredWidth: diceWindow.d20LabelWidth
+                                            Layout.alignment: Qt.AlignVCenter
+                                        }
+                                        NeumoStepperField {
+                                            theme: neumoTheme
+                                            from: -20
+                                            to: 20
+                                            stepSize: 1
+                                            decimals: 0
+                                            value: d20Bonus
+                                            compactMode: true
+                                            visualStyle: "launcherInline"
+                                            Layout.fillWidth: true
+                                            Layout.minimumWidth: 90
+                                            Layout.alignment: Qt.AlignVCenter
+                                            onValueModified: d20Bonus = Math.round(value)
+                                        }
+                                    }
                                 }
 
                                 NeumoGhostIconButton {
                                     theme: neumoTheme
-                                    rowHovered: d20WideHover.hovered
+                                    rowHovered: d20RowHover.hovered
                                     width: diceWindow.ghostIconSize
                                     height: diceWindow.ghostIconSize
-                                    iconSource: Qt.resolvedUrl("../icons/scene_edit.svg")
+                                    iconSource: Qt.resolvedUrl("../icons/brush.svg")
                                     toolTip: "Редактировать стиль"
                                     Layout.alignment: Qt.AlignVCenter
                                     onClicked: openDieEditor("d20")
                                 }
 
-                                Label { text: "Бонус:"; color: textSecondary; font.pixelSize: 12; Layout.preferredWidth: diceWindow.d20LabelWidth; Layout.alignment: Qt.AlignVCenter }
-                                NeumoStepperField {
-                                    theme: neumoTheme
-                                    from: -20
-                                    to: 20
-                                    stepSize: 1
-                                    decimals: 0
-                                    value: d20Bonus
-                                    compactMode: true
-                                    visualStyle: "launcherInline"
-                                    Layout.preferredWidth: diceWindow.d20StepperWidth
-                                    Layout.alignment: Qt.AlignVCenter
-                                    onValueModified: d20Bonus = Math.round(value)
-                                }
-
-                                NeumoRaisedActionButton {
-                                    theme: neumoTheme
-                                    text: "Бросить d20"
-                                    compactMode: true
-                                    Layout.preferredHeight: diceWindow.actionButtonHeight
-                                    Layout.preferredWidth: 120
-                                    enabled: d20Count > 0
-                                    onClicked: rollD20Only()
-                                }
-
-                                Item { Layout.fillWidth: true }
-
-                                HoverHandler { id: d20WideHover }
-                            }
-
-                            ColumnLayout {
-                                visible: diceWindow.narrowLayout
-                                spacing: 8
-
-                                RowLayout {
-                                    Layout.fillWidth: true
-                                    spacing: 10
-
-                                    DiePreviewTile {
-                                        dieType: "d20"
-                                        tileSize: 46
-                                        Layout.alignment: Qt.AlignVCenter
-                                        onClicked: rollD20Only()
-                                    }
-
-                                    ColumnLayout {
-                                        spacing: 4
-                                        Layout.alignment: Qt.AlignVCenter
-                                        NeumoIconButton {
-                                            theme: neumoTheme
-                                            width: 24
-                                            height: 24
-                                            glyph: "▲"
-                                            fontSize: 10
-                                            iconIdleColor: d20Mode === "advantage" ? "#2F8B4B" : (neumoTheme ? neumoTheme.textSecondary : "#909090")
-                                            iconHoverColor: d20Mode === "advantage" ? "#2F8B4B" : (neumoTheme ? neumoTheme.textPrimary : "#D0D0D0")
-                                            idleSurfaceOpacity: d20Mode === "advantage" ? 1.0 : 0.9
-                                            onClicked: setD20Mode("advantage")
-                                        }
-                                        NeumoIconButton {
-                                            theme: neumoTheme
-                                            width: 24
-                                            height: 24
-                                            glyph: "▼"
-                                            fontSize: 10
-                                            iconIdleColor: d20Mode === "disadvantage" ? "#A33C3C" : (neumoTheme ? neumoTheme.textSecondary : "#909090")
-                                            iconHoverColor: d20Mode === "disadvantage" ? "#A33C3C" : (neumoTheme ? neumoTheme.textPrimary : "#D0D0D0")
-                                            idleSurfaceOpacity: d20Mode === "disadvantage" ? 1.0 : 0.9
-                                            onClicked: setD20Mode("disadvantage")
-                                        }
-                                    }
-
-                                    Label { text: "Количество:"; color: textSecondary; font.pixelSize: 12; Layout.preferredWidth: diceWindow.d20LabelWidth; Layout.alignment: Qt.AlignVCenter }
-                                    NeumoStepperField {
-                                        theme: neumoTheme
-                                        from: 0
-                                        to: 20
-                                        stepSize: 1
-                                        decimals: 0
-                                        value: d20Count
-                                        compactMode: true
-                                        visualStyle: "launcherInline"
-                                        Layout.preferredWidth: diceWindow.d20StepperWidth
-                                        Layout.alignment: Qt.AlignVCenter
-                                        onValueModified: d20Count = Math.round(value)
-                                    }
-
-                                    NeumoGhostIconButton {
-                                        theme: neumoTheme
-                                        rowHovered: d20NarrowHover.hovered
-                                        width: diceWindow.ghostIconSize
-                                        height: diceWindow.ghostIconSize
-                                        iconSource: Qt.resolvedUrl("../icons/scene_edit.svg")
-                                        toolTip: "Редактировать стиль"
-                                        Layout.alignment: Qt.AlignVCenter
-                                        onClicked: openDieEditor("d20")
-                                    }
-
-                                    HoverHandler { id: d20NarrowHover }
-                                }
-
-                                RowLayout {
-                                    Layout.fillWidth: true
-                                    spacing: 10
-
-                                    Item {
-                                        Layout.preferredWidth: 46
-                                        Layout.preferredHeight: 1
-                                    }
-
-                                    Label { text: "Бонус:"; color: textSecondary; font.pixelSize: 12; Layout.preferredWidth: diceWindow.d20LabelWidth; Layout.alignment: Qt.AlignVCenter }
-                                    NeumoStepperField {
-                                        theme: neumoTheme
-                                        from: -20
-                                        to: 20
-                                        stepSize: 1
-                                        decimals: 0
-                                        value: d20Bonus
-                                        compactMode: true
-                                        visualStyle: "launcherInline"
-                                        Layout.preferredWidth: diceWindow.d20StepperWidth
-                                        Layout.alignment: Qt.AlignVCenter
-                                        onValueModified: d20Bonus = Math.round(value)
-                                    }
-
-                                    NeumoRaisedActionButton {
-                                        theme: neumoTheme
-                                        text: "Бросить d20"
-                                        compactMode: true
-                                        Layout.preferredHeight: diceWindow.actionButtonHeight
-                                        Layout.fillWidth: true
-                                        enabled: d20Count > 0
-                                        onClicked: rollD20Only()
-                                    }
-                                }
+                                HoverHandler { id: d20RowHover }
                             }
                         }
                     }
@@ -2332,7 +2281,7 @@ Window {
                                 rowHovered: d100Hover.hovered
                                 width: diceWindow.ghostIconSize
                                 height: diceWindow.ghostIconSize
-                                iconSource: Qt.resolvedUrl("../icons/scene_edit.svg")
+                                iconSource: Qt.resolvedUrl("../icons/brush.svg")
                                 toolTip: "Редактировать стиль"
                                 Layout.alignment: Qt.AlignVCenter
                                 onClicked: openDieEditor("d100")
@@ -2938,6 +2887,7 @@ Window {
         }
     }
 }
+
 
 
 
