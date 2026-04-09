@@ -14,31 +14,26 @@ Window {
     visible: true
     color: neumoTheme ? neumoTheme.baseColor : "#2D2D2D"
     title: "DnD Maps - Дайсы"
-
     TapHandler {
         id: windowTapClearDiceVisuals
         acceptedButtons: Qt.AllButtons
         onTapped: diceController.request_clear_dice_visuals()
     }
     property int resetToken: 0
-
     property int d20Count: 0
     property string d20Mode: "normal"
     property int d20Bonus: 0
-
     property int d4Count: 0
     property int d6Count: 0
     property int d8Count: 0
     property int d10Count: 0
     property int d12Count: 0
     property int standardBonus: 0
-
     property var d20Result: null
     property var standardResult: null
     property var d100Result: null
     property bool waitingStandardPhysicsResult: false
     property var pendingStandardFallbackResult: null
-
     property color textPrimary: "#EFEFF2"
     property color textSecondary: "#B0B0B0"
     property color panelColor: "#242424"
@@ -65,7 +60,7 @@ Window {
     readonly property color innerShadowLightColor: Qt.rgba(neumoTheme.shadowLightBase.r, neumoTheme.shadowLightBase.g, neumoTheme.shadowLightBase.b, 0.22)
     readonly property int standardLabelWidth: narrowLayout ? 78 : 86
     readonly property int standardStepperWidth: narrowLayout ? 90 : 102
-    readonly property int d20LabelWidth: narrowLayout ? 78 : 86
+    readonly property int d20LabelWidth: narrowLayout ? 90 : 100
     readonly property int d20StepperWidth: narrowLayout ? 90 : 102
     readonly property int ghostIconSize: 26
     readonly property int actionButtonHeight: narrowLayout ? 48 : 52
@@ -141,26 +136,21 @@ Window {
     property string pickerHexText: "#FFFFFF"
     property string pickerPreviewColor: "#FFFFFF"
     property string pickerCurrentColor: "#FFFFFF"
-
     function effectiveCount(countValue) {
         return countValue > 0 ? countValue : 1
     }
-
     function resetState() {
         d20Count = 0
         d20Mode = "normal"
         d20Bonus = 0
-
         d4Count = 0
         d6Count = 0
         d8Count = 0
         d10Count = 0
         d12Count = 0
         standardBonus = 0
-
         clearResults()
     }
-
     function clearResults() {
         d20Result = null
         standardResult = null
@@ -169,20 +159,16 @@ Window {
         pendingStandardFallbackResult = null
         physicsFallbackTimer.stop()
     }
-
     function canRollStandard() {
         return (d4Count + d6Count + d8Count + d10Count + d12Count) > 0
     }
-
     function canRollAll() {
         return (d20Count > 0) || canRollStandard()
     }
-
     function isPhysicsStandardRequest(d4, d6, d8, d10, d12) {
         return d4 === 0
             && (d6 + d8 + d10 + d12) > 0
     }
-
     function setD20Mode(newMode) {
         if (d20Mode === newMode) {
             d20Mode = "normal"
@@ -190,13 +176,10 @@ Window {
             d20Mode = newMode
         }
     }
-
-
     function rollD20Only() {
         clearResults()
         diceController.request_roll_d20(effectiveCount(d20Count), d20Mode, d20Bonus)
     }
-
     function rollStandardOnly() {
         if (!canRollStandard()) {
             return
@@ -212,7 +195,6 @@ Window {
         }
         diceController.request_roll_standard(d4Count, d6Count, d8Count, d10Count, d12Count, standardBonus)
     }
-
     function rollSingleStandardDie(sides, configuredCount) {
         var c = effectiveCount(configuredCount)
         var d4 = 0
@@ -225,7 +207,6 @@ Window {
         else if (sides === 8) d8 = c
         else if (sides === 10) d10 = c
         else if (sides === 12) d12 = c
-
         clearResults()
         waitingStandardPhysicsResult = isPhysicsStandardRequest(d4, d6, d8, d10, d12)
             && diceController.is_map_window_open()
@@ -237,34 +218,27 @@ Window {
         }
         diceController.request_roll_standard(d4, d6, d8, d10, d12, standardBonus)
     }
-
     function rollD100Only() {
         clearResults()
         diceController.request_roll_d100()
     }
-
     function rollAll() {
         if (!canRollAll()) {
             return
         }
-
         var hasD20 = d20Count > 0
         var hasStandard = canRollStandard()
-
         clearResults()
         waitingStandardPhysicsResult = hasStandard
             && isPhysicsStandardRequest(d4Count, d6Count, d8Count, d10Count, d12Count)
             && diceController.is_map_window_open()
-
         console.log("[dice-ui-debug] rollAll split requests=" + (hasD20 || hasStandard)
             + " d20=" + d20Count + " mode=" + d20Mode + " d20Bonus=" + d20Bonus
             + " standard(d4/d6/d8/d10/d12)=" + d4Count + "/" + d6Count + "/" + d8Count + "/" + d10Count + "/" + d12Count
             + " stdBonus=" + standardBonus + " waitingStandard=" + waitingStandardPhysicsResult)
-
         if (waitingStandardPhysicsResult) {
             physicsFallbackTimer.restart()
         }
-
         if (hasD20) {
             diceController.request_roll_d20(effectiveCount(d20Count), d20Mode, d20Bonus)
         }
@@ -272,7 +246,6 @@ Window {
             diceController.request_roll_standard(d4Count, d6Count, d8Count, d10Count, d12Count, standardBonus)
         }
     }
-
     function handleRollCompleted(payload) {
         if (!payload || !payload.kind) {
             return
@@ -334,7 +307,6 @@ Window {
         if (v === 1) return "#8F2532"
         return textPrimary
     }
-
     function d20PairDieColor(entry, which) {
         if (!entry || entry.type !== "pair") {
             return textPrimary
@@ -348,14 +320,12 @@ Window {
         }
         return d20CritColor(value)
     }
-
     function d20SingleDieColor(entry) {
         if (!entry || entry.type !== "single") {
             return textPrimary
         }
         return d20CritColor(Number(entry.value || 0))
     }
-
     function cloneStyle(style) {
         var legacyGlow = Number(style && style.textShadowIntensity !== undefined ? style.textShadowIntensity : 100)
         var glowRadius = Number(style && style.textGlowRadius !== undefined ? style.textGlowRadius : legacyGlow)
@@ -384,11 +354,9 @@ Window {
         }
         return bag[k]
     }
-
     function styleForDie(key) {
         return cloneStyle(ensureDieStyle(key))
     }
-
     function loadDieStylesFromSettings() {
         var source = {}
         if (typeof appController !== "undefined" && appController && appController.diceStyles) {
@@ -416,13 +384,11 @@ Window {
             { "scalePercent": 100, "color": "#4A7A44", "gradientEnabled": true, "gradientCenterColor": "#98D08E", "gradientSharpness": 58, "gradientOffset": 52, "fontColor": "#102012", "textStrokeColor": "#D0F0C8", "textGlowRadius": 104, "textGlowOpacity": 94, "edgeColor": "#20391F", "edgeWidth": 1.2 }
         ]
     }
-
     function cloneTemplateBag(payload) {
         var source = payload && typeof payload === "object" ? payload : {}
         var sourceUser = source.user && source.user.length ? source.user : []
         var sourceDamage = source.damage && source.damage.length ? source.damage : []
         var defaultDamage = defaultDamageTemplateStyles()
-
         var user = []
         var damage = []
         for (var i = 0; i < 10; i++) {
@@ -432,7 +398,6 @@ Window {
             } else {
                 user.push(null)
             }
-
             var d = i < sourceDamage.length ? sourceDamage[i] : defaultDamage[i]
             if (d && typeof d === "object") {
                 damage.push(cloneStyle(d))
@@ -440,10 +405,8 @@ Window {
                 damage.push(cloneStyle(defaultDamage[i]))
             }
         }
-
         return {"user": user, "damage": damage}
     }
-
     function loadDieStyleTemplatesFromSettings() {
         var source = {}
         if (typeof appController !== "undefined" && appController && appController.diceStyleTemplates) {
@@ -451,18 +414,15 @@ Window {
         }
         dieStyleTemplates = cloneTemplateBag(source)
     }
-
     function persistDieStyleTemplates() {
         if (typeof appController !== "undefined" && appController && appController.update_dice_style_templates) {
             appController.update_dice_style_templates(cloneTemplateBag(dieStyleTemplates))
         }
     }
-
     function templateSlotList(rowKey) {
         var bag = cloneTemplateBag(dieStyleTemplates)
         return rowKey === "damage" ? bag.damage : bag.user
     }
-
     function templateStyle(rowKey, index) {
         var list = templateSlotList(rowKey)
         if (index < 0 || index >= list.length) {
@@ -474,11 +434,9 @@ Window {
         }
         return item
     }
-
     function hasTemplateStyle(rowKey, index) {
         return templateStyle(rowKey, index) !== null
     }
-
     function applyTemplateSlot(rowKey, index) {
         var style = templateStyle(rowKey, index)
         if (!style) {
@@ -486,7 +444,6 @@ Window {
         }
         dieEditorWorking = cloneStyle(style)
     }
-
     function saveCurrentStyleToTemplateQueue() {
         var next = cloneTemplateBag(dieStyleTemplates)
         for (var i = 9; i > 0; i--) {
@@ -497,7 +454,6 @@ Window {
         persistDieStyleTemplates()
         refreshTemplateSnapshots("user", true)
     }
-
     function openTemplateContextMenu(rowKey, index, x, y) {
         if (!hasTemplateStyle(rowKey, index)) {
             return
@@ -506,7 +462,6 @@ Window {
         templateContextIndex = Number(index)
         templateSlotContextMenu.popup(x, y)
     }
-
     function overwriteTemplateContextSlot() {
         if (templateContextIndex < 0 || !hasTemplateStyle(templateContextRow, templateContextIndex)) {
             return
@@ -518,7 +473,6 @@ Window {
         persistDieStyleTemplates()
         enqueueTemplateSnapshot(row, templateContextIndex, true)
     }
-
     function deleteTemplateContextSlot() {
         if (templateContextRow !== "user" || templateContextIndex < 0) {
             return
@@ -535,7 +489,6 @@ Window {
         persistDieStyleTemplates()
         refreshTemplateSnapshots("user", true)
     }
-
     function previewLabelForDieType(dieType) {
         var key = String(dieType || "d6").toLowerCase()
         if (key === "d100") return "00"
@@ -547,7 +500,6 @@ Window {
         if (key === "d4") return "4"
         return "6"
     }
-
     function templateSlotSizeForWidth(availableWidth) {
         var gap = 6
         var width = Math.max(320, Number(availableWidth || 0))
@@ -558,7 +510,6 @@ Window {
         var key = String(dieType || "d6").toLowerCase()
         return key === "d100" ? "d10t" : key
     }
-
     function styleToWebPayload(styleObj) {
         var src = styleObj && typeof styleObj === "object" ? styleObj : cloneStyle(null)
         return {
@@ -576,7 +527,6 @@ Window {
             "edgeWidth": Number(src.edgeWidth !== undefined ? src.edgeWidth : 0.0)
         }
     }
-
     function styleToSnapshotPayload(styleObj) {
         var payload = styleToWebPayload(styleObj)
         payload.scalePercent = Number(payload.scalePercent || 100) * 2.25
@@ -599,11 +549,9 @@ Window {
             Number(s.edgeWidth !== undefined ? s.edgeWidth : 0.0).toFixed(3)
         ].join("|")
     }
-
     function templateSnapshotKey(dieType, rowKey, index, styleObj) {
         return String(dieType || "d6") + "::" + String(rowKey || "user") + "::" + Number(index) + "::" + templateStyleHash(styleObj)
     }
-
     function templateSnapshotSource(rowKey, index) {
         var style = templateStyle(rowKey, index)
         if (!style) {
@@ -613,7 +561,6 @@ Window {
         var cache = templateSnapshotCache || {}
         return cache[key] ? String(cache[key]) : ""
     }
-
     function resolveDamageIconSource(index) {
         var i = Number(index)
         if (!isFinite(i) || i < 0 || i >= damageTemplateIconNames.length) {
@@ -628,7 +575,6 @@ Window {
         }
         return base + encodeURIComponent(String(damageTemplateIconNames[i]))
     }
-
     function enqueueTemplateSnapshot(rowKey, index, forceRender) {
         var style = templateStyle(rowKey, index)
         if (!style) {
@@ -639,18 +585,15 @@ Window {
         if (!forceRender && cache[key]) {
             return
         }
-
         if (templateSnapshotBusy && templateSnapshotCurrentTask && templateSnapshotCurrentTask.key === key) {
             return
         }
-
         var q = templateSnapshotQueue ? templateSnapshotQueue.slice(0) : []
         for (var i = 0; i < q.length; i++) {
             if (q[i] && q[i].key === key) {
                 return
             }
         }
-
         q.push({
             "key": key,
             "rowKey": String(rowKey),
@@ -662,7 +605,6 @@ Window {
         templateSnapshotQueue = q
         processTemplateSnapshotQueue()
     }
-
     function refreshTemplateSnapshots(rowKey, forceRender) {
         var row = String(rowKey || "")
         if (row !== "user" && row !== "damage") {
@@ -672,19 +614,16 @@ Window {
             enqueueTemplateSnapshot(row, i, Boolean(forceRender))
         }
     }
-
     function refreshAllTemplateSnapshots(forceRender) {
         refreshTemplateSnapshots("user", forceRender)
         refreshTemplateSnapshots("damage", forceRender)
     }
-
     function clearTemplateSnapshotQueue() {
         templateSnapshotQueue = []
         templateSnapshotBusy = false
         templateSnapshotCurrentTask = null
         templateSnapshotCaptureTimer.stop()
     }
-
     function processTemplateSnapshotQueue() {
         if (!dieStylePopup || !dieStylePopup.visible) {
             return
@@ -700,20 +639,17 @@ Window {
         templateSnapshotQueue = q
         templateSnapshotCurrentTask = task
         templateSnapshotBusy = true
-
         if (!templateSnapshotWeb) {
             templateSnapshotBusy = false
             templateSnapshotCurrentTask = null
             return
         }
-
         templateSnapshotWeb.runJavaScript("window.setPreviewStaticMode && window.setPreviewStaticMode(true);")
         templateSnapshotWeb.runJavaScript("window.setStyleOverrides && window.setStyleOverrides(" + JSON.stringify(task.payload) + ");")
         templateSnapshotWeb.runJavaScript("window.setPreviewDieKind && window.setPreviewDieKind('" + task.previewKind + "');")
         templateSnapshotWeb.runJavaScript("window.startPreviewRoll && window.startPreviewRoll();")
         templateSnapshotCaptureTimer.restart()
     }
-
     function handleTemplateSnapshotCaptured(result) {
         var task = templateSnapshotCurrentTask
         if (task && result && result.url) {
@@ -725,7 +661,6 @@ Window {
         templateSnapshotCurrentTask = null
         processTemplateSnapshotQueue()
     }
-
     function captureTemplateSnapshotCurrentTask() {
         if (!templateSnapshotBusy || !templateSnapshotCurrentTask || !templateSnapshotWeb) {
             return
@@ -739,7 +674,6 @@ Window {
         next[field] = value
         dieEditorWorking = next
     }
-
     function saveDieEditor() {
         var key = String(dieEditorDieKey)
         var savedStyle = cloneStyle(dieEditorWorking)
@@ -751,11 +685,9 @@ Window {
         }
         dieStylePopup.close()
     }
-
     function resetDieEditorToDefaults() {
         dieEditorWorking = cloneStyle(null)
     }
-
     function clampNumber(value, minValue, maxValue) {
         var n = Number(value)
         if (!isFinite(n)) {
@@ -763,13 +695,11 @@ Window {
         }
         return Math.max(Number(minValue), Math.min(Number(maxValue), n))
     }
-
     function roundToDecimals(value, decimals) {
         var d = Math.max(0, Number(decimals || 0))
         var p = Math.pow(10, d)
         return Math.round(Number(value) * p) / p
     }
-
     function clampAndRound(textValue, minValue, maxValue, decimals, fallbackValue) {
         var parsed = Number(String(textValue || "").replace(",", "."))
         if (!isFinite(parsed)) {
@@ -778,7 +708,6 @@ Window {
         var clamped = clampNumber(parsed, minValue, maxValue)
         return roundToDecimals(clamped, decimals)
     }
-
     function formatSliderValue(value, decimals) {
         var d = Math.max(0, Number(decimals || 0))
         var n = Number(value)
@@ -790,23 +719,19 @@ Window {
         }
         return Number(n).toFixed(d)
     }
-
     function byteToHex(value) {
         var n = Math.max(0, Math.min(255, Math.round(Number(value) || 0)))
         var h = n.toString(16).toUpperCase()
         return h.length < 2 ? ("0" + h) : h
     }
-
     function rgbaToHex(r, g, b) {
         return "#" + byteToHex(r) + byteToHex(g) + byteToHex(b)
     }
-
     function parseColorInput(raw, fallbackColor) {
         var value = String(raw || "").trim()
         if (value.length <= 0 && fallbackColor !== undefined) {
             value = String(fallbackColor || "").trim()
         }
-
         var m = value.match(/^#([0-9a-fA-F]{3})$/)
         if (m) {
             var h3 = m[1]
@@ -818,7 +743,6 @@ Window {
                 hex: "#" + (h3[0] + h3[0] + h3[1] + h3[1] + h3[2] + h3[2]).toUpperCase()
             }
         }
-
         m = value.match(/^#([0-9a-fA-F]{6})$/)
         if (m) {
             var h6 = m[1].toUpperCase()
@@ -830,7 +754,6 @@ Window {
                 hex: "#" + h6
             }
         }
-
         m = value.match(/^#([0-9a-fA-F]{8})$/)
         if (m) {
             var h8 = m[1].toUpperCase()
@@ -843,7 +766,6 @@ Window {
                 hex: "#" + rgb
             }
         }
-
         m = value.match(/^rgba?\(\s*([+-]?\d+(?:\.\d+)?)\s*,\s*([+-]?\d+(?:\.\d+)?)\s*,\s*([+-]?\d+(?:\.\d+)?)(?:\s*,\s*([+-]?\d*(?:\.\d+)?))?\s*\)$/i)
         if (m) {
             var rr = clampNumber(m[1], 0, 255)
@@ -857,11 +779,9 @@ Window {
                 hex: rgbaToHex(rr, gg, bb)
             }
         }
-
         if (fallbackColor !== undefined && String(value) !== String(fallbackColor)) {
             return parseColorInput(String(fallbackColor || "#FFFFFF"), "#FFFFFF")
         }
-
         return {
             ok: false,
             r: 255,
@@ -870,11 +790,9 @@ Window {
             hex: "#FFFFFF"
         }
     }
-
     function normalizePickerColor(raw, fallback) {
         return parseColorInput(raw, fallback || "#FFFFFF").hex
     }
-
     function rgbToHsv(r, g, b) {
         var rn = clampNumber(r, 0, 255) / 255.0
         var gn = clampNumber(g, 0, 255) / 255.0
@@ -903,7 +821,6 @@ Window {
             v: Math.round(clampNumber(v * 100, 0, 100))
         }
     }
-
     function hsvToRgb(h, s, v) {
         var hh = clampNumber(h, 0, 360)
         var ss = clampNumber(s, 0, 100) / 100.0
@@ -940,7 +857,6 @@ Window {
             b: Math.round((bp + m) * 255)
         }
     }
-
     function refreshPickerColorFromHSV(syncText) {
         var rgb = hsvToRgb(pickerHue, pickerSaturation, pickerValue)
         var hex = rgbaToHex(rgb.r, rgb.g, rgb.b)
@@ -952,7 +868,6 @@ Window {
             }
         }
     }
-
     function setPickerFromColor(raw, fallbackColor) {
         var parsed = parseColorInput(raw, fallbackColor || "#FFFFFF")
         var hsv = rgbToHsv(parsed.r, parsed.g, parsed.b)
@@ -966,7 +881,6 @@ Window {
             pickerHexInput.text = parsed.hex
         }
     }
-
     function applyPickerTypedColor() {
         var parsed = parseColorInput(pickerHexText, pickerPreviewColor)
         var hsv = rgbToHsv(parsed.r, parsed.g, parsed.b)
@@ -979,7 +893,6 @@ Window {
             pickerHexInput.text = parsed.hex
         }
     }
-
     function openDieColorDialog(field, titleText, fallbackColor) {
         pendingColorField = String(field || "")
         pendingColorTitle = String(titleText || "Выбор цвета")
@@ -987,14 +900,11 @@ Window {
         setPickerFromColor(current, fallbackColor || "#FFFFFF")
         colorPickerPopup.open()
     }
-
-
     function openDieEditor(key) {
         dieEditorDieKey = String(key)
         dieEditorWorking = styleForDie(dieEditorDieKey)
         dieStylePopup.open()
     }
-
     function pushPreviewStyle() {
         if (!dieStylePopup || !dieStylePopup.visible) {
             return
@@ -1002,14 +912,12 @@ Window {
         if (!previewWeb || !previewWeb.visible || !previewWebReady) {
             return
         }
-
         var stylePayload = styleToWebPayload(dieEditorWorking)
         previewWeb.runJavaScript("window.setPreviewStaticMode && window.setPreviewStaticMode(false);")
         previewWeb.runJavaScript("window.setStyleOverrides && window.setStyleOverrides(" + JSON.stringify(stylePayload) + ");")
         var previewKind = previewKindForDieType(dieEditorDieKey)
         previewWeb.runJavaScript("window.setPreviewDieKind && window.setPreviewDieKind('" + previewKind + "');")
     }
-
     function startPreviewRollNow() {
         if (!previewWeb || !previewWeb.visible || !previewWebReady) {
             return
@@ -1017,8 +925,6 @@ Window {
         previewWeb.runJavaScript("window.setPreviewStaticMode && window.setPreviewStaticMode(false);")
         previewWeb.runJavaScript("window.startPreviewRoll && window.startPreviewRoll();")
     }
-
-
     onResetTokenChanged: resetState()
     onDieEditorWorkingChanged: pushPreviewStyle()
     onDieEditorDieKeyChanged: {
@@ -1033,7 +939,6 @@ Window {
         loadDieStylesFromSettings()
         loadDieStyleTemplatesFromSettings()
     }
-
     Connections {
         target: appController
         function onSettingsChanged() {
@@ -1043,23 +948,18 @@ Window {
             }
         }
     }
-
     Connections {
         target: diceController
         function onRollCompleted(payload) {
             diceWindow.handleRollCompleted(payload)
         }
     }
-
-
     component AppPanel: Rectangle {
         radius: 12
         color: panelColor
         border.color: panelBorder
         border.width: 1
     }
-
-
     component AppButton: AbstractButton {
         id: control
         property bool accent: false
@@ -1068,7 +968,6 @@ Window {
         activeFocusOnTab: false
         implicitHeight: 36
         font.pixelSize: 13
-
         contentItem: Text {
             text: control.text
             color: control.enabled
@@ -1080,7 +979,6 @@ Window {
             font.weight: control.accent ? Font.DemiBold : Font.Medium
             elide: Text.ElideRight
         }
-
         background: Rectangle {
             radius: 12
             border.width: 1
@@ -1101,7 +999,6 @@ Window {
                 }
             }
             scale: control.pressed ? 0.97 : (control.hovered ? 1.025 : 1.0)
-
             Behavior on scale {
                 NumberAnimation { duration: 120; easing.type: Easing.OutCubic }
             }
@@ -1113,7 +1010,6 @@ Window {
             }
         }
     }
-
     component ModeArrowButton: AbstractButton {
         id: control
         property string arrowText: "?"
@@ -1124,7 +1020,6 @@ Window {
         hoverEnabled: true
         focusPolicy: Qt.NoFocus
         activeFocusOnTab: false
-
         contentItem: Text {
             text: control.arrowText
             color: "#F0F0F0"
@@ -1133,7 +1028,6 @@ Window {
             font.pixelSize: 10
             font.weight: Font.DemiBold
         }
-
         background: Rectangle {
             radius: 7
             border.width: 1
@@ -1155,7 +1049,6 @@ Window {
             Behavior on border.color { ColorAnimation { duration: 120 } }
         }
     }
-
     component NumberInput: SpinBox {
         id: control
         editable: true
@@ -1164,13 +1057,10 @@ Window {
         stepSize: 1
         value: 0
         focusPolicy: Qt.NoFocus
-
         validator: RegularExpressionValidator { regularExpression: /[+-]?\d*/ }
-
         textFromValue: function(value, locale) {
             return Number(value).toLocaleString(locale, 'f', 0)
         }
-
         valueFromText: function(text, locale) {
             var n = Number.fromLocaleString(locale, text)
             if (!isFinite(n)) {
@@ -1181,7 +1071,6 @@ Window {
             }
             return Math.round(n)
         }
-
         contentItem: TextInput {
             text: control.textFromValue(control.value, control.locale)
             color: "#EFEFF2"
@@ -1202,14 +1091,12 @@ Window {
                 text = control.textFromValue(control.value, control.locale)
             }
         }
-
         background: Rectangle {
             radius: 8
             color: "#1F1F1F"
             border.width: 1
             border.color: "#4C4C4C"
         }
-
         up.indicator: Rectangle {
             implicitWidth: 22
             implicitHeight: 16
@@ -1222,7 +1109,6 @@ Window {
                 font.pixelSize: 9
             }
         }
-
         down.indicator: Rectangle {
             implicitWidth: 22
             implicitHeight: 16
@@ -1236,8 +1122,6 @@ Window {
             }
         }
     }
-
-
     component SliderNumberControl: RowLayout {
         id: control
         property real minValue: 0
@@ -1246,10 +1130,8 @@ Window {
         property int decimals: 0
         property real value: 0
         signal valueCommitted(real value)
-
         Layout.fillWidth: true
         spacing: 8
-
         Slider {
             id: slider
             Layout.fillWidth: true
@@ -1260,7 +1142,6 @@ Window {
             onMoved: control.valueCommitted(value)
             onValueChanged: if (pressed) control.valueCommitted(value)
         }
-
         TextField {
             id: valueInput
             Layout.preferredWidth: 62
@@ -1268,14 +1149,12 @@ Window {
             inputMethodHints: Qt.ImhFormattedNumbersOnly
             validator: RegularExpressionValidator { regularExpression: /[+-]?\d*(?:\.\d*)?/ }
             text: formatSliderValue(control.value, control.decimals)
-
             onEditingFinished: {
                 var v = clampAndRound(text, control.minValue, control.maxValue, control.decimals, control.value)
                 control.valueCommitted(v)
                 text = formatSliderValue(v, control.decimals)
             }
         }
-
         onValueChanged: {
             if (!valueInput.activeFocus) {
                 valueInput.text = formatSliderValue(control.value, control.decimals)
@@ -1294,14 +1173,11 @@ Window {
         property int labelPixelSize: 12
         property real lineWidth: 1.4
         property real valueOpacity: 1.0
-
         Behavior on valueOpacity {
             NumberAnimation { duration: 190; easing.type: Easing.OutCubic }
         }
-
         implicitWidth: 40
         implicitHeight: 40
-
         Canvas {
             id: canvas
             anchors.fill: parent
@@ -1313,13 +1189,11 @@ Window {
                 ctx.lineWidth = glyph.lineWidth
                 ctx.strokeStyle = glyph.lineColor
                 ctx.fillStyle = glyph.fillColor
-
                 var w = width
                 var h = height
                 var cx = w * 0.5
                 var cy = h * 0.5
                 var pad = 3
-
                 function polygon(points) {
                     if (points.length === 0) {
                         return
@@ -1335,7 +1209,6 @@ Window {
                     }
                     ctx.stroke()
                 }
-
                 function regularPolygon(sides, radius, rotation) {
                     var points = []
                     for (var i = 0; i < sides; i++) {
@@ -1344,7 +1217,6 @@ Window {
                     }
                     polygon(points)
                 }
-
                 if (glyph.dieType === "d4") {
                     polygon([
                         {"x": cx, "y": pad},
@@ -1396,7 +1268,6 @@ Window {
                 }
             }
         }
-
         Text {
             anchors.centerIn: parent
             text: glyph.label
@@ -1406,7 +1277,6 @@ Window {
             font.weight: glyph.labelFontWeight
             opacity: glyph.valueOpacity
         }
-
         onDieTypeChanged: canvas.requestPaint()
         onFillColorChanged: canvas.requestPaint()
         onLineColorChanged: canvas.requestPaint()
@@ -1421,7 +1291,6 @@ Window {
         property string dieType: "d6"
         property var styleData: ({})
         property string labelText: diceWindow.previewLabelForDieType(dieType)
-
         Canvas {
             id: templateCanvas
             anchors.fill: parent
@@ -1429,13 +1298,11 @@ Window {
                 var ctx = getContext("2d")
                 ctx.reset()
                 ctx.clearRect(0, 0, width, height)
-
                 var w = width
                 var h = height
                 var cx = w * 0.5
                 var cy = h * 0.5
                 var pad = Math.max(2, Math.round(Math.min(w, h) * 0.08))
-
                 var style = preview.styleData || {}
                 var faceColor = String(style.color || "#C9C9C9")
                 var centerColor = String(style.gradientCenterColor || "#FFFFFF")
@@ -1448,7 +1315,6 @@ Window {
                 var glowOpacity = Math.max(0, Math.min(200, Number(style.textGlowOpacity !== undefined ? style.textGlowOpacity : 100)))
                 var edgeColor = String(style.edgeColor || "#D4D4D4")
                 var edgeWidth = Math.max(0, Math.min(5, Number(style.edgeWidth !== undefined ? style.edgeWidth : 0)))
-
                 function hexToRgb(hex) {
                     var s = String(hex || "").trim()
                     var m3 = /^#([0-9a-fA-F]{3})$/.exec(s)
@@ -1469,13 +1335,11 @@ Window {
                     }
                     return { r: 255, g: 255, b: 255 }
                 }
-
                 function rgba(hex, alpha) {
                     var rgb = hexToRgb(hex)
                     var a = Math.max(0, Math.min(1, Number(alpha || 0)))
                     return "rgba(" + rgb.r + "," + rgb.g + "," + rgb.b + "," + a.toFixed(3) + ")"
                 }
-
                 function shapePoints(kind) {
                     var t = String(kind || "d6").toLowerCase()
                     if (t === "d4") {
@@ -1510,7 +1374,6 @@ Window {
                     }
                     return [{x: pad, y: pad}, {x: w - pad, y: pad}, {x: w - pad, y: h - pad}, {x: pad, y: h - pad}]
                 }
-
                 function drawPolygon(points) {
                     if (!points || points.length === 0) {
                         return
@@ -1521,7 +1384,6 @@ Window {
                         ctx.lineTo(points[i].x, points[i].y)
                     }
                     ctx.closePath()
-
                     if (gradientEnabled) {
                         var rad = Math.max(6, Math.min(w, h) * (0.26 + offset * 0.0048))
                         var grd = ctx.createRadialGradient(cx, cy, 0, cx, cy, rad)
@@ -1534,14 +1396,12 @@ Window {
                         ctx.fillStyle = faceColor
                     }
                     ctx.fill()
-
                     if (edgeWidth > 0.01) {
                         ctx.lineWidth = Math.max(0.6, edgeWidth * 0.85)
                         ctx.strokeStyle = edgeColor
                         ctx.stroke()
                     }
                 }
-
                 if (String(preview.dieType || "") === "d100") {
                     var backPad = Math.max(3, pad + 1)
                     ctx.beginPath()
@@ -1554,9 +1414,7 @@ Window {
                     ctx.strokeStyle = edgeColor
                     ctx.stroke()
                 }
-
                 drawPolygon(shapePoints(preview.dieType))
-
                 var glowA = Math.max(0, Math.min(1, glowOpacity / 200.0))
                 var blur = Math.max(0, glowRadius / 200.0 * 7.5)
                 ctx.save()
@@ -1578,7 +1436,6 @@ Window {
                 ctx.restore()
             }
         }
-
         onDieTypeChanged: templateCanvas.requestPaint()
         onStyleDataChanged: templateCanvas.requestPaint()
         onLabelTextChanged: templateCanvas.requestPaint()
@@ -1586,21 +1443,17 @@ Window {
         onHeightChanged: templateCanvas.requestPaint()
         Component.onCompleted: templateCanvas.requestPaint()
     }
-
     component DiePreviewTile: Item {
         id: tile
         property string dieType: "d6"
         property int tileSize: 46
         property bool useInset: true
         signal clicked()
-
         implicitWidth: tile.tileSize
         implicitHeight: tile.tileSize
-
         HoverHandler {
             id: tileHover
         }
-
         NeumoInsetSurface {
             id: tileInset
             anchors.fill: parent
@@ -1618,13 +1471,11 @@ Window {
                     Math.min(1.0, neumoTheme.insetLightAlpha + (tileHover.hovered ? 0.12 : 0.0)))
                 : "#663B3C40"
         }
-
         Item {
             id: tileFlat
             anchors.fill: parent
             visible: !tile.useInset
         }
-
         TemplateStylePreview {
             anchors.fill: tileInset
             anchors.margins: 7
@@ -1634,12 +1485,10 @@ Window {
             labelText: diceWindow.previewLabelForDieType(tile.dieType)
             opacity: tile.enabled ? 1.0 : 0.55
             scale: tilePress.pressed ? 0.96 : 1.0
-
             Behavior on scale {
                 NumberAnimation { duration: 90; easing.type: Easing.OutCubic }
             }
         }
-
         TemplateStylePreview {
             anchors.fill: tileFlat
             anchors.margins: 4
@@ -1649,12 +1498,10 @@ Window {
             labelText: diceWindow.previewLabelForDieType(tile.dieType)
             opacity: tile.enabled ? 1.0 : 0.55
             scale: tilePress.pressed ? 0.96 : 1.0
-
             Behavior on scale {
                 NumberAnimation { duration: 90; easing.type: Easing.OutCubic }
             }
         }
-
         MouseArea {
             id: tilePress
             anchors.fill: parent
@@ -1664,7 +1511,6 @@ Window {
             onClicked: tile.clicked()
         }
     }
-
     component TemplateSlotButton: Item {
         id: slot
         property string rowKey: "user"
@@ -1686,10 +1532,8 @@ Window {
             }
             return "\u0428\u0430\u0431\u043b\u043e\u043d \u0443\u0440\u043e\u043d\u0430: " + label.toLowerCase()
         }
-
         implicitWidth: slotSize
         implicitHeight: slotSize
-
         Rectangle {
             anchors.fill: parent
             radius: Math.max(6, slot.slotSize * 0.18)
@@ -1697,7 +1541,6 @@ Window {
             border.width: 1
             border.color: slot.slotStyle ? "#5B5D64" : "#3B3D43"
         }
-
         TemplateStylePreview {
             anchors.centerIn: parent
             width: Math.max(18, slot.slotSize - 8)
@@ -1707,7 +1550,6 @@ Window {
             styleData: slot.slotStyle || ({})
             labelText: diceWindow.previewLabelForDieType(diceWindow.dieEditorDieKey)
         }
-
         Image {
             anchors.centerIn: parent
             width: Math.max(18, slot.slotSize - 8)
@@ -1719,8 +1561,6 @@ Window {
             source: slot.snapshotSource
             visible: !!slot.slotStyle && slot.snapshotSource.length > 0 && status === Image.Ready
         }
-
-
         Rectangle {
             id: damageIconFrame
             width: Math.max(12, damageIcon.width + 4)
@@ -1734,7 +1574,6 @@ Window {
             visible: damageIcon.visible
             z: 3
         }
-
         Image {
             id: damageIcon
             width: Math.max(9, Math.round(slot.slotSize * 0.27))
@@ -1747,7 +1586,6 @@ Window {
             visible: slot.rowKey === "damage" && slot.damageIconSource.length > 0 && status === Image.Ready
             z: 4
         }
-
         MouseArea {
             id: slotHoverArea
             anchors.fill: parent
@@ -1766,27 +1604,21 @@ Window {
                 }
             }
         }
-
         ToolTip.visible: slotHoverArea.containsMouse && slot.damageTooltipText.length > 0
         ToolTip.delay: 250
         ToolTip.timeout: 3000
         ToolTip.text: slot.damageTooltipText
     }
-
-
     component StandardDieRow: RowLayout {
         id: root
         property int sides: 6
         property string dieKey: "d" + String(sides)
         property alias countValue: qty.value
-
         Layout.fillWidth: true
         spacing: 10
-
         HoverHandler {
             id: rowHover
         }
-
         DiePreviewTile {
             dieType: root.dieKey
             tileSize: diceWindow.standardPreviewSize
@@ -1799,15 +1631,13 @@ Window {
                 else if (root.sides === 12) rollSingleStandardDie(12, d12Count)
             }
         }
-
         Label {
             text: "Количество:"
             color: textSecondary
             font.pixelSize: 12
-            Layout.preferredWidth: diceWindow.standardLabelWidth
+                                            Layout.preferredWidth: diceWindow.d20LabelWidth
             Layout.alignment: Qt.AlignVCenter
         }
-
         NeumoStepperField {
             id: qty
             theme: neumoTheme
@@ -1821,7 +1651,6 @@ Window {
             Layout.preferredWidth: diceWindow.standardStepperWidth
             Layout.alignment: Qt.AlignVCenter
         }
-
         NeumoGhostIconButton {
             theme: neumoTheme
             rowHovered: rowHover.hovered
@@ -1832,15 +1661,12 @@ Window {
             Layout.alignment: Qt.AlignVCenter
             onClicked: openDieEditor(root.dieKey)
         }
-
         Item { Layout.fillWidth: true }
     }
-
     ColumnLayout {
         anchors.fill: parent
         anchors.margins: 16
         spacing: 0
-
         Flickable {
             id: diceScroll
             Layout.fillWidth: true
@@ -1853,12 +1679,10 @@ Window {
             interactive: contentHeight > height
             ScrollBar.vertical: NeumoScrollBar {}
             ScrollBar.horizontal: NeumoScrollBar {}
-
             ColumnLayout {
                     id: diceContent
                     width: diceScroll.width
                     spacing: diceWindow.sectionSpacing
-
                     NeumoInsetSurface {
                         id: resultsCard
                         theme: neumoTheme
@@ -1871,29 +1695,24 @@ Window {
                         insetLightColor: neumoTheme ? neumoTheme.insetLightColor : "#663B3C40"
                         contentPadding: diceWindow.cardPadding
                         implicitHeight: resultsContent.implicitHeight + contentPadding * 2
-
                         ColumnLayout {
                             id: resultsContent
                             width: parent.width
                             spacing: 8
-
                             Label {
                                 text: "Результаты"
                                 color: textPrimary
                                 font.pixelSize: 15
                                 font.weight: Font.DemiBold
                             }
-
                             Item {
                                 id: resultsViewport
                                 Layout.fillWidth: true
                                 Layout.minimumHeight: 96
                                 Layout.preferredHeight: Math.max(96, resultsRow.implicitHeight + 12)
                                 clip: true
-
                                 Item {
                                     anchors.fill: parent
-
                                     Label {
                                         anchors.centerIn: parent
                                         visible: !(d20Result && d20Result.active) && !(standardResult && standardResult.active) && !(d100Result && d100Result.active)
@@ -1908,7 +1727,6 @@ Window {
                                         anchors.fill: parent
                                         visible: (d20Result && d20Result.active) || (standardResult && standardResult.active) || (d100Result && d100Result.active)
                                         spacing: 8
-
                                         Rectangle {
                                             visible: d20Result && d20Result.active
                                             Layout.fillWidth: true
@@ -1918,7 +1736,6 @@ Window {
                                             border.color: textPrimary
                                             implicitHeight: d20ResCol.implicitHeight + diceWindow.innerCardPadding * 2
                                             clip: true
-
                                             ColumnLayout {
                                                 id: d20ResCol
                                                 anchors.fill: parent
@@ -1962,7 +1779,6 @@ Window {
                                                 }
                                             }
                                         }
-
                                         Rectangle {
                                             visible: standardResult && standardResult.active
                                             Layout.fillWidth: true
@@ -1972,7 +1788,6 @@ Window {
                                             border.color: textPrimary
                                             implicitHeight: stdResCol.implicitHeight + diceWindow.innerCardPadding * 2
                                             clip: true
-
                                             ColumnLayout {
                                                 id: stdResCol
                                                 anchors.fill: parent
@@ -1995,7 +1810,6 @@ Window {
                                                 }
                                             }
                                         }
-
                                         Rectangle {
                                             visible: d100Result && d100Result.active
                                             Layout.preferredWidth: diceWindow.narrowLayout ? 78 : 86
@@ -2005,7 +1819,6 @@ Window {
                                             border.color: textPrimary
                                             implicitHeight: d100ResCol.implicitHeight + diceWindow.innerCardPadding * 2
                                             clip: true
-
                                             ColumnLayout {
                                                 id: d100ResCol
                                                 anchors.fill: parent
@@ -2046,16 +1859,13 @@ Window {
                         shadowSamples: diceWindow.cardShadowSamples
                         contentPadding: diceWindow.cardPadding
                         implicitHeight: d20Content.implicitHeight + contentPadding * 2
-
                         ColumnLayout {
                             id: d20Content
                             width: parent.width
                             spacing: 10
-
                             RowLayout {
                                 Layout.fillWidth: true
                                 spacing: 12
-
                                 NeumoInsetSurface {
                                     id: d20ModePanel
                                     theme: neumoTheme
@@ -2063,11 +1873,9 @@ Window {
                                     fillColor: neumoTheme.baseColor
                                     contentPadding: 6
                                     Layout.alignment: Qt.AlignVCenter
-
                                     RowLayout {
                                         anchors.fill: parent
                                         spacing: 6
-
                                         DiePreviewTile {
                                             dieType: "d20"
                                             tileSize: 38
@@ -2075,7 +1883,6 @@ Window {
                                             Layout.alignment: Qt.AlignVCenter
                                             onClicked: rollD20Only()
                                         }
-
                                         ColumnLayout {
                                             spacing: 4
                                             Layout.alignment: Qt.AlignVCenter
@@ -2104,12 +1911,10 @@ Window {
                                         }
                                     }
                                 }
-
                                 ColumnLayout {
                                     id: d20Fields
                                     Layout.fillWidth: true
                                     spacing: 8
-
                                     RowLayout {
                                         Layout.fillWidth: true
                                         spacing: 10
@@ -2117,7 +1922,6 @@ Window {
                                             text: "Количество:"
                                             color: textSecondary
                                             font.pixelSize: 12
-                                            horizontalAlignment: Text.AlignRight
                                             Layout.preferredWidth: diceWindow.d20LabelWidth
                                             Layout.alignment: Qt.AlignVCenter
                                         }
@@ -2131,12 +1935,11 @@ Window {
                                             compactMode: true
                                             visualStyle: "launcherInline"
                                             Layout.fillWidth: true
-                                            Layout.minimumWidth: 90
+                                            Layout.minimumWidth: 0
                                             Layout.alignment: Qt.AlignVCenter
                                             onValueModified: d20Count = Math.round(value)
                                         }
                                     }
-
                                     RowLayout {
                                         Layout.fillWidth: true
                                         spacing: 10
@@ -2144,7 +1947,6 @@ Window {
                                             text: "Бонус:"
                                             color: textSecondary
                                             font.pixelSize: 12
-                                            horizontalAlignment: Text.AlignRight
                                             Layout.preferredWidth: diceWindow.d20LabelWidth
                                             Layout.alignment: Qt.AlignVCenter
                                         }
@@ -2158,13 +1960,12 @@ Window {
                                             compactMode: true
                                             visualStyle: "launcherInline"
                                             Layout.fillWidth: true
-                                            Layout.minimumWidth: 90
+                                            Layout.minimumWidth: 0
                                             Layout.alignment: Qt.AlignVCenter
                                             onValueModified: d20Bonus = Math.round(value)
                                         }
                                     }
                                 }
-
                                 NeumoGhostIconButton {
                                     theme: neumoTheme
                                     rowHovered: d20RowHover.hovered
@@ -2175,7 +1976,6 @@ Window {
                                     Layout.alignment: Qt.AlignVCenter
                                     onClicked: openDieEditor("d20")
                                 }
-
                                 HoverHandler { id: d20RowHover }
                             }
                         }
@@ -2193,18 +1993,15 @@ Window {
                         shadowSamples: diceWindow.cardShadowSamples
                         contentPadding: diceWindow.cardPadding
                         implicitHeight: standardContent.implicitHeight + contentPadding * 2
-
                         ColumnLayout {
                             id: standardContent
                             width: parent.width
                             spacing: 8
-
                             StandardDieRow { sides: 4; countValue: d4Count; onCountValueChanged: d4Count = Math.round(countValue) }
                             StandardDieRow { sides: 6; countValue: d6Count; onCountValueChanged: d6Count = Math.round(countValue) }
                             StandardDieRow { sides: 8; countValue: d8Count; onCountValueChanged: d8Count = Math.round(countValue) }
                             StandardDieRow { sides: 10; countValue: d10Count; onCountValueChanged: d10Count = Math.round(countValue) }
                             StandardDieRow { sides: 12; countValue: d12Count; onCountValueChanged: d12Count = Math.round(countValue) }
-
                             RowLayout {
                                 Layout.fillWidth: true
                                 spacing: 10
@@ -2212,7 +2009,7 @@ Window {
                                     text: "Бонус:"
                                     color: textSecondary
                                     font.pixelSize: 12
-                                    Layout.preferredWidth: diceWindow.standardLabelWidth
+                                            Layout.preferredWidth: diceWindow.d20LabelWidth
                                     Layout.alignment: Qt.AlignVCenter
                                 }
                                 NeumoStepperField {
@@ -2230,7 +2027,6 @@ Window {
                                 }
                                 Item { Layout.fillWidth: true }
                             }
-
                             NeumoRaisedActionButton {
                                 theme: neumoTheme
                                 text: "Бросить D4-D12"
@@ -2241,7 +2037,6 @@ Window {
                             }
                         }
                     }
-
                     NeumoRaisedSurface {
                         id: d100Card
                         theme: neumoTheme
@@ -2255,19 +2050,16 @@ Window {
                         shadowSamples: diceWindow.cardShadowSamples
                         contentPadding: diceWindow.cardPadding
                         implicitHeight: d100Content.implicitHeight + contentPadding * 2
-
                         RowLayout {
                             id: d100Content
                             width: parent.width
                             spacing: 10
-
                             DiePreviewTile {
                                 dieType: "d100"
                                 tileSize: 44
                                 Layout.alignment: Qt.AlignVCenter
                                 onClicked: rollD100Only()
                             }
-
                             Label {
                                 text: "d100"
                                 color: textSecondary
@@ -2275,7 +2067,6 @@ Window {
                                 Layout.preferredWidth: diceWindow.d20LabelWidth
                                 Layout.alignment: Qt.AlignVCenter
                             }
-
                             NeumoGhostIconButton {
                                 theme: neumoTheme
                                 rowHovered: d100Hover.hovered
@@ -2286,9 +2077,7 @@ Window {
                                 Layout.alignment: Qt.AlignVCenter
                                 onClicked: openDieEditor("d100")
                             }
-
                             Item { Layout.fillWidth: true }
-
                             NeumoRaisedActionButton {
                                 theme: neumoTheme
                                 text: "Бросить D100"
@@ -2297,11 +2086,9 @@ Window {
                                 Layout.preferredWidth: 140
                                 onClicked: rollD100Only()
                             }
-
                             HoverHandler { id: d100Hover }
                         }
                     }
-
                     NeumoRaisedActionButton {
                         theme: neumoTheme
                         text: "Бросить все"
@@ -2312,7 +2099,6 @@ Window {
                         enabled: canRollAll()
                         onClicked: rollAll()
                     }
-
                     Item {
                         Layout.fillWidth: true
                         Layout.preferredHeight: diceWindow.sectionSpacing
@@ -2320,8 +2106,6 @@ Window {
                 }
             }
     }
-
-
     Timer {
         id: physicsFallbackTimer
         interval: 2300
@@ -2346,18 +2130,15 @@ Window {
         closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
         anchors.centerIn: Overlay.overlay
         padding: 0
-
         onOpened: {
             diceWindow.pushPreviewStyle()
             diceWindow.startPreviewRollNow()
             diceWindow.refreshAllTemplateSnapshots(false)
             diceWindow.processTemplateSnapshotQueue()
         }
-
         onClosed: {
             diceWindow.clearTemplateSnapshotQueue()
         }
-
         WebEngineView {
             id: templateSnapshotWeb
             x: -10000
@@ -2379,26 +2160,22 @@ Window {
                 }
             }
         }
-
         Timer {
             id: templateSnapshotCaptureTimer
             interval: 120
             repeat: false
             onTriggered: diceWindow.captureTemplateSnapshotCurrentTask()
         }
-
         background: Rectangle {
             radius: 12
             color: "#1E1E1F"
             border.width: 1
             border.color: "#4D4D4D"
         }
-
         ColumnLayout {
             anchors.fill: parent
             anchors.margins: 10
             spacing: 8
-
             Label {
                 Layout.fillWidth: true
                 text: "Кастомизация " + dieEditorDieKey
@@ -2406,7 +2183,6 @@ Window {
                 font.pixelSize: 14
                 font.weight: Font.DemiBold
             }
-
             Rectangle {
                 Layout.fillWidth: true
                 Layout.preferredHeight: 120
@@ -2415,11 +2191,9 @@ Window {
                 border.width: 1
                 border.color: "#353535"
             clip: true
-
                 Item {
                     id: previewStage
                     anchors.fill: parent
-
                     WebEngineView {
                         id: previewWeb
                         anchors.fill: parent
@@ -2448,7 +2222,6 @@ Window {
                             console.log("[dice-preview-web]", String(message), String(sourceID) + ":" + String(lineNumber))
                         }
                     }
-
                     Timer {
                         id: previewRollTimer
                         interval: 3200
@@ -2458,19 +2231,16 @@ Window {
                     }
                 }
             }
-
             ScrollView {
                 id: styleEditorScroll
                 Layout.fillWidth: true
                 Layout.fillHeight: true
             clip: true
                 ScrollBar.vertical.policy: ScrollBar.AsNeeded
-
             ColumnLayout {
                     id: styleEditorContent
                     width: styleEditorScroll.availableWidth > 0 ? styleEditorScroll.availableWidth : styleEditorScroll.width
                     spacing: 8
-
                     Label { text: "Размер (50%..150%)"; color: textSecondary; font.pixelSize: 11 }
                     SliderNumberControl {
                         minValue: 50
@@ -2480,7 +2250,6 @@ Window {
                         value: Number(dieEditorWorking.scalePercent || 100)
                         onValueCommitted: updateEditorField("scalePercent", Math.round(value))
                     }
-
                     RowLayout {
                         Layout.fillWidth: true
                         spacing: 8
@@ -2501,7 +2270,6 @@ Window {
                         }
                         Item { Layout.fillWidth: true }
                     }
-
                     RowLayout {
                         Layout.fillWidth: true
                         spacing: 8
@@ -2512,7 +2280,6 @@ Window {
                         }
                         Item { Layout.fillWidth: true }
                     }
-
                     RowLayout {
                         visible: Boolean(dieEditorWorking.gradientEnabled)
                         Layout.fillWidth: true
@@ -2534,7 +2301,6 @@ Window {
                         }
                         Item { Layout.fillWidth: true }
                     }
-
                     Label {
                         visible: Boolean(dieEditorWorking.gradientEnabled)
                         text: "Резкость/плавность градиента"
@@ -2550,7 +2316,6 @@ Window {
                         value: Number(dieEditorWorking.gradientSharpness || 50)
                         onValueCommitted: updateEditorField("gradientSharpness", Math.round(value))
                     }
-
                     Label {
                         visible: Boolean(dieEditorWorking.gradientEnabled)
                         text: "Смещение градиента"
@@ -2566,7 +2331,6 @@ Window {
                         value: Number(dieEditorWorking.gradientOffset || 50)
                         onValueCommitted: updateEditorField("gradientOffset", Math.round(value))
                     }
-
                     RowLayout {
                         Layout.fillWidth: true
                         spacing: 8
@@ -2587,7 +2351,6 @@ Window {
                         }
                         Item { Layout.fillWidth: true }
                     }
-
                     RowLayout {
                         Layout.fillWidth: true
                         spacing: 8
@@ -2608,7 +2371,6 @@ Window {
                         }
                         Item { Layout.fillWidth: true }
                     }
-
                     Label { text: "\u0420\u0430\u0434\u0438\u0443\u0441 \u0441\u0432\u0435\u0447\u0435\u043d\u0438\u044f"; color: textSecondary; font.pixelSize: 11 }
                     SliderNumberControl {
                         minValue: 0
@@ -2618,7 +2380,6 @@ Window {
                         value: Number(dieEditorWorking.textGlowRadius !== undefined ? dieEditorWorking.textGlowRadius : 100)
                         onValueCommitted: updateEditorField("textGlowRadius", Math.round(value))
                     }
-
                     Label { text: "\u0418\u043d\u0442\u0435\u043d\u0441\u0438\u0432\u043d\u043e\u0441\u0442\u044c \u0441\u0432\u0435\u0447\u0435\u043d\u0438\u044f"; color: textSecondary; font.pixelSize: 11 }
                     SliderNumberControl {
                         minValue: 0
@@ -2628,7 +2389,6 @@ Window {
                         value: Number(dieEditorWorking.textGlowOpacity !== undefined ? dieEditorWorking.textGlowOpacity : 100)
                         onValueCommitted: updateEditorField("textGlowOpacity", Math.round(value))
                     }
-
                     RowLayout {
                         Layout.fillWidth: true
                         spacing: 8
@@ -2649,7 +2409,6 @@ Window {
                         }
                         Item { Layout.fillWidth: true }
                     }
-
                     Label { text: "Толщина ребер"; color: textSecondary; font.pixelSize: 11 }
                     SliderNumberControl {
                         minValue: 0
@@ -2659,18 +2418,14 @@ Window {
                         value: Number(dieEditorWorking.edgeWidth !== undefined ? dieEditorWorking.edgeWidth : 0.0)
                         onValueCommitted: updateEditorField("edgeWidth", roundToDecimals(value, 1))
                     }
-
                     Item { Layout.fillWidth: true; Layout.preferredHeight: 4 }
-
                     Label { text: "Шаблоны стиля"; color: textSecondary; font.pixelSize: 11 }
-
                     Label { text: "Пользовательские"; color: textSecondary; font.pixelSize: 10 }
                     Item {
                         Layout.fillWidth: true
                         property int gap: 6
                         property int slotSize: diceWindow.templateSlotSizeForWidth(width)
                         implicitHeight: slotSize
-
                         Row {
                             anchors.horizontalCenter: parent.horizontalCenter
                             spacing: parent.gap
@@ -2685,14 +2440,12 @@ Window {
                             }
                         }
                     }
-
                     Label { text: "Типы урона"; color: textSecondary; font.pixelSize: 10 }
                     Item {
                         Layout.fillWidth: true
                         property int gap: 6
                         property int slotSize: diceWindow.templateSlotSizeForWidth(width)
                         implicitHeight: slotSize
-
                         Row {
                             anchors.horizontalCenter: parent.horizontalCenter
                             spacing: parent.gap
@@ -2709,7 +2462,6 @@ Window {
                     }
                 }
             }
-
             RowLayout {
                 Layout.fillWidth: true
                 spacing: 8
@@ -2719,7 +2471,6 @@ Window {
                     onClicked: saveCurrentStyleToTemplateQueue()
                 }
             }
-
             RowLayout {
                 Layout.fillWidth: true
                 spacing: 8
@@ -2729,7 +2480,6 @@ Window {
             }
         }
     }
-
     Menu {
         id: templateSlotContextMenu
         MenuItem {
@@ -2743,7 +2493,6 @@ Window {
             onTriggered: deleteTemplateContextSlot()
         }
     }
-
     Popup {
         id: colorPickerPopup
         modal: true
@@ -2753,19 +2502,16 @@ Window {
         closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
         anchors.centerIn: Overlay.overlay
         padding: 0
-
         background: Rectangle {
             radius: 12
             color: "#1E1E1F"
             border.width: 1
             border.color: "#4D4D4D"
         }
-
         ColumnLayout {
             anchors.fill: parent
             anchors.margins: 10
             spacing: 8
-
             Label {
                 Layout.fillWidth: true
                 text: pendingColorTitle
@@ -2773,11 +2519,9 @@ Window {
                 font.pixelSize: 14
                 font.weight: Font.DemiBold
             }
-
             RowLayout {
                 Layout.fillWidth: true
                 spacing: 10
-
                 Rectangle {
                     Layout.fillWidth: true
                     Layout.preferredHeight: 42
@@ -2793,7 +2537,6 @@ Window {
                         font.weight: Font.DemiBold
                     }
                 }
-
                 Rectangle {
                     Layout.fillWidth: true
                     Layout.preferredHeight: 42
@@ -2810,7 +2553,6 @@ Window {
                     }
                 }
             }
-
             Label { text: "Тон"; color: textSecondary; font.pixelSize: 11 }
             SliderNumberControl {
                 minValue: 0
@@ -2823,7 +2565,6 @@ Window {
                     refreshPickerColorFromHSV(true)
                 }
             }
-
             Label { text: "Насыщенность"; color: textSecondary; font.pixelSize: 11 }
             SliderNumberControl {
                 minValue: 0
@@ -2836,7 +2577,6 @@ Window {
                     refreshPickerColorFromHSV(true)
                 }
             }
-
             Label { text: "Яркость"; color: textSecondary; font.pixelSize: 11 }
             SliderNumberControl {
                 minValue: 0
@@ -2849,7 +2589,6 @@ Window {
                     refreshPickerColorFromHSV(true)
                 }
             }
-
             Label { text: "Код цвета (HEX / RGB(A))"; color: textSecondary; font.pixelSize: 11 }
             TextField {
                 id: pickerHexInput
@@ -2863,7 +2602,6 @@ Window {
                     applyPickerTypedColor()
                 }
             }
-
             RowLayout {
                 Layout.fillWidth: true
                 spacing: 8
@@ -2887,12 +2625,3 @@ Window {
         }
     }
 }
-
-
-
-
-
-
-
-
-
