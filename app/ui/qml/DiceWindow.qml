@@ -70,6 +70,19 @@ Window {
     readonly property int ghostIconSize: 26
     readonly property int actionButtonHeight: narrowLayout ? 48 : 52
     readonly property int standardPreviewSize: narrowLayout ? 40 : 42
+    readonly property color resultsFillColor: neumoTheme ? neumoTheme.mediaTileEmptyFillColor : "#1C1E22"
+    readonly property color resultsInsetDarkColor: {
+        if (!neumoTheme) {
+            return Qt.rgba(0, 0, 0, 0.9)
+        }
+        var deltaR = neumoTheme.baseColor.r - neumoTheme.shadowDarkBase.r
+        var deltaG = neumoTheme.baseColor.g - neumoTheme.shadowDarkBase.g
+        var deltaB = neumoTheme.baseColor.b - neumoTheme.shadowDarkBase.b
+        var r = Math.max(0, resultsFillColor.r - deltaR)
+        var g = Math.max(0, resultsFillColor.g - deltaG)
+        var b = Math.max(0, resultsFillColor.b - deltaB)
+        return Qt.rgba(r, g, b, neumoTheme.insetDarkAlpha)
+    }
     property var dieStyles: ({})
     property var dieStyleTemplates: ({"user": [], "damage": []})
     property var damageTemplateIconNames: ([
@@ -1822,17 +1835,16 @@ Window {
                     width: diceScroll.width
                     spacing: diceWindow.sectionSpacing
 
-                    NeumoRaisedSurface {
+                    NeumoInsetSurface {
                         id: resultsCard
                         theme: neumoTheme
                         Layout.fillWidth: true
                         Layout.leftMargin: diceWindow.sectionGutter
                         Layout.rightMargin: diceWindow.sectionGutter
                         radius: diceWindow.cardRadius
-                        fillColor: neumoTheme.baseColor
-                        shadowOffset: diceWindow.cardShadowOffset
-                        shadowRadius: diceWindow.cardShadowRadius
-                        shadowSamples: diceWindow.cardShadowSamples
+                        fillColor: diceWindow.resultsFillColor
+                        insetDarkColor: diceWindow.resultsInsetDarkColor
+                        insetLightColor: neumoTheme ? neumoTheme.insetLightColor : "#663B3C40"
                         contentPadding: diceWindow.cardPadding
                         implicitHeight: resultsContent.implicitHeight + contentPadding * 2
 
@@ -1848,17 +1860,12 @@ Window {
                                 font.weight: Font.DemiBold
                             }
 
-                            NeumoInsetSurface {
+                            Item {
                                 id: resultsViewport
-                                theme: neumoTheme
                                 Layout.fillWidth: true
                                 Layout.minimumHeight: 96
                                 Layout.preferredHeight: Math.max(96, resultsRow.implicitHeight + 12)
-                                radius: diceWindow.innerCardRadius
-                                fillColor: "#0C0C0D"
-                                contentPadding: diceWindow.innerCardPadding
-                                insetDarkColor: Qt.rgba(neumoTheme.shadowDarkBase.r, neumoTheme.shadowDarkBase.g, neumoTheme.shadowDarkBase.b, 0.92)
-                                insetLightColor: Qt.rgba(neumoTheme.shadowLightBase.r, neumoTheme.shadowLightBase.g, neumoTheme.shadowLightBase.b, 0.34)
+                                clip: true
 
                                 Item {
                                     anchors.fill: parent
@@ -1878,23 +1885,20 @@ Window {
                                         visible: (d20Result && d20Result.active) || (standardResult && standardResult.active) || (d100Result && d100Result.active)
                                         spacing: 8
 
-                                        NeumoRaisedSurface {
+                                        Rectangle {
                                             visible: d20Result && d20Result.active
                                             Layout.fillWidth: true
                                             radius: diceWindow.innerCardRadius
-                                            fillColor: "#121214"
-                                            shadowOffset: diceWindow.innerShadowOffset
-                                            shadowRadius: diceWindow.innerShadowRadius
-                                            shadowSamples: diceWindow.innerShadowSamples
-                                            shadowDarkColor: diceWindow.innerShadowDarkColor
-                                            shadowLightColor: diceWindow.innerShadowLightColor
-                                            contentPadding: diceWindow.innerCardPadding
-                                            implicitHeight: d20ResCol.implicitHeight + contentPadding * 2
+                                            color: "transparent"
+                                            border.width: 2
+                                            border.color: textPrimary
+                                            implicitHeight: d20ResCol.implicitHeight + diceWindow.innerCardPadding * 2
                                             clip: true
 
                                             ColumnLayout {
                                                 id: d20ResCol
-                                                width: parent.width
+                                                anchors.fill: parent
+                                                anchors.margins: diceWindow.innerCardPadding
                                                 spacing: 4
                                                 Label { text: String(d20Result ? d20Result.formula : "") + ":"; color: textSecondary; font.pixelSize: 10; wrapMode: Text.WordWrap; Layout.fillWidth: true }
                                                 Label { text: d20Result ? String(d20Result.total) : ""; color: (d20Result && d20Result.rolls && d20Result.rolls.length === 1 && d20Result.rolls[0].type === "single") ? d20CritColor(Number(d20Result.rolls[0].value || 0)) : textPrimary; font.pixelSize: 20; font.weight: Font.Bold }
@@ -1935,23 +1939,20 @@ Window {
                                             }
                                         }
 
-                                        NeumoRaisedSurface {
+                                        Rectangle {
                                             visible: standardResult && standardResult.active
                                             Layout.fillWidth: true
                                             radius: diceWindow.innerCardRadius
-                                            fillColor: "#121214"
-                                            shadowOffset: diceWindow.innerShadowOffset
-                                            shadowRadius: diceWindow.innerShadowRadius
-                                            shadowSamples: diceWindow.innerShadowSamples
-                                            shadowDarkColor: diceWindow.innerShadowDarkColor
-                                            shadowLightColor: diceWindow.innerShadowLightColor
-                                            contentPadding: diceWindow.innerCardPadding
-                                            implicitHeight: stdResCol.implicitHeight + contentPadding * 2
+                                            color: "transparent"
+                                            border.width: 2
+                                            border.color: textPrimary
+                                            implicitHeight: stdResCol.implicitHeight + diceWindow.innerCardPadding * 2
                                             clip: true
 
                                             ColumnLayout {
                                                 id: stdResCol
-                                                width: parent.width
+                                                anchors.fill: parent
+                                                anchors.margins: diceWindow.innerCardPadding
                                                 spacing: 4
                                                 Label { text: String(standardResult ? standardResult.formula : "") + ":"; color: textSecondary; font.pixelSize: 10; wrapMode: Text.WordWrap; Layout.fillWidth: true }
                                                 Label { text: standardResult ? String(standardResult.total) : ""; color: textPrimary; font.pixelSize: 20; font.weight: Font.Bold }
@@ -1971,23 +1972,20 @@ Window {
                                             }
                                         }
 
-                                        NeumoRaisedSurface {
+                                        Rectangle {
                                             visible: d100Result && d100Result.active
                                             Layout.preferredWidth: diceWindow.narrowLayout ? 78 : 86
                                             radius: diceWindow.innerCardRadius
-                                            fillColor: "#121214"
-                                            shadowOffset: diceWindow.innerShadowOffset
-                                            shadowRadius: diceWindow.innerShadowRadius
-                                            shadowSamples: diceWindow.innerShadowSamples
-                                            shadowDarkColor: diceWindow.innerShadowDarkColor
-                                            shadowLightColor: diceWindow.innerShadowLightColor
-                                            contentPadding: diceWindow.innerCardPadding
-                                            implicitHeight: d100ResCol.implicitHeight + contentPadding * 2
+                                            color: "transparent"
+                                            border.width: 2
+                                            border.color: textPrimary
+                                            implicitHeight: d100ResCol.implicitHeight + diceWindow.innerCardPadding * 2
                                             clip: true
 
                                             ColumnLayout {
                                                 id: d100ResCol
-                                                width: parent.width
+                                                anchors.fill: parent
+                                                anchors.margins: diceWindow.innerCardPadding
                                                 spacing: 3
                                                 DieGlyph {
                                                     dieType: "d100"
@@ -2940,6 +2938,11 @@ Window {
         }
     }
 }
+
+
+
+
+
 
 
 
