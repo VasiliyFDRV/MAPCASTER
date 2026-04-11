@@ -233,8 +233,8 @@ Window {
     function d20ResultCardWidth() {
         var chromeWidth = innerCardPadding * 2 + 4
         var contentWidth = Math.max(metricWidth(d20FormulaMetrics), metricWidth(d20TotalMetrics), d20ResultGlyphWidth(d20Result))
-        var minWidth = narrowLayout ? 98 : 108
-        var maxWidth = narrowLayout ? 132 : 146
+        var minWidth = narrowLayout ? 92 : 100
+        var maxWidth = narrowLayout ? 124 : 136
         return Math.max(minWidth, Math.min(maxWidth, contentWidth + chromeWidth))
     }
 
@@ -2722,4 +2722,5 @@ Window {
         }
     }
 }
+
 
