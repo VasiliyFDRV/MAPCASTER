@@ -9,8 +9,6 @@ Window {
     objectName: "diceWindow"
     width: 400
     height: 640
-    minimumWidth: 400
-    minimumHeight: 640
     visible: true
     color: neumoTheme ? neumoTheme.baseColor : "#2D2D2D"
     title: "DnD Maps - Дайсы"
@@ -60,7 +58,7 @@ Window {
     readonly property color innerShadowLightColor: Qt.rgba(neumoTheme.shadowLightBase.r, neumoTheme.shadowLightBase.g, neumoTheme.shadowLightBase.b, 0.22)
     readonly property int standardLabelWidth: narrowLayout ? 78 : 86
     readonly property int standardStepperWidth: narrowLayout ? 90 : 102
-    readonly property int d20LabelWidth: narrowLayout ? 90 : 100
+    readonly property int d20LabelWidth: standardLabelWidth
     readonly property int d20StepperWidth: narrowLayout ? 90 : 102
     readonly property int ghostIconSize: 26
     readonly property int actionButtonHeight: narrowLayout ? 48 : 52
@@ -1866,28 +1864,11 @@ Window {
                             RowLayout {
                                 Layout.fillWidth: true
                                 spacing: 12
-                                NeumoInsetSurface {
-                                    id: d20ModePanel
-                                    theme: neumoTheme
-                                    radius: diceWindow.innerCardRadius
-                                    fillColor: neumoTheme.baseColor
-                                    contentPadding: 6
-                                    implicitWidth: d20PreviewRow.implicitWidth + contentPadding * 2
-                                    implicitHeight: d20PreviewRow.implicitHeight + contentPadding * 2
-                                    Layout.preferredWidth: implicitWidth
+                                DiePreviewTile {
+                                    dieType: "d20"
+                                    tileSize: diceWindow.standardPreviewSize
                                     Layout.alignment: Qt.AlignVCenter
-                                    RowLayout {
-                                        id: d20PreviewRow
-                                        anchors.fill: parent
-                                        spacing: 0
-                                        DiePreviewTile {
-                                            dieType: "d20"
-                                            tileSize: 38
-                                            useInset: false
-                                            Layout.alignment: Qt.AlignVCenter
-                                            onClicked: rollD20Only()
-                                        }
-                                    }
+                                    onClicked: rollD20Only()
                                 }
                                 ColumnLayout {
                                     spacing: 4
