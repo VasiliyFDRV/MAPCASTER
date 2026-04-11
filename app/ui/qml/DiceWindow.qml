@@ -248,7 +248,7 @@ Window {
     function standardResultCardWidth() {
         var chromeWidth = innerCardPadding * 2 + 4
         var contentWidth = Math.max(metricWidth(standardFormulaMetrics), metricWidth(standardTotalMetrics), standardResultGlyphWidth(standardResult))
-        var minWidth = narrowLayout ? 108 : 118
+        var minWidth = narrowLayout ? 72 : 80
         var reservedWidth = 0
         if (d20Result && d20Result.active) {
             reservedWidth += d20ResultCardWidth() + resultsRow.spacing
@@ -2756,6 +2756,4 @@ Window {
         }
     }
 }
-
-
 
