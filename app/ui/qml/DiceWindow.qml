@@ -230,20 +230,14 @@ Window {
         return totalWidth
     }
 
-    function d20ResultCardWidth() {
+    function d20ResultMinWidth() {
+        return narrowLayout ? 46 : 50
+    }
+
+    function d20ResultBaseWidth() {
         var chromeWidth = innerCardPadding * 2 + 4
         var contentWidth = Math.max(metricWidth(d20FormulaMetrics), metricWidth(d20TotalMetrics), d20ResultGlyphWidth(d20Result))
-        var minWidth = narrowLayout ? 46 : 50
-        var reservedWidth = 0
-        if (standardResult && standardResult.active) {
-            reservedWidth += (narrowLayout ? 72 : 80) + resultsRow.spacing
-        }
-        if (d100Result && d100Result.active) {
-            reservedWidth += (narrowLayout ? 78 : 86) + resultsRow.spacing
-        }
-        var availableWidth = resultsViewport ? resultsViewport.width : (contentWidth + chromeWidth)
-        var maxWidth = Math.max(minWidth, availableWidth - reservedWidth)
-        return Math.max(minWidth, Math.min(maxWidth, contentWidth + chromeWidth))
+        return Math.max(d20ResultMinWidth(), contentWidth + chromeWidth)
     }
 
     function standardResultGlyphWidth(result) {
@@ -253,20 +247,88 @@ Window {
         return result.rolls.length * 26 + Math.max(0, result.rolls.length - 1) * 3
     }
 
-    function standardResultCardWidth() {
+    function standardResultMinWidth() {
+        return narrowLayout ? 72 : 80
+    }
+
+    function standardResultBaseWidth() {
         var chromeWidth = innerCardPadding * 2 + 4
         var contentWidth = Math.max(metricWidth(standardFormulaMetrics), metricWidth(standardTotalMetrics), standardResultGlyphWidth(standardResult))
-        var minWidth = narrowLayout ? 72 : 80
-        var reservedWidth = 0
-        if (d20Result && d20Result.active) {
-            reservedWidth += d20ResultCardWidth() + resultsRow.spacing
+        return Math.max(standardResultMinWidth(), contentWidth + chromeWidth)
+    }
+
+    function d100ResultCardWidth() {
+        return narrowLayout ? 78 : 86
+    }
+
+    function resultCardWidths() {
+        var d20Active = d20Result && d20Result.active
+        var standardActive = standardResult && standardResult.active
+        var d100Active = d100Result && d100Result.active
+        var activeCount = 0
+        if (d20Active) {
+            activeCount += 1
         }
-        if (d100Result && d100Result.active) {
-            reservedWidth += (narrowLayout ? 78 : 86) + resultsRow.spacing
+        if (standardActive) {
+            activeCount += 1
         }
-        var availableWidth = resultsViewport ? resultsViewport.width : (contentWidth + chromeWidth)
-        var maxWidth = Math.max(minWidth, availableWidth - reservedWidth)
-        return Math.max(minWidth, Math.min(maxWidth, contentWidth + chromeWidth))
+        if (d100Active) {
+            activeCount += 1
+        }
+
+        var widths = {
+            d20: d20Active ? d20ResultBaseWidth() : 0,
+            standard: standardActive ? standardResultBaseWidth() : 0,
+            d100: d100Active ? d100ResultCardWidth() : 0
+        }
+
+        var availableWidth = resultsViewport ? resultsViewport.width : 0
+        if (availableWidth <= 0 || activeCount <= 1) {
+            return widths
+        }
+
+        var spacingWidth = Math.max(0, activeCount - 1) * resultsRow.spacing
+        var pairAvailableWidth = availableWidth - spacingWidth - widths.d100
+        if (pairAvailableWidth <= 0 || !d20Active || !standardActive) {
+            return widths
+        }
+
+        var overflow = widths.d20 + widths.standard - pairAvailableWidth
+        if (overflow <= 0) {
+            return widths
+        }
+
+        var d20Slack = Math.max(0, widths.d20 - d20ResultMinWidth())
+        var standardSlack = Math.max(0, widths.standard - standardResultMinWidth())
+        if (d20Slack <= 0 && standardSlack <= 0) {
+            return widths
+        }
+
+        if (d20Slack >= standardSlack) {
+            var d20Reduce = Math.min(d20Slack, overflow)
+            widths.d20 -= d20Reduce
+            overflow -= d20Reduce
+
+            var standardReduce = Math.min(standardSlack, overflow)
+            widths.standard -= standardReduce
+        } else {
+            var standardReduceFirst = Math.min(standardSlack, overflow)
+            widths.standard -= standardReduceFirst
+            overflow -= standardReduceFirst
+
+            var d20ReduceSecond = Math.min(d20Slack, overflow)
+            widths.d20 -= d20ReduceSecond
+        }
+
+        return widths
+    }
+
+    function d20ResultCardWidth() {
+        return resultCardWidths().d20
+    }
+
+    function standardResultCardWidth() {
+        return resultCardWidths().standard
     }
 
     function rollD20Only() {
@@ -1844,8 +1906,9 @@ Window {
                                         spacing: 8
                                         Rectangle {
                                             visible: d20Result && d20Result.active
+                                            Layout.minimumWidth: diceWindow.d20ResultCardWidth()
                                             Layout.preferredWidth: diceWindow.d20ResultCardWidth()
-                                            Layout.fillWidth: (standardResult && standardResult.active) || (d100Result && d100Result.active)
+                                            Layout.maximumWidth: diceWindow.d20ResultCardWidth()
                                             radius: diceWindow.innerCardRadius
                                             color: "transparent"
                                             border.width: 2
@@ -1897,7 +1960,9 @@ Window {
                                         }
                                         Rectangle {
                                             visible: standardResult && standardResult.active
+                                            Layout.minimumWidth: diceWindow.standardResultCardWidth()
                                             Layout.preferredWidth: diceWindow.standardResultCardWidth()
+                                            Layout.maximumWidth: diceWindow.standardResultCardWidth()
                                             radius: diceWindow.innerCardRadius
                                             color: "transparent"
                                             border.width: 2
@@ -1928,7 +1993,9 @@ Window {
                                         }
                                         Rectangle {
                                             visible: d100Result && d100Result.active
-                                            Layout.preferredWidth: diceWindow.narrowLayout ? 78 : 86
+                                            Layout.minimumWidth: diceWindow.d100ResultCardWidth()
+                                            Layout.preferredWidth: diceWindow.d100ResultCardWidth()
+                                            Layout.maximumWidth: diceWindow.d100ResultCardWidth()
                                             radius: diceWindow.innerCardRadius
                                             color: "transparent"
                                             border.width: 2
@@ -2765,4 +2832,3 @@ Window {
         }
     }
 }
-
