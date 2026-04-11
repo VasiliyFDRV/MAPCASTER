@@ -8,6 +8,9 @@ Item {
     property bool enabled: true
     property bool compactMode: false
     property real radius: 16
+    property real contentPadding: 10
+    property string toolTip: ""
+    default property alias contentData: contentSlot.data
     signal clicked()
 
     implicitHeight: compactMode ? 48 : 52
@@ -52,8 +55,24 @@ Item {
             NumberAnimation { duration: 120; easing.type: Easing.OutCubic }
         }
 
+        MouseArea {
+            id: hitArea
+            anchors.fill: parent
+            enabled: root.enabled
+            hoverEnabled: true
+            cursorShape: Qt.PointingHandCursor
+            onClicked: root.clicked()
+        }
+
+        Item {
+            id: contentSlot
+            anchors.fill: parent
+            anchors.margins: root.contentPadding
+        }
+
         Label {
             anchors.centerIn: parent
+            visible: root.text.length > 0 && contentSlot.children.length === 0
             text: root.text
             color: root.theme ? root.theme.textPrimary : "#D0D0D0"
             opacity: root.enabled ? 1.0 : 0.45
@@ -62,12 +81,8 @@ Item {
         }
     }
 
-    MouseArea {
-        id: hitArea
-        anchors.fill: parent
-        enabled: root.enabled
-        hoverEnabled: true
-        cursorShape: Qt.PointingHandCursor
-        onClicked: root.clicked()
-    }
+    ToolTip.visible: hitArea.containsMouse && root.toolTip.length > 0
+    ToolTip.delay: 250
+    ToolTip.timeout: 3000
+    ToolTip.text: root.toolTip
 }

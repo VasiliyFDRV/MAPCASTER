@@ -64,6 +64,7 @@ Window {
     readonly property int ghostIconSize: 26
     readonly property int actionButtonHeight: narrowLayout ? 48 : 52
     readonly property int standardPreviewSize: narrowLayout ? 40 : 42
+    readonly property int d100ActionWidth: standardPreviewSize + ghostIconSize + 28
     readonly property color resultsFillColor: neumoTheme ? neumoTheme.mediaTileEmptyFillColor : "#1C1E22"
     readonly property color resultsInsetDarkColor: {
         if (!neumoTheme) {
@@ -2057,80 +2058,13 @@ Window {
                         Layout.rightMargin: diceWindow.sectionGutter
                         spacing: 10
 
-                        NeumoInsetActionButton {
-                            id: d100ActionTile
-                            theme: neumoTheme
-                            toolTip: "Бросить d100"
-                            Layout.fillWidth: true
-                            Layout.minimumWidth: 0
-                            Layout.preferredHeight: diceWindow.actionButtonHeight + 4
-                            Layout.preferredWidth: 132
-                            contentPadding: 8
-                            onClicked: rollD100Only()
-
-                            RowLayout {
-                                anchors.fill: parent
-                                spacing: 8
-
-                                DiePreviewTile {
-                                    dieType: "d100"
-                                    tileSize: diceWindow.standardPreviewSize
-                                    useInset: false
-                                    Layout.alignment: Qt.AlignVCenter
-                                    onClicked: rollD100Only()
-                                }
-
-                                Label {
-                                    text: "d100"
-                                    color: textSecondary
-                                    font.pixelSize: 12
-                                    Layout.alignment: Qt.AlignVCenter
-                                }
-
-                                Item { Layout.fillWidth: true }
-
-                                NeumoGhostIconButton {
-                                    theme: neumoTheme
-                                    rowHovered: d100TileHover.hovered
-                                    width: diceWindow.ghostIconSize
-                                    height: diceWindow.ghostIconSize
-                                    iconSource: Qt.resolvedUrl("icons/brush.svg")
-                                    toolTip: "Редактировать стиль"
-                                    Layout.alignment: Qt.AlignVCenter
-                                    onClicked: openDieEditor("d100")
-                                }
-
-                                HoverHandler { id: d100TileHover }
-                            }
-                        }
-
-                        NeumoInsetActionButton {
-                            theme: neumoTheme
-                            toolTip: "Бросить все"
-                            enabled: canRollAll()
-                            Layout.fillWidth: true
-                            Layout.minimumWidth: 0
-                            Layout.preferredHeight: diceWindow.actionButtonHeight + 4
-                            Layout.preferredWidth: 160
-                            contentPadding: 10
-                            onClicked: rollAll()
-
-                            Label {
-                                anchors.centerIn: parent
-                                text: "Бросить все"
-                                color: neumoTheme ? neumoTheme.textPrimary : "#D0D0D0"
-                                opacity: canRollAll() ? 1.0 : 0.45
-                                font.pixelSize: 14
-                                font.weight: Font.DemiBold
-                            }
-                        }
-
-                        NeumoInsetActionButton {
+                        NeumoRaisedActionButton {
                             theme: neumoTheme
                             toolTip: rollVisibilityToolTipText()
+                            compactMode: true
+                            contentPadding: 0
                             Layout.preferredWidth: diceWindow.actionButtonHeight + 4
                             Layout.preferredHeight: diceWindow.actionButtonHeight + 4
-                            contentPadding: 0
                             onClicked: cycleRollVisibilityMode()
 
                             Image {
@@ -2141,6 +2075,56 @@ Window {
                                 fillMode: Image.PreserveAspectFit
                                 smooth: true
                                 mipmap: true
+                            }
+                        }
+
+                        NeumoRaisedActionButton {
+                            theme: neumoTheme
+                            toolTip: "Бросить все"
+                            text: "Бросить все"
+                            enabled: canRollAll()
+                            compactMode: true
+                            Layout.fillWidth: true
+                            Layout.minimumWidth: 0
+                            Layout.preferredHeight: diceWindow.actionButtonHeight + 4
+                            onClicked: rollAll()
+                        }
+
+                        NeumoRaisedActionButton {
+                            id: d100ActionTile
+                            theme: neumoTheme
+                            toolTip: "Бросить d100"
+                            compactMode: true
+                            contentPadding: 8
+                            Layout.preferredWidth: diceWindow.d100ActionWidth
+                            Layout.minimumWidth: diceWindow.d100ActionWidth
+                            Layout.maximumWidth: diceWindow.d100ActionWidth
+                            Layout.preferredHeight: diceWindow.actionButtonHeight + 4
+                            onClicked: rollD100Only()
+
+                            RowLayout {
+                                anchors.fill: parent
+                                spacing: 8
+
+                                DiePreviewTile {
+                                    dieType: "d100"
+                                    tileSize: diceWindow.standardPreviewSize
+                                    Layout.alignment: Qt.AlignVCenter
+                                    onClicked: rollD100Only()
+                                }
+
+                                Item { Layout.fillWidth: true }
+
+                                NeumoGhostIconButton {
+                                    theme: neumoTheme
+                                    rowHovered: d100ActionTile.hovered
+                                    width: diceWindow.ghostIconSize
+                                    height: diceWindow.ghostIconSize
+                                    iconSource: Qt.resolvedUrl("icons/brush.svg")
+                                    toolTip: "Редактировать стиль"
+                                    Layout.alignment: Qt.AlignVCenter
+                                    onClicked: openDieEditor("d100")
+                                }
                             }
                         }
                     }
@@ -2670,6 +2654,4 @@ Window {
         }
     }
 }
-
-
 
