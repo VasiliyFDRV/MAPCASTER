@@ -651,6 +651,8 @@
       const d20RequestMeta = new Map();
       let previewDieKind = "d6";
       let previewStaticMode = false;
+      let previewPresentationMode = "roll";
+      const canonicalPreviewPoseCache = new Map();
       let styleOverrides = {
         scalePercent: 100,
         faceColor: "#c9c9c9",
@@ -3025,15 +3027,17 @@
         const cx = state.px;
         const cy = state.py - state.z * 0.55;
         const previewScale = clamp(Number(styleOverrides.scalePercent || 100) / 100, 0.5, 2.25);
-        const scale = state.previewMode ? previewScale : (0.78 + (1 - zNorm) * 0.22);
+        const previewIdle = state.phase === 'preview_idle';
+        const idleBoost = previewIdle ? 1.12 : 1.0;
+        const scale = state.previewMode ? (previewScale * idleBoost) : (0.78 + (1 - zNorm) * 0.22);
 
         state.wrap.style.opacity = String(clamp(state.alpha, 0, 1));
         state.wrap.style.transform = `translate(${cx}px, ${cy}px) translate(-50%, -50%) scale(${scale})`;
         state.dice.style.transform =
           `translate(-50%, -50%) rotateZ(${state.rz}deg) rotateY(${state.ry}deg) rotateX(${state.rx}deg)`;
 
-        const shadowScale = state.previewMode ? (0.72 * previewScale) : (0.78 + (1 - zNorm) * 0.26);
-        const shadowOpacity = (state.previewMode ? 0.22 : clamp((1 - zNorm) * 0.38, 0, 0.36)) * state.alpha;
+        const shadowScale = state.previewMode ? (0.72 * previewScale * (previewIdle ? 1.08 : 1.0)) : (0.78 + (1 - zNorm) * 0.26);
+        const shadowOpacity = (state.previewMode ? (previewIdle ? 0.28 : 0.22) : clamp((1 - zNorm) * 0.38, 0, 0.36)) * state.alpha;
         state.shadow.style.opacity = String(shadowOpacity);
         state.shadow.style.transform = `translate(${state.px}px, ${state.py + 28}px) translate(-50%, -50%) scale(${shadowScale})`;
 
@@ -3099,21 +3103,140 @@
           edgeWidth: 0.0,
         };
       };
+      function polyFaceTargetFromFaceId(spec, targetFace) {
+        const polySpec = spec || getDiceSpec('d8');
+        const faceId = Math.max(1, Math.min(Number(targetFace || 1), Number((polySpec.faceTransforms || []).length || 1)));
+        const bottomFace = oppositeFaceId(polySpec, faceId);
+        const targetNormal = polySpec.faceNormals[faceId - 1];
+        const bottomNormal = polySpec.faceNormals[bottomFace - 1];
+        let best = { rx: 0, ry: 0, rz: 0 };
+        let bestScore = -1e9;
+
+        for (let ax = -180; ax <= 180; ax += 15) {
+          for (let ay = -180; ay <= 180; ay += 15) {
+            for (let az = -180; az <= 180; az += 15) {
+              const candidateFace = topFaceFromSpecEuler(polySpec, ax, ay, az);
+              if (candidateFace !== faceId) continue;
+              const wTop = rotateVec(targetNormal, ax, ay, az);
+              const wBottom = rotateVec(bottomNormal, ax, ay, az);
+              const topUp = clamp(normalizeVec3(wTop.x, wTop.y, wTop.z).z, -1, 1);
+              const bottomDown = clamp(-normalizeVec3(wBottom.x, wBottom.y, wBottom.z).z, -1, 1);
+              const support = Math.min(topUp, bottomDown);
+              const score = support * 3000 + (topUp + bottomDown) * 500;
+              if (score > bestScore) {
+                bestScore = score;
+                best = { rx: ax, ry: ay, rz: az };
+              }
+            }
+          }
+        }
+
+        for (let ax = best.rx - 16; ax <= best.rx + 16; ax += 2) {
+          for (let ay = best.ry - 16; ay <= best.ry + 16; ay += 2) {
+            for (let az = best.rz - 16; az <= best.rz + 16; az += 2) {
+              const candidateFace = topFaceFromSpecEuler(polySpec, ax, ay, az);
+              if (candidateFace !== faceId) continue;
+              const wTop = rotateVec(targetNormal, ax, ay, az);
+              const wBottom = rotateVec(bottomNormal, ax, ay, az);
+              const topUp = clamp(normalizeVec3(wTop.x, wTop.y, wTop.z).z, -1, 1);
+              const bottomDown = clamp(-normalizeVec3(wBottom.x, wBottom.y, wBottom.z).z, -1, 1);
+              const support = Math.min(topUp, bottomDown);
+              const score = support * 4500 + (topUp + bottomDown) * 700;
+              if (score > bestScore) {
+                bestScore = score;
+                best = { rx: ax, ry: ay, rz: az };
+              }
+            }
+          }
+        }
+        return { face: faceId, target: best, score: bestScore, bottomFace: bottomFace };
+      }
+
+      function d4TruncFaceTargetFromValue(targetValue) {
+        const spec = getDiceSpec('d4');
+        const valueMap = spec.faceValueById || {};
+        let targetFace = Number((spec.valueFaceIds || [1])[0] || 1);
+        Object.keys(valueMap).forEach((faceId) => {
+          if (Number(valueMap[faceId] || 0) === Number(targetValue || 4)) {
+            targetFace = Number(faceId);
+          }
+        });
+        const targetNormal = (spec.faceNormals || [])[targetFace - 1] || { x: 0, y: 0, z: 1 };
+        let best = { rx: 0, ry: 0, rz: 0 };
+        let bestScore = -1e9;
+
+        for (let ax = -180; ax <= 180; ax += 15) {
+          for (let ay = -180; ay <= 180; ay += 15) {
+            for (let az = -180; az <= 180; az += 15) {
+              const candidateTop = topValueFaceFromSpecEuler(spec, ax, ay, az);
+              if (candidateTop !== targetFace) continue;
+              const bottomId = bottomFaceFromSpecEuler(spec, ax, ay, az);
+              if (Number(valueMap[bottomId] || 0) > 0) continue;
+              const wTop = rotateVec(targetNormal, ax, ay, az);
+              const topUp = clamp(normalizeVec3(wTop.x, wTop.y, wTop.z).z, -1, 1);
+              const score = topUp * 5200;
+              if (score > bestScore) {
+                bestScore = score;
+                best = { rx: ax, ry: ay, rz: az };
+              }
+            }
+          }
+        }
+
+        for (let ax = best.rx - 16; ax <= best.rx + 16; ax += 2) {
+          for (let ay = best.ry - 16; ay <= best.ry + 16; ay += 2) {
+            for (let az = best.rz - 16; az <= best.rz + 16; az += 2) {
+              const candidateTop = topValueFaceFromSpecEuler(spec, ax, ay, az);
+              if (candidateTop !== targetFace) continue;
+              const bottomId = bottomFaceFromSpecEuler(spec, ax, ay, az);
+              if (Number(valueMap[bottomId] || 0) > 0) continue;
+              const wTop = rotateVec(targetNormal, ax, ay, az);
+              const topUp = clamp(normalizeVec3(wTop.x, wTop.y, wTop.z).z, -1, 1);
+              const score = topUp * 6600;
+              if (score > bestScore) {
+                bestScore = score;
+                best = { rx: ax, ry: ay, rz: az };
+              }
+            }
+          }
+        }
+
+        return { face: targetFace, target: best, score: bestScore };
+      }
+
+      function getCanonicalPreviewPose(kind) {
+        const k = String(kind || 'd6').toLowerCase();
+        if (canonicalPreviewPoseCache.has(k)) {
+          return canonicalPreviewPoseCache.get(k);
+        }
+        let pose = { rx: -16, ry: 34, rz: 10 };
+        if (k === 'd20') pose = polyFaceTargetFromFaceId(getDiceSpec('d20'), 20).target;
+        else if (k === 'd12') pose = polyFaceTargetFromFaceId(getDiceSpec('d12'), 12).target;
+        else if (k === 'd10') pose = polyFaceTargetFromFaceId(getDiceSpec('d10'), 10).target;
+        else if (k === 'd10t' || k === 'd100') pose = polyFaceTargetFromFaceId(getDiceSpec('d10t'), 1).target;
+        else if (k === 'd8') pose = polyFaceTargetFromFaceId(getDiceSpec('d8'), 8).target;
+        else if (k === 'd6') pose = polyFaceTargetFromFaceId(getDiceSpec('d6'), 6).target;
+        else if (k === 'd4') pose = d4TruncFaceTargetFromValue(4).target;
+        canonicalPreviewPoseCache.set(k, pose);
+        return pose;
+      }
+
       function getPreviewStaticPose(kind) {
-        const k = String(kind || "d6").toLowerCase();
-        if (k === "d20") return { rx: -28, ry: 36, rz: 14 };
-        if (k === "d12") return { rx: -24, ry: 30, rz: 12 };
-        if (k === "d10" || k === "d10t") return { rx: -18, ry: 34, rz: 10 };
-        if (k === "d8") return { rx: -22, ry: 22, rz: 14 };
-        if (k === "d4") return { rx: -14, ry: 26, rz: 8 };
-        return { rx: -16, ry: 34, rz: 10 };
+        return getCanonicalPreviewPose(kind);
       }
 
       window.setPreviewDieKind = function setPreviewDieKind(kind) {
         previewDieKind = String(kind || "d6").toLowerCase();
       };
 
+      window.setPreviewPresentationMode = function setPreviewPresentationMode(mode) {
+        const next = String(mode || 'roll').toLowerCase();
+        previewPresentationMode = (next === 'static' || next === 'idle') ? next : 'roll';
+        previewStaticMode = previewPresentationMode === 'static';
+      };
+
       window.setPreviewStaticMode = function setPreviewStaticMode(flag) {
+        previewPresentationMode = Boolean(flag) ? 'static' : 'roll';
         previewStaticMode = Boolean(flag);
       };
 
@@ -3166,8 +3289,10 @@
         const previewIndex = Number(slotIndex || 0);
         const previewTotal = Math.max(1, Number(totalCount || 1));
         const previewOffset = (previewIndex - (previewTotal - 1) * 0.5) * 56;
-        const previewStatic = previewMode && previewStaticMode;
-        const staticPose = previewStatic ? getPreviewStaticPose(modelKind) : null;
+        const previewPresentation = previewMode ? String(previewPresentationMode || 'roll') : 'roll';
+        const previewStatic = previewMode && previewPresentation === 'static';
+        const previewIdle = previewMode && previewPresentation === 'idle';
+        const staticPose = (previewStatic || previewIdle) ? getCanonicalPreviewPose(modelKind) : null;
 
         const throwPower = previewMode ? 0 : random(0.72, 1.35);
         const spinPower = previewMode ? 0 : random(0.95, 1.90);
@@ -3184,12 +3309,12 @@
           z: previewMode ? 0 : random(190, 280),
           vz: previewMode ? 0 : (random(20, 95) * throwPower),
 
-          rx: previewStatic ? staticPose.rx : random(0, 360),
-          ry: previewStatic ? staticPose.ry : random(0, 360),
-          rz: previewStatic ? staticPose.rz : random(0, 360),
-          vrx: previewMode ? (previewStatic ? 0 : random(12, 24) * (Math.random() < 0.5 ? -1 : 1)) : (random(124, 428) * spinPower),
-          vry: previewMode ? (previewStatic ? 0 : random(18, 30) * (Math.random() < 0.5 ? -1 : 1)) : (random(145, 483) * spinPower),
-          vrz: previewMode ? (previewStatic ? 0 : random(6, 14) * (Math.random() < 0.5 ? -1 : 1)) : (random(76, 290) * spinPower),
+          rx: (previewStatic || previewIdle) ? staticPose.rx : random(0, 360),
+          ry: (previewStatic || previewIdle) ? staticPose.ry : random(0, 360),
+          rz: (previewStatic || previewIdle) ? staticPose.rz : random(0, 360),
+          vrx: previewMode ? ((previewStatic || previewIdle) ? 0 : random(12, 24) * (Math.random() < 0.5 ? -1 : 1)) : (random(124, 428) * spinPower),
+          vry: previewMode ? ((previewStatic || previewIdle) ? 0 : random(18, 30) * (Math.random() < 0.5 ? -1 : 1)) : (random(145, 483) * spinPower),
+          vrz: previewMode ? ((previewStatic || previewIdle) ? 0 : random(6, 14) * (Math.random() < 0.5 ? -1 : 1)) : (random(76, 290) * spinPower),
           baseVrx: 0,
           baseVry: 0,
           baseVrz: 0,
@@ -3198,7 +3323,7 @@
           bounces: 0,
           settledFor: 0,
           alpha: 1,
-          phase: previewMode ? (previewStatic ? 'preview_static' : 'preview') : 'rolling',
+          phase: previewMode ? (previewStatic ? 'preview_static' : (previewIdle ? 'preview_idle' : 'preview')) : 'rolling',
           phaseTime: 0,
           alignTarget: null,
           alignReady: false,
@@ -3282,7 +3407,7 @@
           const dt = Math.min(0.033, (ts - lastTs) / 1000);
           lastTs = ts;
 
-          if (state.phase === 'preview' || state.phase === 'preview_static') {
+          if (state.phase === 'preview' || state.phase === 'preview_static' || state.phase === 'preview_idle') {
             const pw = window.innerWidth;
             const ph = window.innerHeight;
             const pOffset = (Number(state.previewSlot || 0) - (Number(state.previewTotal || 1) - 1) * 0.5) * 56;
@@ -3293,6 +3418,8 @@
               state.rx = normalizeAngle(state.rx + state.vrx * dt);
               state.ry = normalizeAngle(state.ry + state.vry * dt);
               state.rz = normalizeAngle(state.rz + state.vrz * dt);
+            } else if (state.phase === 'preview_idle') {
+              state.ry = normalizeAngle(state.ry + 18 * dt);
             }
             render(state);
             raf = requestAnimationFrame(frame);
@@ -3529,3 +3656,4 @@
   </script>
 </body>
 </html>
+

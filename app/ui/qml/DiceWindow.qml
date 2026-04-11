@@ -109,6 +109,20 @@ Window {
     property bool templateSnapshotBusy: false
     property bool templateSnapshotWebReady: false
     property var templateSnapshotCurrentTask: null
+    property var mainPreviewSnapshotCache: ({})
+    property var mainPreviewSnapshotQueue: ([])
+    property bool mainPreviewSnapshotBusy: false
+    property bool mainPreviewSnapshotWebReady: false
+    property var mainPreviewSnapshotCurrentTask: null
+    property bool mainPreviewHoverWebReady: false
+    property var mainPreviewHoverTile: null
+    property string mainPreviewHoverDieType: ""
+    property real mainPreviewHoverX: -1000
+    property real mainPreviewHoverY: -1000
+    property real mainPreviewHoverWidth: 1
+    property real mainPreviewHoverHeight: 1
+    property int mainPreviewPoseVersion: 1
+    readonly property var mainPreviewDieTypes: (["d20", "d4", "d6", "d8", "d10", "d12", "d100"])
     property var damageTemplateLabels: ([
         "Оружие",
         "Огонь",
@@ -759,6 +773,132 @@ Window {
         payload.scalePercent = Number(payload.scalePercent || 100) * 2.25
         return payload
     }
+    function mainPreviewSnapshotKey(dieType, styleObj) {
+        var key = String(dieType || "d6").toLowerCase()
+        return JSON.stringify({
+            "variant": "main-preview",
+            "poseVersion": Number(mainPreviewPoseVersion || 1),
+            "dieType": key,
+            "previewKind": previewKindForDieType(key),
+            "payload": styleToSnapshotPayload(styleObj)
+        })
+    }
+    function mainPreviewSnapshotSource(dieType) {
+        var key = mainPreviewSnapshotKey(dieType, styleForDie(dieType))
+        var cache = mainPreviewSnapshotCache || {}
+        return cache[key] ? String(cache[key]) : ""
+    }
+    function enqueueMainPreviewSnapshot(dieType, forceRender, styleOverride) {
+        var key = String(dieType || "d6").toLowerCase()
+        var style = styleOverride && typeof styleOverride === "object" ? cloneStyle(styleOverride) : styleForDie(key)
+        var cacheKey = mainPreviewSnapshotKey(key, style)
+        var cache = mainPreviewSnapshotCache || {}
+        if (!forceRender && cache[cacheKey]) {
+            return
+        }
+        if (mainPreviewSnapshotBusy && mainPreviewSnapshotCurrentTask && mainPreviewSnapshotCurrentTask.key === cacheKey) {
+            return
+        }
+        var q = mainPreviewSnapshotQueue ? mainPreviewSnapshotQueue.slice(0) : []
+        for (var i = 0; i < q.length; ++i) {
+            if (q[i] && q[i].key === cacheKey) {
+                return
+            }
+        }
+        q.push({
+            "key": cacheKey,
+            "dieType": key,
+            "previewKind": previewKindForDieType(key),
+            "payload": styleToSnapshotPayload(style)
+        })
+        mainPreviewSnapshotQueue = q
+        processMainPreviewSnapshotQueue()
+    }
+    function refreshMainPreviewSnapshots(forceRender) {
+        for (var i = 0; i < mainPreviewDieTypes.length; ++i) {
+            enqueueMainPreviewSnapshot(mainPreviewDieTypes[i], Boolean(forceRender))
+        }
+    }
+    function processMainPreviewSnapshotQueue() {
+        if (!mainPreviewSnapshotWebReady || mainPreviewSnapshotBusy || !mainPreviewSnapshotWeb) {
+            return
+        }
+        var q = mainPreviewSnapshotQueue ? mainPreviewSnapshotQueue.slice(0) : []
+        if (q.length <= 0) {
+            return
+        }
+        var task = q.shift()
+        mainPreviewSnapshotQueue = q
+        mainPreviewSnapshotCurrentTask = task
+        mainPreviewSnapshotBusy = true
+        mainPreviewSnapshotWeb.runJavaScript("window.setPreviewPresentationMode && window.setPreviewPresentationMode('static');")
+        mainPreviewSnapshotWeb.runJavaScript("window.setStyleOverrides && window.setStyleOverrides(" + JSON.stringify(task.payload) + ");")
+        mainPreviewSnapshotWeb.runJavaScript("window.setPreviewDieKind && window.setPreviewDieKind('" + task.previewKind + "');")
+        mainPreviewSnapshotWeb.runJavaScript("window.startPreviewRoll && window.startPreviewRoll();")
+        mainPreviewSnapshotCaptureTimer.restart()
+    }
+    function handleMainPreviewSnapshotCaptured(result) {
+        var task = mainPreviewSnapshotCurrentTask
+        if (task && result && result.url) {
+            var cache = Object.assign({}, mainPreviewSnapshotCache || {})
+            cache[task.key] = result.url
+            mainPreviewSnapshotCache = cache
+        }
+        mainPreviewSnapshotBusy = false
+        mainPreviewSnapshotCurrentTask = null
+        processMainPreviewSnapshotQueue()
+    }
+    function captureMainPreviewSnapshotCurrentTask() {
+        if (!mainPreviewSnapshotBusy || !mainPreviewSnapshotCurrentTask || !mainPreviewSnapshotWeb) {
+            return
+        }
+        mainPreviewSnapshotWeb.grabToImage(function(result) {
+            diceWindow.handleMainPreviewSnapshotCaptured(result)
+        })
+    }
+    function syncMainPreviewHoverGeometry() {
+        if (!mainPreviewHoverTile || !mainPreviewOverlayHost) {
+            return
+        }
+        var margin = Number(mainPreviewHoverTile.previewMargin || 0)
+        var p = mainPreviewHoverTile.mapToItem(mainPreviewOverlayHost, margin, margin)
+        mainPreviewHoverX = p.x
+        mainPreviewHoverY = p.y
+        mainPreviewHoverWidth = Math.max(1, mainPreviewHoverTile.width - margin * 2)
+        mainPreviewHoverHeight = Math.max(1, mainPreviewHoverTile.height - margin * 2)
+    }
+    function startMainPreviewHoverNow() {
+        if (!mainPreviewHoverTile || !mainPreviewHoverWebReady || !mainPreviewHoverWeb) {
+            return
+        }
+        syncMainPreviewHoverGeometry()
+        var stylePayload = styleToWebPayload(styleForDie(mainPreviewHoverDieType))
+        mainPreviewHoverWeb.runJavaScript("window.setPreviewPresentationMode && window.setPreviewPresentationMode('idle');")
+        mainPreviewHoverWeb.runJavaScript("window.setStyleOverrides && window.setStyleOverrides(" + JSON.stringify(stylePayload) + ");")
+        mainPreviewHoverWeb.runJavaScript("window.setPreviewDieKind && window.setPreviewDieKind('" + previewKindForDieType(mainPreviewHoverDieType) + "');")
+        mainPreviewHoverWeb.runJavaScript("window.startPreviewRoll && window.startPreviewRoll();")
+    }
+    function activateMainPreviewHover(tile) {
+        if (!tile || !tile.enabled) {
+            return
+        }
+        mainPreviewHoverTile = tile
+        mainPreviewHoverDieType = String(tile.dieType || "d6")
+        syncMainPreviewHoverGeometry()
+        startMainPreviewHoverNow()
+    }
+    function deactivateMainPreviewHover(tile) {
+        if (tile && mainPreviewHoverTile !== tile) {
+            return
+        }
+        if (mainPreviewHoverWeb) {
+            mainPreviewHoverWeb.runJavaScript("window.clearAllDice && window.clearAllDice();")
+        }
+        mainPreviewHoverTile = null
+        mainPreviewHoverDieType = ""
+        mainPreviewHoverX = -1000
+        mainPreviewHoverY = -1000
+    }
     function templateStyleHash(styleObj) {
         var s = cloneStyle(styleObj)
         return [
@@ -907,8 +1047,12 @@ Window {
         var bag = Object.assign({}, dieStyles || {})
         bag[key] = savedStyle
         dieStyles = bag
+        enqueueMainPreviewSnapshot(key, true, savedStyle)
         if (typeof appController !== "undefined" && appController && appController.update_dice_style) {
             appController.update_dice_style(key, savedStyle)
+        }
+        if (mainPreviewHoverTile && mainPreviewHoverDieType === key) {
+            startMainPreviewHoverNow()
         }
         dieStylePopup.close()
     }
@@ -1165,6 +1309,7 @@ Window {
         resetState()
         loadDieStylesFromSettings()
         loadDieStyleTemplatesFromSettings()
+        refreshMainPreviewSnapshots(false)
     }
     Connections {
         target: appController
@@ -1172,6 +1317,7 @@ Window {
             if (!dieStylePopup || !dieStylePopup.visible) {
                 loadDieStylesFromSettings()
                 loadDieStyleTemplatesFromSettings()
+                refreshMainPreviewSnapshots(true)
             }
         }
     }
@@ -1675,6 +1821,9 @@ Window {
         property string dieType: "d6"
         property int tileSize: 46
         property bool useInset: true
+        readonly property int previewMargin: tile.useInset ? 7 : 4
+        readonly property string snapshotSource: diceWindow.mainPreviewSnapshotSource(tile.dieType)
+        readonly property bool snapshotReady: snapshotSource.length > 0
         signal clicked()
         implicitWidth: tile.tileSize
         implicitHeight: tile.tileSize
@@ -1703,10 +1852,29 @@ Window {
             anchors.fill: parent
             visible: !tile.useInset
         }
+        Image {
+            anchors.fill: tileInset
+            anchors.margins: tile.previewMargin
+            visible: tile.useInset
+                && tile.snapshotReady
+                && (!diceWindow.mainPreviewHoverTile || diceWindow.mainPreviewHoverTile !== tile || !diceWindow.mainPreviewHoverWebReady)
+            source: tile.snapshotSource
+            asynchronous: true
+            cache: false
+            smooth: true
+            mipmap: true
+            fillMode: Image.PreserveAspectFit
+            opacity: tile.enabled ? 1.0 : 0.55
+            scale: tilePress.pressed ? 0.96 : 1.0
+            Behavior on scale {
+                NumberAnimation { duration: 90; easing.type: Easing.OutCubic }
+            }
+        }
         TemplateStylePreview {
             anchors.fill: tileInset
-            anchors.margins: 7
+            anchors.margins: tile.previewMargin
             visible: tile.useInset
+                && (!tile.snapshotReady || (diceWindow.mainPreviewHoverTile === tile && !diceWindow.mainPreviewHoverWebReady))
             dieType: tile.dieType
             styleData: diceWindow.styleForDie(tile.dieType)
             labelText: diceWindow.previewLabelForDieType(tile.dieType)
@@ -1735,8 +1903,19 @@ Window {
             hoverEnabled: true
             enabled: tile.enabled
             cursorShape: Qt.PointingHandCursor
+            onContainsMouseChanged: {
+                if (containsMouse && tile.useInset) {
+                    diceWindow.activateMainPreviewHover(tile)
+                } else {
+                    diceWindow.deactivateMainPreviewHover(tile)
+                }
+            }
             onClicked: tile.clicked()
         }
+        onXChanged: if (diceWindow.mainPreviewHoverTile === tile) diceWindow.syncMainPreviewHoverGeometry()
+        onYChanged: if (diceWindow.mainPreviewHoverTile === tile) diceWindow.syncMainPreviewHoverGeometry()
+        onWidthChanged: if (diceWindow.mainPreviewHoverTile === tile) diceWindow.syncMainPreviewHoverGeometry()
+        onHeightChanged: if (diceWindow.mainPreviewHoverTile === tile) diceWindow.syncMainPreviewHoverGeometry()
     }
     component TemplateSlotButton: Item {
         id: slot
@@ -1904,6 +2083,7 @@ Window {
             contentWidth: width
             contentHeight: diceContent.implicitHeight
             interactive: contentHeight > height
+            onContentYChanged: diceWindow.syncMainPreviewHoverGeometry()
             ScrollBar.vertical: NeumoScrollBar {}
             ScrollBar.horizontal: NeumoScrollBar {}
             ColumnLayout {
@@ -2399,6 +2579,69 @@ Window {
                 console.log("[dice-ui-debug] fallback timer fired without pending result")
             }
         }
+    }
+    Item {
+        id: mainPreviewOverlayHost
+        anchors.fill: parent
+        z: 20
+        onWidthChanged: diceWindow.syncMainPreviewHoverGeometry()
+        onHeightChanged: diceWindow.syncMainPreviewHoverGeometry()
+        Rectangle {
+            id: mainPreviewHoverFrame
+            visible: !!diceWindow.mainPreviewHoverTile && diceWindow.mainPreviewHoverWebReady
+            x: diceWindow.mainPreviewHoverX
+            y: diceWindow.mainPreviewHoverY
+            width: diceWindow.mainPreviewHoverWidth
+            height: diceWindow.mainPreviewHoverHeight
+            radius: Math.max(8, Math.round(Math.min(width, height) * 0.18))
+            color: "transparent"
+            clip: true
+            WebEngineView {
+                id: mainPreviewHoverWeb
+                anchors.fill: parent
+                visible: true
+                enabled: false
+                backgroundColor: "#00000000"
+                url: Qt.resolvedUrl("../web/dice_physics.html")
+                onLoadingChanged: function(req) {
+                    if (req.status === WebEngineView.LoadFailedStatus) {
+                        mainPreviewHoverWebReady = false
+                        return
+                    }
+                    if (req.status === WebEngineView.LoadSucceededStatus) {
+                        mainPreviewHoverWebReady = true
+                        diceWindow.startMainPreviewHoverNow()
+                    }
+                }
+            }
+        }
+    }
+    WebEngineView {
+        id: mainPreviewSnapshotWeb
+        x: -10000
+        y: -10000
+        width: 96
+        height: 96
+        visible: true
+        enabled: true
+        backgroundColor: "#00000000"
+        url: Qt.resolvedUrl("../web/dice_physics.html")
+        onLoadingChanged: function(req) {
+            if (req.status === WebEngineView.LoadFailedStatus) {
+                mainPreviewSnapshotWebReady = false
+                return
+            }
+            if (req.status === WebEngineView.LoadSucceededStatus) {
+                mainPreviewSnapshotWebReady = true
+                diceWindow.processMainPreviewSnapshotQueue()
+            }
+        }
+    }
+    Timer {
+        id: mainPreviewSnapshotCaptureTimer
+        interval: 120
+        repeat: false
+        onTriggered: diceWindow.captureMainPreviewSnapshotCurrentTask()
     }
     Popup {
         id: dieStylePopup
@@ -2904,3 +3147,4 @@ Window {
         }
     }
 }
+
