@@ -2059,43 +2059,17 @@ Window {
                         spacing: 10
 
                         NeumoRaisedActionButton {
-                            theme: neumoTheme
-                            toolTip: rollVisibilityToolTipText()
-                            compactMode: true
-                            contentPadding: 0
-                            Layout.preferredWidth: diceWindow.actionButtonHeight + 4
-                            Layout.preferredHeight: diceWindow.actionButtonHeight + 4
-                            onClicked: cycleRollVisibilityMode()
-
-                            Image {
-                                anchors.centerIn: parent
-                                width: 20
-                                height: 20
-                                source: rollVisibilityIconSource()
-                                fillMode: Image.PreserveAspectFit
-                                smooth: true
-                                mipmap: true
-                            }
-                        }
-
-                        NeumoRaisedActionButton {
-                            theme: neumoTheme
-                            toolTip: "Бросить все"
-                            text: "Бросить все"
-                            enabled: canRollAll()
-                            compactMode: true
-                            Layout.fillWidth: true
-                            Layout.minimumWidth: 0
-                            Layout.preferredHeight: diceWindow.actionButtonHeight + 4
-                            onClicked: rollAll()
-                        }
-
-                        NeumoRaisedActionButton {
                             id: d100ActionTile
                             theme: neumoTheme
                             toolTip: "Бросить d100"
                             compactMode: true
                             contentPadding: 8
+                            baseShadowOffset: diceWindow.cardShadowOffset
+                            baseShadowRadius: diceWindow.cardShadowRadius
+                            hoverShadowOffset: diceWindow.cardShadowOffset + 0.35
+                            hoverShadowRadius: diceWindow.cardShadowRadius + 0.8
+                            pressedShadowOffset: Math.max(2.8, diceWindow.cardShadowOffset - 0.35)
+                            pressedShadowRadius: Math.max(6.8, diceWindow.cardShadowRadius - 0.8)
                             Layout.preferredWidth: diceWindow.d100ActionWidth
                             Layout.minimumWidth: diceWindow.d100ActionWidth
                             Layout.maximumWidth: diceWindow.d100ActionWidth
@@ -2125,6 +2099,52 @@ Window {
                                     Layout.alignment: Qt.AlignVCenter
                                     onClicked: openDieEditor("d100")
                                 }
+                            }
+                        }
+
+                        NeumoRaisedActionButton {
+                            theme: neumoTheme
+                            toolTip: "Бросить все"
+                            text: "Бросить все"
+                            enabled: canRollAll()
+                            compactMode: true
+                            baseShadowOffset: diceWindow.cardShadowOffset
+                            baseShadowRadius: diceWindow.cardShadowRadius
+                            hoverShadowOffset: diceWindow.cardShadowOffset + 0.35
+                            hoverShadowRadius: diceWindow.cardShadowRadius + 0.8
+                            pressedShadowOffset: Math.max(2.8, diceWindow.cardShadowOffset - 0.35)
+                            pressedShadowRadius: Math.max(6.8, diceWindow.cardShadowRadius - 0.8)
+                            Layout.fillWidth: true
+                            Layout.minimumWidth: 0
+                            Layout.preferredHeight: diceWindow.actionButtonHeight + 4
+                            onClicked: rollAll()
+                        }
+
+                        NeumoRaisedActionButton {
+                            theme: neumoTheme
+                            toolTip: rollVisibilityToolTipText()
+                            compactMode: true
+                            contentPadding: 0
+                            baseShadowOffset: diceWindow.cardShadowOffset
+                            baseShadowRadius: diceWindow.cardShadowRadius
+                            hoverShadowOffset: diceWindow.cardShadowOffset + 0.35
+                            hoverShadowRadius: diceWindow.cardShadowRadius + 0.8
+                            pressedShadowOffset: Math.max(2.8, diceWindow.cardShadowOffset - 0.35)
+                            pressedShadowRadius: Math.max(6.8, diceWindow.cardShadowRadius - 0.8)
+                            Layout.preferredWidth: diceWindow.actionButtonHeight + 4
+                            Layout.minimumWidth: diceWindow.actionButtonHeight + 4
+                            Layout.maximumWidth: diceWindow.actionButtonHeight + 4
+                            Layout.preferredHeight: diceWindow.actionButtonHeight + 4
+                            onClicked: cycleRollVisibilityMode()
+
+                            Image {
+                                anchors.centerIn: parent
+                                width: 20
+                                height: 20
+                                source: rollVisibilityIconSource()
+                                fillMode: Image.PreserveAspectFit
+                                smooth: true
+                                mipmap: true
                             }
                         }
                     }

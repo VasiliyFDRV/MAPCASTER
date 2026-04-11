@@ -18,12 +18,13 @@ Item {
 
     readonly property bool hovered: hitArea.containsMouse && root.enabled
     readonly property bool pressed: hitArea.pressed && root.enabled
-    readonly property real baseShadowOffset: compactMode ? 5.0 : 5.4
-    readonly property real baseShadowRadius: compactMode ? 10.8 : 11.2
-    readonly property real hoverShadowOffset: compactMode ? 5.7 : 6.2
-    readonly property real hoverShadowRadius: compactMode ? 12.0 : 12.6
-    readonly property real pressedShadowOffset: compactMode ? 4.2 : 4.5
-    readonly property real pressedShadowRadius: compactMode ? 9.8 : 10.2
+    property real baseShadowOffset: compactMode ? 5.0 : 5.4
+    property real baseShadowRadius: compactMode ? 10.8 : 11.2
+    property real hoverShadowOffset: compactMode ? 5.7 : 6.2
+    property real hoverShadowRadius: compactMode ? 12.0 : 12.6
+    property real pressedShadowOffset: compactMode ? 4.2 : 4.5
+    property real pressedShadowRadius: compactMode ? 9.8 : 10.2
+    property int shadowSamples: 23
 
     NeumoRaisedSurface {
         anchors.fill: parent
@@ -36,7 +37,7 @@ Item {
         shadowRadius: root.pressed
             ? root.pressedShadowRadius
             : (root.hovered ? root.hoverShadowRadius : root.baseShadowRadius)
-        shadowSamples: 23
+        shadowSamples: root.shadowSamples
         shadowDarkColor: root.hovered
             ? (root.theme ? root.theme.raisedShadowDarkColorHover : "#FC151618")
             : (root.theme ? root.theme.raisedShadowDarkColor : "#B8151618")
