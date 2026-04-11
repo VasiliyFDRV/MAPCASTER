@@ -234,7 +234,15 @@ Window {
         var chromeWidth = innerCardPadding * 2 + 4
         var contentWidth = Math.max(metricWidth(d20FormulaMetrics), metricWidth(d20TotalMetrics), d20ResultGlyphWidth(d20Result))
         var minWidth = narrowLayout ? 46 : 50
-        var maxWidth = narrowLayout ? 124 : 136
+        var reservedWidth = 0
+        if (standardResult && standardResult.active) {
+            reservedWidth += (narrowLayout ? 72 : 80) + resultsRow.spacing
+        }
+        if (d100Result && d100Result.active) {
+            reservedWidth += (narrowLayout ? 78 : 86) + resultsRow.spacing
+        }
+        var availableWidth = resultsViewport ? resultsViewport.width : (contentWidth + chromeWidth)
+        var maxWidth = Math.max(minWidth, availableWidth - reservedWidth)
         return Math.max(minWidth, Math.min(maxWidth, contentWidth + chromeWidth))
     }
 
@@ -2756,5 +2764,4 @@ Window {
         }
     }
 }
-
 
