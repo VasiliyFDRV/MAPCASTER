@@ -47,6 +47,7 @@ Window {
     readonly property int sectionSpacing: narrowLayout ? 10 : 12
     readonly property int cardRadius: narrowLayout ? 16 : 18
     readonly property int cardPadding: narrowLayout ? 10 : 12
+    readonly property int resultsCardPadding: narrowLayout ? 14 : 16
     readonly property real cardShadowOffset: narrowLayout ? 3.5 : 4.4
     readonly property real cardShadowRadius: narrowLayout ? 8.0 : 9.4
     readonly property int cardShadowSamples: 23
@@ -1728,7 +1729,7 @@ Window {
                         fillColor: diceWindow.resultsFillColor
                         insetDarkColor: diceWindow.resultsInsetDarkColor
                         insetLightColor: diceWindow.resultsInsetLightColor
-                        contentPadding: diceWindow.cardPadding
+                        contentPadding: diceWindow.resultsCardPadding
                         implicitHeight: resultsContent.implicitHeight + contentPadding * 2
                         ColumnLayout {
                             id: resultsContent
