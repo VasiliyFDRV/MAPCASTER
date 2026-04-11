@@ -212,6 +212,51 @@ Window {
         return "Бросок в отдельном окне"
     }
 
+    function clampValue(value, minValue, maxValue) {
+        return Math.max(minValue, Math.min(maxValue, value))
+    }
+
+    function metricWidth(metric) {
+        return Math.ceil(metric ? (metric.advanceWidth || 0) : 0)
+    }
+
+    function d20ResultGlyphWidth(result) {
+        if (!result || !result.rolls || result.rolls.length <= 0) {
+            return 0
+        }
+        var totalWidth = 0
+        for (var i = 0; i < result.rolls.length; ++i) {
+            totalWidth += result.rolls[i].type === "pair" ? 56 : 28
+        }
+        if (result.rolls.length > 1) {
+            totalWidth += (result.rolls.length - 1) * 3
+        }
+        return totalWidth
+    }
+
+    function standardResultGlyphWidth(result) {
+        if (!result || !result.rolls || result.rolls.length <= 0) {
+            return 0
+        }
+        return result.rolls.length * 26 + Math.max(0, result.rolls.length - 1) * 3
+    }
+
+    function resultCardWidth(contentWidth, minWidth) {
+        var chromeWidth = innerCardPadding * 2 + 4
+        var availableWidth = resultsViewport ? resultsViewport.width : minWidth
+        return clampValue(Math.ceil(contentWidth) + chromeWidth, minWidth, Math.max(minWidth, availableWidth))
+    }
+
+    function d20ResultCardWidth() {
+        var contentWidth = Math.max(metricWidth(d20FormulaMetrics), metricWidth(d20TotalMetrics), d20ResultGlyphWidth(d20Result))
+        return resultCardWidth(contentWidth, narrowLayout ? 102 : 112)
+    }
+
+    function standardResultCardWidth() {
+        var contentWidth = Math.max(metricWidth(standardFormulaMetrics), metricWidth(standardTotalMetrics), standardResultGlyphWidth(standardResult))
+        return resultCardWidth(contentWidth, narrowLayout ? 146 : 158)
+    }
+
     function rollD20Only() {
         clearResults()
         diceController.request_roll_d20(effectiveCount(d20Count), d20Mode, d20Bonus)
@@ -1749,6 +1794,30 @@ Window {
                                 clip: true
                                 Item {
                                     anchors.fill: parent
+
+                                    TextMetrics {
+                                        id: d20FormulaMetrics
+                                        font.pixelSize: 10
+                                        text: String(d20Result ? d20Result.formula : "") + ":"
+                                    }
+                                    TextMetrics {
+                                        id: d20TotalMetrics
+                                        font.pixelSize: 20
+                                        font.weight: Font.Bold
+                                        text: d20Result ? String(d20Result.total) : ""
+                                    }
+                                    TextMetrics {
+                                        id: standardFormulaMetrics
+                                        font.pixelSize: 10
+                                        text: String(standardResult ? standardResult.formula : "") + ":"
+                                    }
+                                    TextMetrics {
+                                        id: standardTotalMetrics
+                                        font.pixelSize: 20
+                                        font.weight: Font.Bold
+                                        text: standardResult ? String(standardResult.total) : ""
+                                    }
+
                                     Label {
                                         anchors.centerIn: parent
                                         visible: !(d20Result && d20Result.active) && !(standardResult && standardResult.active) && !(d100Result && d100Result.active)
@@ -1758,14 +1827,17 @@ Window {
                                         color: textSecondary
                                         font.pixelSize: 12
                                     }
-                                    RowLayout {
+                                    Flow {
                                         id: resultsRow
-                                        anchors.fill: parent
+                                        width: parent.width
+                                        anchors.top: parent.top
+                                        anchors.left: parent.left
                                         visible: (d20Result && d20Result.active) || (standardResult && standardResult.active) || (d100Result && d100Result.active)
                                         spacing: 8
+
                                         Rectangle {
                                             visible: d20Result && d20Result.active
-                                            Layout.fillWidth: true
+                                            width: diceWindow.d20ResultCardWidth()
                                             radius: diceWindow.innerCardRadius
                                             color: "transparent"
                                             border.width: 2
@@ -1780,7 +1852,7 @@ Window {
                                                 Label { text: String(d20Result ? d20Result.formula : "") + ":"; color: textSecondary; font.pixelSize: 10; wrapMode: Text.WordWrap; Layout.fillWidth: true }
                                                 Label { text: d20Result ? String(d20Result.total) : ""; color: (d20Result && d20Result.rolls && d20Result.rolls.length === 1 && d20Result.rolls[0].type === "single") ? d20CritColor(Number(d20Result.rolls[0].value || 0)) : textPrimary; font.pixelSize: 20; font.weight: Font.Bold }
                                                 Flow {
-                                                    Layout.fillWidth: true
+                                                    width: parent.width
                                                     spacing: 3
                                                     Repeater {
                                                         model: d20Result ? d20Result.rolls : []
@@ -1817,7 +1889,7 @@ Window {
                                         }
                                         Rectangle {
                                             visible: standardResult && standardResult.active
-                                            Layout.fillWidth: true
+                                            width: diceWindow.standardResultCardWidth()
                                             radius: diceWindow.innerCardRadius
                                             color: "transparent"
                                             border.width: 2
@@ -1832,7 +1904,7 @@ Window {
                                                 Label { text: String(standardResult ? standardResult.formula : "") + ":"; color: textSecondary; font.pixelSize: 10; wrapMode: Text.WordWrap; Layout.fillWidth: true }
                                                 Label { text: standardResult ? String(standardResult.total) : ""; color: textPrimary; font.pixelSize: 20; font.weight: Font.Bold }
                                                 Flow {
-                                                    Layout.fillWidth: true
+                                                    width: parent.width
                                                     spacing: 3
                                                     Repeater {
                                                         model: standardResult ? standardResult.rolls : []
@@ -1848,7 +1920,7 @@ Window {
                                         }
                                         Rectangle {
                                             visible: d100Result && d100Result.active
-                                            Layout.preferredWidth: diceWindow.narrowLayout ? 78 : 86
+                                            width: diceWindow.narrowLayout ? 78 : 86
                                             radius: diceWindow.innerCardRadius
                                             color: "transparent"
                                             border.width: 2
@@ -1878,6 +1950,7 @@ Window {
                                             }
                                         }
                                     }
+                                }
                                 }
                             }
                         }
@@ -2684,5 +2757,3 @@ Window {
             }
         }
     }
-}
-
