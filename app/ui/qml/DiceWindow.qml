@@ -27,6 +27,7 @@ Window {
     property int d10Count: 0
     property int d12Count: 0
     property int standardBonus: 0
+    property int rollVisibilityMode: 1
     property var d20Result: null
     property var standardResult: null
     property var d100Result: null
@@ -174,6 +175,31 @@ Window {
             d20Mode = newMode
         }
     }
+
+    function cycleRollVisibilityMode() {
+        rollVisibilityMode = (rollVisibilityMode + 1) % 3
+    }
+
+    function rollVisibilityIconSource() {
+        if (rollVisibilityMode === 0) {
+            return Qt.resolvedUrl("icons/eye_closed.svg")
+        }
+        if (rollVisibilityMode === 1) {
+            return Qt.resolvedUrl("icons/eye_open.svg")
+        }
+        return Qt.resolvedUrl("icons/window_mode.svg")
+    }
+
+    function rollVisibilityToolTipText() {
+        if (rollVisibilityMode === 0) {
+            return "Закрытый бросок"
+        }
+        if (rollVisibilityMode === 1) {
+            return "Открытый бросок"
+        }
+        return "Бросок в отдельном окне"
+    }
+
     function rollD20Only() {
         clearResults()
         diceController.request_roll_d20(effectiveCount(d20Count), d20Mode, d20Bonus)
@@ -2025,67 +2051,98 @@ Window {
                             }
                         }
                     }
-                    NeumoRaisedSurface {
-                        id: d100Card
-                        theme: neumoTheme
+                    RowLayout {
                         Layout.fillWidth: true
                         Layout.leftMargin: diceWindow.sectionGutter
                         Layout.rightMargin: diceWindow.sectionGutter
-                        radius: diceWindow.cardRadius
-                        fillColor: neumoTheme.baseColor
-                        shadowOffset: diceWindow.cardShadowOffset
-                        shadowRadius: diceWindow.cardShadowRadius
-                        shadowSamples: diceWindow.cardShadowSamples
-                        contentPadding: diceWindow.cardPadding
-                        implicitHeight: d100Content.implicitHeight + contentPadding * 2
-                        RowLayout {
-                            id: d100Content
-                            width: parent.width
-                            spacing: 10
-                            DiePreviewTile {
-                                dieType: "d100"
-                                tileSize: 44
-                                Layout.alignment: Qt.AlignVCenter
-                                onClicked: rollD100Only()
+                        spacing: 10
+
+                        NeumoInsetActionButton {
+                            id: d100ActionTile
+                            theme: neumoTheme
+                            toolTip: "Бросить d100"
+                            Layout.fillWidth: true
+                            Layout.minimumWidth: 0
+                            Layout.preferredHeight: diceWindow.actionButtonHeight + 4
+                            Layout.preferredWidth: 132
+                            contentPadding: 8
+                            onClicked: rollD100Only()
+
+                            RowLayout {
+                                anchors.fill: parent
+                                spacing: 8
+
+                                DiePreviewTile {
+                                    dieType: "d100"
+                                    tileSize: diceWindow.standardPreviewSize
+                                    useInset: false
+                                    Layout.alignment: Qt.AlignVCenter
+                                    onClicked: rollD100Only()
+                                }
+
+                                Label {
+                                    text: "d100"
+                                    color: textSecondary
+                                    font.pixelSize: 12
+                                    Layout.alignment: Qt.AlignVCenter
+                                }
+
+                                Item { Layout.fillWidth: true }
+
+                                NeumoGhostIconButton {
+                                    theme: neumoTheme
+                                    rowHovered: d100TileHover.hovered
+                                    width: diceWindow.ghostIconSize
+                                    height: diceWindow.ghostIconSize
+                                    iconSource: Qt.resolvedUrl("icons/brush.svg")
+                                    toolTip: "Редактировать стиль"
+                                    Layout.alignment: Qt.AlignVCenter
+                                    onClicked: openDieEditor("d100")
+                                }
+
+                                HoverHandler { id: d100TileHover }
                             }
-                            Label {
-                                text: "d100"
-                                color: textSecondary
-                                font.pixelSize: 12
-                                Layout.preferredWidth: diceWindow.d20LabelWidth
-                                Layout.alignment: Qt.AlignVCenter
-                            }
-                            NeumoGhostIconButton {
-                                theme: neumoTheme
-                                rowHovered: d100Hover.hovered
-                                width: diceWindow.ghostIconSize
-                                height: diceWindow.ghostIconSize
-                                iconSource: Qt.resolvedUrl("icons/brush.svg")
-                                toolTip: "Редактировать стиль"
-                                Layout.alignment: Qt.AlignVCenter
-                                onClicked: openDieEditor("d100")
-                            }
-                            Item { Layout.fillWidth: true }
-                            NeumoRaisedActionButton {
-                                theme: neumoTheme
-                                text: "Бросить D100"
-                                compactMode: true
-                                Layout.preferredHeight: diceWindow.actionButtonHeight
-                                Layout.preferredWidth: 140
-                                onClicked: rollD100Only()
-                            }
-                            HoverHandler { id: d100Hover }
                         }
-                    }
-                    NeumoRaisedActionButton {
-                        theme: neumoTheme
-                        text: "Бросить все"
-                        Layout.fillWidth: true
-                        Layout.leftMargin: diceWindow.sectionGutter
-                        Layout.rightMargin: diceWindow.sectionGutter
-                        Layout.preferredHeight: diceWindow.actionButtonHeight + 2
-                        enabled: canRollAll()
-                        onClicked: rollAll()
+
+                        NeumoInsetActionButton {
+                            theme: neumoTheme
+                            toolTip: "Бросить все"
+                            enabled: canRollAll()
+                            Layout.fillWidth: true
+                            Layout.minimumWidth: 0
+                            Layout.preferredHeight: diceWindow.actionButtonHeight + 4
+                            Layout.preferredWidth: 160
+                            contentPadding: 10
+                            onClicked: rollAll()
+
+                            Label {
+                                anchors.centerIn: parent
+                                text: "Бросить все"
+                                color: neumoTheme ? neumoTheme.textPrimary : "#D0D0D0"
+                                opacity: canRollAll() ? 1.0 : 0.45
+                                font.pixelSize: 14
+                                font.weight: Font.DemiBold
+                            }
+                        }
+
+                        NeumoInsetActionButton {
+                            theme: neumoTheme
+                            toolTip: rollVisibilityToolTipText()
+                            Layout.preferredWidth: diceWindow.actionButtonHeight + 4
+                            Layout.preferredHeight: diceWindow.actionButtonHeight + 4
+                            contentPadding: 0
+                            onClicked: cycleRollVisibilityMode()
+
+                            Image {
+                                anchors.centerIn: parent
+                                width: 20
+                                height: 20
+                                source: rollVisibilityIconSource()
+                                fillMode: Image.PreserveAspectFit
+                                smooth: true
+                                mipmap: true
+                            }
+                        }
                     }
                     Item {
                         Layout.fillWidth: true
@@ -2613,4 +2670,6 @@ Window {
         }
     }
 }
+
+
 
