@@ -1646,7 +1646,8 @@ Window {
             value: 0
             compactMode: true
             visualStyle: "launcherInline"
-            Layout.preferredWidth: diceWindow.standardStepperWidth
+            Layout.fillWidth: true
+            Layout.minimumWidth: 0
             Layout.alignment: Qt.AlignVCenter
         }
         NeumoGhostIconButton {
@@ -1659,7 +1660,6 @@ Window {
             Layout.alignment: Qt.AlignVCenter
             onClicked: openDieEditor(root.dieKey)
         }
-        Item { Layout.fillWidth: true }
     }
     ColumnLayout {
         anchors.fill: parent
@@ -1992,11 +1992,16 @@ Window {
                             RowLayout {
                                 Layout.fillWidth: true
                                 spacing: 10
+                                Item {
+                                    Layout.preferredWidth: diceWindow.standardPreviewSize
+                                    Layout.preferredHeight: 1
+                                }
                                 Label {
                                     text: "Бонус:"
                                     color: textSecondary
                                     font.pixelSize: 12
-                                            Layout.preferredWidth: diceWindow.d20LabelWidth
+                                    Layout.preferredWidth: diceWindow.standardLabelWidth
+                                    horizontalAlignment: Text.AlignLeft
                                     Layout.alignment: Qt.AlignVCenter
                                 }
                                 NeumoStepperField {
@@ -2008,19 +2013,15 @@ Window {
                                     value: standardBonus
                                     compactMode: true
                                     visualStyle: "launcherInline"
-                                    Layout.preferredWidth: diceWindow.standardStepperWidth
+                                    Layout.fillWidth: true
+                                    Layout.minimumWidth: 0
                                     Layout.alignment: Qt.AlignVCenter
                                     onValueModified: standardBonus = Math.round(value)
                                 }
-                                Item { Layout.fillWidth: true }
-                            }
-                            NeumoRaisedActionButton {
-                                theme: neumoTheme
-                                text: "Бросить D4-D12"
-                                Layout.fillWidth: true
-                                Layout.preferredHeight: diceWindow.actionButtonHeight
-                                enabled: canRollStandard()
-                                onClicked: rollStandardOnly()
+                                Item {
+                                    Layout.preferredWidth: diceWindow.ghostIconSize
+                                    Layout.preferredHeight: 1
+                                }
                             }
                         }
                     }
