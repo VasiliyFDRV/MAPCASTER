@@ -1635,7 +1635,7 @@ Window {
             text: "Количество:"
             color: textSecondary
             font.pixelSize: 12
-                                            Layout.preferredWidth: diceWindow.d20LabelWidth
+            Layout.preferredWidth: diceWindow.standardLabelWidth
             Layout.alignment: Qt.AlignVCenter
         }
         NeumoStepperField {
@@ -1656,7 +1656,7 @@ Window {
             rowHovered: rowHover.hovered
             width: diceWindow.ghostIconSize
             height: diceWindow.ghostIconSize
-            iconSource: Qt.resolvedUrl("../icons/brush.svg")
+            iconSource: Qt.resolvedUrl("icons/brush.svg")
             toolTip: "Редактировать стиль"
             Layout.alignment: Qt.AlignVCenter
             onClicked: openDieEditor(root.dieKey)
@@ -1872,8 +1872,12 @@ Window {
                                     radius: diceWindow.innerCardRadius
                                     fillColor: neumoTheme.baseColor
                                     contentPadding: 6
+                                    implicitWidth: d20ModeRow.implicitWidth + contentPadding * 2
+                                    implicitHeight: d20ModeRow.implicitHeight + contentPadding * 2
+                                    Layout.preferredWidth: implicitWidth
                                     Layout.alignment: Qt.AlignVCenter
                                     RowLayout {
+                                        id: d20ModeRow
                                         anchors.fill: parent
                                         spacing: 6
                                         DiePreviewTile {
@@ -1923,6 +1927,7 @@ Window {
                                             color: textSecondary
                                             font.pixelSize: 12
                                             Layout.preferredWidth: diceWindow.d20LabelWidth
+                                            horizontalAlignment: Text.AlignLeft
                                             Layout.alignment: Qt.AlignVCenter
                                         }
                                         NeumoStepperField {
@@ -1948,6 +1953,7 @@ Window {
                                             color: textSecondary
                                             font.pixelSize: 12
                                             Layout.preferredWidth: diceWindow.d20LabelWidth
+                                            horizontalAlignment: Text.AlignLeft
                                             Layout.alignment: Qt.AlignVCenter
                                         }
                                         NeumoStepperField {
@@ -1971,7 +1977,7 @@ Window {
                                     rowHovered: d20RowHover.hovered
                                     width: diceWindow.ghostIconSize
                                     height: diceWindow.ghostIconSize
-                                    iconSource: Qt.resolvedUrl("../icons/brush.svg")
+                                    iconSource: Qt.resolvedUrl("icons/brush.svg")
                                     toolTip: "Редактировать стиль"
                                     Layout.alignment: Qt.AlignVCenter
                                     onClicked: openDieEditor("d20")
@@ -2072,7 +2078,7 @@ Window {
                                 rowHovered: d100Hover.hovered
                                 width: diceWindow.ghostIconSize
                                 height: diceWindow.ghostIconSize
-                                iconSource: Qt.resolvedUrl("../icons/brush.svg")
+                                iconSource: Qt.resolvedUrl("icons/brush.svg")
                                 toolTip: "Редактировать стиль"
                                 Layout.alignment: Qt.AlignVCenter
                                 onClicked: openDieEditor("d100")
@@ -2625,3 +2631,4 @@ Window {
         }
     }
 }
+
