@@ -1872,14 +1872,14 @@ Window {
                                     radius: diceWindow.innerCardRadius
                                     fillColor: neumoTheme.baseColor
                                     contentPadding: 6
-                                    implicitWidth: d20ModeRow.implicitWidth + contentPadding * 2
-                                    implicitHeight: d20ModeRow.implicitHeight + contentPadding * 2
+                                    implicitWidth: d20PreviewRow.implicitWidth + contentPadding * 2
+                                    implicitHeight: d20PreviewRow.implicitHeight + contentPadding * 2
                                     Layout.preferredWidth: implicitWidth
                                     Layout.alignment: Qt.AlignVCenter
                                     RowLayout {
-                                        id: d20ModeRow
+                                        id: d20PreviewRow
                                         anchors.fill: parent
-                                        spacing: 6
+                                        spacing: 0
                                         DiePreviewTile {
                                             dieType: "d20"
                                             tileSize: 38
@@ -1887,32 +1887,32 @@ Window {
                                             Layout.alignment: Qt.AlignVCenter
                                             onClicked: rollD20Only()
                                         }
-                                        ColumnLayout {
-                                            spacing: 4
-                                            Layout.alignment: Qt.AlignVCenter
-                                            NeumoIconButton {
-                                                theme: neumoTheme
-                                                width: 24
-                                                height: 24
-                                                glyph: "▲"
-                                                fontSize: 10
-                                                iconIdleColor: d20Mode === "advantage" ? "#2F8B4B" : (neumoTheme ? neumoTheme.textSecondary : "#909090")
-                                                iconHoverColor: d20Mode === "advantage" ? "#2F8B4B" : (neumoTheme ? neumoTheme.textPrimary : "#D0D0D0")
-                                                idleSurfaceOpacity: d20Mode === "advantage" ? 1.0 : 0.9
-                                                onClicked: setD20Mode("advantage")
-                                            }
-                                            NeumoIconButton {
-                                                theme: neumoTheme
-                                                width: 24
-                                                height: 24
-                                                glyph: "▼"
-                                                fontSize: 10
-                                                iconIdleColor: d20Mode === "disadvantage" ? "#A33C3C" : (neumoTheme ? neumoTheme.textSecondary : "#909090")
-                                                iconHoverColor: d20Mode === "disadvantage" ? "#A33C3C" : (neumoTheme ? neumoTheme.textPrimary : "#D0D0D0")
-                                                idleSurfaceOpacity: d20Mode === "disadvantage" ? 1.0 : 0.9
-                                                onClicked: setD20Mode("disadvantage")
-                                            }
-                                        }
+                                    }
+                                }
+                                ColumnLayout {
+                                    spacing: 4
+                                    Layout.alignment: Qt.AlignVCenter
+                                    NeumoIconButton {
+                                        theme: neumoTheme
+                                        width: 24
+                                        height: 24
+                                        glyph: "▲"
+                                        fontSize: 10
+                                        iconIdleColor: d20Mode === "advantage" ? "#2F8B4B" : (neumoTheme ? neumoTheme.textSecondary : "#909090")
+                                        iconHoverColor: d20Mode === "advantage" ? "#2F8B4B" : (neumoTheme ? neumoTheme.textPrimary : "#D0D0D0")
+                                        idleSurfaceOpacity: d20Mode === "advantage" ? 1.0 : 0.9
+                                        onClicked: setD20Mode("advantage")
+                                    }
+                                    NeumoIconButton {
+                                        theme: neumoTheme
+                                        width: 24
+                                        height: 24
+                                        glyph: "▼"
+                                        fontSize: 10
+                                        iconIdleColor: d20Mode === "disadvantage" ? "#A33C3C" : (neumoTheme ? neumoTheme.textSecondary : "#909090")
+                                        iconHoverColor: d20Mode === "disadvantage" ? "#A33C3C" : (neumoTheme ? neumoTheme.textPrimary : "#D0D0D0")
+                                        idleSurfaceOpacity: d20Mode === "disadvantage" ? 1.0 : 0.9
+                                        onClicked: setD20Mode("disadvantage")
                                     }
                                 }
                                 ColumnLayout {
