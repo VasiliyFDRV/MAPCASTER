@@ -248,7 +248,7 @@ Window {
     }
 
     function standardResultMinWidth() {
-        return narrowLayout ? 72 : 80
+        return d20ResultMinWidth()
     }
 
     function standardResultBaseWidth() {
@@ -283,21 +283,52 @@ Window {
         }
 
         var availableWidth = resultsViewport ? resultsViewport.width : 0
-        if (availableWidth <= 0 || activeCount <= 1) {
+        if (availableWidth <= 0) {
             return widths
         }
 
         var spacingWidth = Math.max(0, activeCount - 1) * resultsRow.spacing
-        var pairAvailableWidth = availableWidth - spacingWidth - widths.d100
-        if (pairAvailableWidth <= 0 || !d20Active || !standardActive) {
+        var flexibleAvailableWidth = availableWidth - spacingWidth - widths.d100
+        if (flexibleAvailableWidth <= 0) {
             return widths
         }
 
-        var overflow = widths.d20 + widths.standard - pairAvailableWidth
-        if (overflow <= 0) {
+        var flexibleCount = 0
+        var flexibleBaseWidth = 0
+        if (d20Active) {
+            flexibleCount += 1
+            flexibleBaseWidth += widths.d20
+        }
+        if (standardActive) {
+            flexibleCount += 1
+            flexibleBaseWidth += widths.standard
+        }
+
+        if (flexibleCount <= 0) {
             return widths
         }
 
+        if (flexibleCount === 1) {
+            if (d20Active) {
+                widths.d20 = Math.max(widths.d20, flexibleAvailableWidth)
+            }
+            if (standardActive) {
+                widths.standard = Math.max(widths.standard, flexibleAvailableWidth)
+            }
+            return widths
+        }
+
+        if (flexibleAvailableWidth >= flexibleBaseWidth) {
+            var extraWidth = flexibleAvailableWidth - flexibleBaseWidth
+            if (extraWidth > 0 && flexibleBaseWidth > 0) {
+                var d20Extra = Math.round(extraWidth * (widths.d20 / flexibleBaseWidth))
+                widths.d20 += d20Extra
+                widths.standard += extraWidth - d20Extra
+            }
+            return widths
+        }
+
+        var overflow = flexibleBaseWidth - flexibleAvailableWidth
         var d20Slack = Math.max(0, widths.d20 - d20ResultMinWidth())
         var standardSlack = Math.max(0, widths.standard - standardResultMinWidth())
         if (d20Slack <= 0 && standardSlack <= 0) {
