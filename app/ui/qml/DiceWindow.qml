@@ -216,45 +216,90 @@ Window {
         return Math.ceil(metric ? (metric.advanceWidth || 0) : 0)
     }
 
-    function d20ResultGlyphWidth(result) {
+    function resultGlyphUnitWidths(cardType, result) {
+        var widths = []
         if (!result || !result.rolls || result.rolls.length <= 0) {
+            return widths
+        }
+        for (var i = 0; i < result.rolls.length; ++i) {
+            if (cardType === "d20") {
+                widths.push(result.rolls[i].type === "pair" ? 56 : 28)
+            } else if (cardType === "standard") {
+                widths.push(26)
+            }
+        }
+        return widths
+    }
+
+    function resultVisualItemCount(cardType, result) {
+        return resultGlyphUnitWidths(cardType, result).length
+    }
+
+    function resultGlyphSpacing(cardType) {
+        return 3
+    }
+
+    function resultCardMinWidth(cardType) {
+        if (cardType === "standard") {
+            return d20ResultMinWidth()
+        }
+        if (cardType === "d20") {
+            return narrowLayout ? 46 : 50
+        }
+        return narrowLayout ? 78 : 86
+    }
+
+    function resultCardChromeWidth(cardType) {
+        return innerCardPadding * 2 + 4
+    }
+
+    function resultCardTextWidth(cardType) {
+        if (cardType === "d20") {
+            return Math.max(metricWidth(d20FormulaMetrics), metricWidth(d20TotalMetrics))
+        }
+        if (cardType === "standard") {
+            return Math.max(metricWidth(standardFormulaMetrics), metricWidth(standardTotalMetrics))
+        }
+        return 0
+    }
+
+    function resultGlyphRowWidth(cardType, itemsPerRow, result) {
+        var unitWidths = resultGlyphUnitWidths(cardType, result)
+        if (unitWidths.length <= 0) {
             return 0
         }
-        var totalWidth = 0
-        for (var i = 0; i < result.rolls.length; ++i) {
-            totalWidth += result.rolls[i].type === "pair" ? 56 : 28
+        var perRow = Math.max(1, itemsPerRow)
+        var spacing = resultGlyphSpacing(cardType)
+        var maxWidth = 0
+        for (var start = 0; start < unitWidths.length; start += perRow) {
+            var rowWidth = 0
+            var end = Math.min(start + perRow, unitWidths.length)
+            for (var i = start; i < end; ++i) {
+                if (i > start) {
+                    rowWidth += spacing
+                }
+                rowWidth += unitWidths[i]
+            }
+            maxWidth = Math.max(maxWidth, rowWidth)
         }
-        if (result.rolls.length > 1) {
-            totalWidth += (result.rolls.length - 1) * 3
-        }
-        return totalWidth
+        return maxWidth
+    }
+
+    function resultCardMinWidthForRows(cardType, result, rowCount) {
+        var visualItemCount = resultVisualItemCount(cardType, result)
+        var targetRows = Math.max(1, rowCount)
+        var itemsPerRow = visualItemCount > 0 ? Math.ceil(visualItemCount / targetRows) : 1
+        var glyphWidth = resultGlyphRowWidth(cardType, itemsPerRow, result)
+        var contentWidth = Math.max(resultCardTextWidth(cardType), glyphWidth)
+        return Math.max(resultCardMinWidth(cardType), contentWidth + resultCardChromeWidth(cardType))
     }
 
     function d20ResultMinWidth() {
         return narrowLayout ? 46 : 50
     }
 
-    function d20ResultBaseWidth() {
-        var chromeWidth = innerCardPadding * 2 + 4
-        var contentWidth = Math.max(metricWidth(d20FormulaMetrics), metricWidth(d20TotalMetrics), d20ResultGlyphWidth(d20Result))
-        return Math.max(d20ResultMinWidth(), contentWidth + chromeWidth)
-    }
-
-    function standardResultGlyphWidth(result) {
-        if (!result || !result.rolls || result.rolls.length <= 0) {
-            return 0
-        }
-        return result.rolls.length * 26 + Math.max(0, result.rolls.length - 1) * 3
-    }
-
     function standardResultMinWidth() {
         return d20ResultMinWidth()
-    }
-
-    function standardResultBaseWidth() {
-        var chromeWidth = innerCardPadding * 2 + 4
-        var contentWidth = Math.max(metricWidth(standardFormulaMetrics), metricWidth(standardTotalMetrics), standardResultGlyphWidth(standardResult))
-        return Math.max(standardResultMinWidth(), contentWidth + chromeWidth)
     }
 
     function d100ResultCardWidth() {
@@ -277,8 +322,8 @@ Window {
         }
 
         var widths = {
-            d20: d20Active ? d20ResultBaseWidth() : 0,
-            standard: standardActive ? standardResultBaseWidth() : 0,
+            d20: d20Active ? resultCardMinWidthForRows("d20", d20Result, 1) : 0,
+            standard: standardActive ? resultCardMinWidthForRows("standard", standardResult, 1) : 0,
             d100: d100Active ? d100ResultCardWidth() : 0
         }
 
@@ -289,66 +334,62 @@ Window {
 
         var spacingWidth = Math.max(0, activeCount - 1) * resultsRow.spacing
         var flexibleAvailableWidth = availableWidth - spacingWidth - widths.d100
-        if (flexibleAvailableWidth <= 0) {
-            return widths
-        }
-
-        var flexibleCount = 0
-        var flexibleBaseWidth = 0
+        var flexibleCards = []
         if (d20Active) {
-            flexibleCount += 1
-            flexibleBaseWidth += widths.d20
+            flexibleCards.push({ key: "d20", result: d20Result })
         }
         if (standardActive) {
-            flexibleCount += 1
-            flexibleBaseWidth += widths.standard
+            flexibleCards.push({ key: "standard", result: standardResult })
         }
 
-        if (flexibleCount <= 0) {
+        if (flexibleCards.length <= 0) {
             return widths
         }
 
-        if (flexibleCount === 1) {
-            if (d20Active) {
-                widths.d20 = Math.max(widths.d20, flexibleAvailableWidth)
-            }
-            if (standardActive) {
-                widths.standard = Math.max(widths.standard, flexibleAvailableWidth)
-            }
+        if (flexibleCards.length === 1) {
+            var singleCard = flexibleCards[0]
+            widths[singleCard.key] = Math.max(resultCardMinWidthForRows(singleCard.key, singleCard.result, 1), flexibleAvailableWidth)
             return widths
         }
 
-        if (flexibleAvailableWidth >= flexibleBaseWidth) {
+        var maxGlyphRows = 1
+        for (var cardIndex = 0; cardIndex < flexibleCards.length; ++cardIndex) {
+            maxGlyphRows = Math.max(maxGlyphRows, resultVisualItemCount(flexibleCards[cardIndex].key, flexibleCards[cardIndex].result))
+        }
+
+        var targetRows = maxGlyphRows
+        for (var rowCount = 1; rowCount <= maxGlyphRows; ++rowCount) {
+            var requiredWidth = 0
+            for (var widthIndex = 0; widthIndex < flexibleCards.length; ++widthIndex) {
+                var card = flexibleCards[widthIndex]
+                requiredWidth += resultCardMinWidthForRows(card.key, card.result, rowCount)
+            }
+            if (requiredWidth <= flexibleAvailableWidth) {
+                targetRows = rowCount
+                break
+            }
+        }
+
+        var flexibleBaseWidth = 0
+        for (var baseIndex = 0; baseIndex < flexibleCards.length; ++baseIndex) {
+            var baseCard = flexibleCards[baseIndex]
+            widths[baseCard.key] = resultCardMinWidthForRows(baseCard.key, baseCard.result, targetRows)
+            flexibleBaseWidth += widths[baseCard.key]
+        }
+
+        if (flexibleAvailableWidth > flexibleBaseWidth && flexibleBaseWidth > 0) {
             var extraWidth = flexibleAvailableWidth - flexibleBaseWidth
-            if (extraWidth > 0 && flexibleBaseWidth > 0) {
-                var d20Extra = Math.round(extraWidth * (widths.d20 / flexibleBaseWidth))
-                widths.d20 += d20Extra
-                widths.standard += extraWidth - d20Extra
+            var distributedWidth = 0
+            for (var growIndex = 0; growIndex < flexibleCards.length; ++growIndex) {
+                var growCard = flexibleCards[growIndex]
+                if (growIndex === flexibleCards.length - 1) {
+                    widths[growCard.key] += extraWidth - distributedWidth
+                } else {
+                    var growShare = Math.round(extraWidth * (widths[growCard.key] / flexibleBaseWidth))
+                    widths[growCard.key] += growShare
+                    distributedWidth += growShare
+                }
             }
-            return widths
-        }
-
-        var overflow = flexibleBaseWidth - flexibleAvailableWidth
-        var d20Slack = Math.max(0, widths.d20 - d20ResultMinWidth())
-        var standardSlack = Math.max(0, widths.standard - standardResultMinWidth())
-        if (d20Slack <= 0 && standardSlack <= 0) {
-            return widths
-        }
-
-        if (d20Slack >= standardSlack) {
-            var d20Reduce = Math.min(d20Slack, overflow)
-            widths.d20 -= d20Reduce
-            overflow -= d20Reduce
-
-            var standardReduce = Math.min(standardSlack, overflow)
-            widths.standard -= standardReduce
-        } else {
-            var standardReduceFirst = Math.min(standardSlack, overflow)
-            widths.standard -= standardReduceFirst
-            overflow -= standardReduceFirst
-
-            var d20ReduceSecond = Math.min(d20Slack, overflow)
-            widths.d20 -= d20ReduceSecond
         }
 
         return widths
