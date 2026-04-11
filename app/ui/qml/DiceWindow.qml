@@ -8,7 +8,7 @@ Window {
     id: diceWindow
     objectName: "diceWindow"
     width: 340
-    height: 740
+    height: 670
     visible: true
     color: neumoTheme ? neumoTheme.baseColor : "#2D2D2D"
     title: "DnD Maps - Дайсы"
