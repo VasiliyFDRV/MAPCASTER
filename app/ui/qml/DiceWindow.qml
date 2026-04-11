@@ -7,8 +7,8 @@ import "components/neumo"
 Window {
     id: diceWindow
     objectName: "diceWindow"
-    width: 400
-    height: 640
+    width: 340
+    height: 740
     visible: true
     color: neumoTheme ? neumoTheme.baseColor : "#2D2D2D"
     title: "DnD Maps - Дайсы"
