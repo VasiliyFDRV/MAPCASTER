@@ -2238,7 +2238,6 @@ Window {
                     }
                 }
             }
-    }
     Timer {
         id: physicsFallbackTimer
         interval: 2300
@@ -2757,3 +2756,4 @@ Window {
             }
         }
     }
+}
