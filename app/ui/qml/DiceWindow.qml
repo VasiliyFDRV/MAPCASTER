@@ -238,6 +238,29 @@ Window {
         return Math.max(minWidth, Math.min(maxWidth, contentWidth + chromeWidth))
     }
 
+    function standardResultGlyphWidth(result) {
+        if (!result || !result.rolls || result.rolls.length <= 0) {
+            return 0
+        }
+        return result.rolls.length * 26 + Math.max(0, result.rolls.length - 1) * 3
+    }
+
+    function standardResultCardWidth() {
+        var chromeWidth = innerCardPadding * 2 + 4
+        var contentWidth = Math.max(metricWidth(standardFormulaMetrics), metricWidth(standardTotalMetrics), standardResultGlyphWidth(standardResult))
+        var minWidth = narrowLayout ? 108 : 118
+        var reservedWidth = 0
+        if (d20Result && d20Result.active) {
+            reservedWidth += d20ResultCardWidth() + resultsRow.spacing
+        }
+        if (d100Result && d100Result.active) {
+            reservedWidth += (narrowLayout ? 78 : 86) + resultsRow.spacing
+        }
+        var availableWidth = resultsViewport ? resultsViewport.width : (contentWidth + chromeWidth)
+        var maxWidth = Math.max(minWidth, availableWidth - reservedWidth)
+        return Math.max(minWidth, Math.min(maxWidth, contentWidth + chromeWidth))
+    }
+
     function rollD20Only() {
         clearResults()
         diceController.request_roll_d20(effectiveCount(d20Count), d20Mode, d20Bonus)
@@ -1786,6 +1809,17 @@ Window {
                                         font.weight: Font.Bold
                                         text: d20Result ? String(d20Result.total) : ""
                                     }
+                                    TextMetrics {
+                                        id: standardFormulaMetrics
+                                        font.pixelSize: 10
+                                        text: String(standardResult ? standardResult.formula : "") + ":"
+                                    }
+                                    TextMetrics {
+                                        id: standardTotalMetrics
+                                        font.pixelSize: 20
+                                        font.weight: Font.Bold
+                                        text: standardResult ? String(standardResult.total) : ""
+                                    }
                                     Label {
                                         anchors.centerIn: parent
                                         visible: !(d20Result && d20Result.active) && !(standardResult && standardResult.active) && !(d100Result && d100Result.active)
@@ -1854,7 +1888,7 @@ Window {
                                         }
                                         Rectangle {
                                             visible: standardResult && standardResult.active
-                                            Layout.fillWidth: true
+                                            Layout.preferredWidth: diceWindow.standardResultCardWidth()
                                             radius: diceWindow.innerCardRadius
                                             color: "transparent"
                                             border.width: 2
@@ -2722,5 +2756,6 @@ Window {
         }
     }
 }
+
 
 
