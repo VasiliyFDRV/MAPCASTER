@@ -65,7 +65,7 @@ Window {
     readonly property int actionButtonHeight: narrowLayout ? 48 : 52
     readonly property int standardPreviewSize: narrowLayout ? 40 : 42
     readonly property int d100ActionWidth: standardPreviewSize + ghostIconSize + 28
-    readonly property color resultsFillColor: neumoTheme ? neumoTheme.mediaTileEmptyFillColor : "#1C1E22"
+    readonly property color resultsFillColor: Qt.rgba(30 / 255, 30 / 255, 30 / 255, 1.0)
     readonly property color resultsInsetDarkColor: {
         if (!neumoTheme) {
             return Qt.rgba(0, 0, 0, 0.9)
