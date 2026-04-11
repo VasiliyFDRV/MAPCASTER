@@ -1845,6 +1845,7 @@ Window {
                                         Rectangle {
                                             visible: d20Result && d20Result.active
                                             Layout.preferredWidth: diceWindow.d20ResultCardWidth()
+                                            Layout.fillWidth: (standardResult && standardResult.active) || (d100Result && d100Result.active)
                                             radius: diceWindow.innerCardRadius
                                             color: "transparent"
                                             border.width: 2
