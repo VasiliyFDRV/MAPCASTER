@@ -76,7 +76,17 @@ Window {
         var r = Math.max(0, resultsFillColor.r - deltaR)
         var g = Math.max(0, resultsFillColor.g - deltaG)
         var b = Math.max(0, resultsFillColor.b - deltaB)
-        return Qt.rgba(r, g, b, neumoTheme.insetDarkAlpha)
+        return Qt.rgba(r, g, b, neumoTheme.insetDarkAlpha / 1.2)
+    }
+    readonly property color resultsInsetLightColor: {
+        if (!neumoTheme) {
+            return Qt.rgba(59 / 255, 60 / 255, 64 / 255, 0.4)
+        }
+        return Qt.rgba(
+            neumoTheme.shadowLightBase.r,
+            neumoTheme.shadowLightBase.g,
+            neumoTheme.shadowLightBase.b,
+            neumoTheme.insetLightAlpha / 1.6)
     }
     property var dieStyles: ({})
     property var dieStyleTemplates: ({"user": [], "damage": []})
@@ -1717,7 +1727,7 @@ Window {
                         radius: diceWindow.cardRadius
                         fillColor: diceWindow.resultsFillColor
                         insetDarkColor: diceWindow.resultsInsetDarkColor
-                        insetLightColor: neumoTheme ? neumoTheme.insetLightColor : "#663B3C40"
+                        insetLightColor: diceWindow.resultsInsetLightColor
                         contentPadding: diceWindow.cardPadding
                         implicitHeight: resultsContent.implicitHeight + contentPadding * 2
                         ColumnLayout {
