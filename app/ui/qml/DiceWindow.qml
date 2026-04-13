@@ -22,7 +22,14 @@ Window {
     HoverHandler {
         id: windowHoverTracker
         onPointChanged: {
-            if (diceWindow.mainPreviewHoverTile && !diceWindow.isPointerInsideTile(diceWindow.mainPreviewHoverTile, point.position.x, point.position.y)) {
+            var hoveredTile = diceWindow.mainPreviewTileAt(point.position.x, point.position.y)
+            if (hoveredTile) {
+                if (diceWindow.mainPreviewHoverTile !== hoveredTile) {
+                    diceWindow.activateMainPreviewHover(hoveredTile)
+                } else {
+                    diceWindow.syncMainPreviewHoverGeometry()
+                }
+            } else if (diceWindow.mainPreviewHoverTile) {
                 diceWindow.deactivateMainPreviewHover(diceWindow.mainPreviewHoverTile)
             }
         }
@@ -131,6 +138,7 @@ Window {
     property real mainPreviewHoverY: -1000
     property real mainPreviewHoverWidth: 1
     property real mainPreviewHoverHeight: 1
+    property var mainPreviewTiles: []
     property int mainPreviewPoseVersion: 20
     readonly property real mainPreviewReferenceSize: 96
     readonly property var mainPreviewDieTypes: (["d4", "d6", "d8", "d10", "d12", "d100", "d20"])
@@ -798,6 +806,52 @@ Window {
         }
         var p = diceWindow.contentItem.mapToItem(tile, sceneX, sceneY)
         return p.x >= 0 && p.y >= 0 && p.x <= tile.width && p.y <= tile.height
+    }
+    function registerMainPreviewTile(tile) {
+        if (!tile || !tile.useInset) {
+            return
+        }
+        var next = []
+        var found = false
+        for (var i = 0; i < mainPreviewTiles.length; ++i) {
+            var current = mainPreviewTiles[i]
+            if (!current) {
+                continue
+            }
+            if (current === tile) {
+                found = true
+            }
+            next.push(current)
+        }
+        if (!found) {
+            next.push(tile)
+        }
+        mainPreviewTiles = next
+    }
+    function unregisterMainPreviewTile(tile) {
+        if (!tile) {
+            return
+        }
+        var next = []
+        for (var i = 0; i < mainPreviewTiles.length; ++i) {
+            var current = mainPreviewTiles[i]
+            if (current && current !== tile) {
+                next.push(current)
+            }
+        }
+        mainPreviewTiles = next
+        if (mainPreviewHoverTile === tile) {
+            deactivateMainPreviewHover(tile)
+        }
+    }
+    function mainPreviewTileAt(sceneX, sceneY) {
+        for (var i = mainPreviewTiles.length - 1; i >= 0; --i) {
+            var tile = mainPreviewTiles[i]
+            if (tile && tile.visible && tile.enabled && isPointerInsideTile(tile, sceneX, sceneY)) {
+                return tile
+            }
+        }
+        return null
     }
     function syncMainPreviewHoverGeometry() {
         if (!mainPreviewHoverTile || !mainPreviewOverlayHost) {
@@ -1817,16 +1871,6 @@ Window {
         implicitHeight: tile.tileSize
         HoverHandler {
             id: tileHover
-            onHoveredChanged: {
-                if (!tile.useInset) {
-                    return
-                }
-                if (hovered) {
-                    diceWindow.activateMainPreviewHover(tile)
-                } else {
-                    diceWindow.deactivateMainPreviewHover(tile)
-                }
-            }
         }
         NeumoInsetSurface {
             id: tileInset
@@ -1903,11 +1947,22 @@ Window {
             onClicked: tile.clicked()
         }
         Component.onCompleted: {
+            if (tile.useInset) {
+                diceWindow.registerMainPreviewTile(tile)
+            }
             if (tile.useInset && diceMainPreviewCache) {
                 diceMainPreviewCache.ensureSnapshotForDie(tile.dieType)
             }
         }
+        Component.onDestruction: {
+            if (tile.useInset) {
+                diceWindow.unregisterMainPreviewTile(tile)
+            }
+        }
         onDieTypeChanged: {
+            if (tile.useInset) {
+                diceWindow.registerMainPreviewTile(tile)
+            }
             if (tile.useInset && diceMainPreviewCache) {
                 diceMainPreviewCache.ensureSnapshotForDie(tile.dieType)
             }
