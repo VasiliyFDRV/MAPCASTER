@@ -121,7 +121,7 @@ Window {
     property real mainPreviewHoverY: -1000
     property real mainPreviewHoverWidth: 1
     property real mainPreviewHoverHeight: 1
-    property int mainPreviewPoseVersion: 3
+    property int mainPreviewPoseVersion: 4
     readonly property var mainPreviewDieTypes: (["d20", "d4", "d6", "d8", "d10", "d12", "d100"])
     property var damageTemplateLabels: ([
         "Оружие",
@@ -846,6 +846,21 @@ Window {
             enqueueMainPreviewSnapshot(mainPreviewDieTypes[i], Boolean(forceRender))
         }
     }
+    function runPreviewScene(webView, renderVariant, presentation, kind, payload, startRoll) {
+        if (!webView) {
+            return
+        }
+        var script = "(function(){"
+        script += "if(window.setPreviewRenderVariant){window.setPreviewRenderVariant(" + JSON.stringify(String(renderVariant || "default")) + ");}"
+        script += "if(window.setPreviewPresentationMode){window.setPreviewPresentationMode(" + JSON.stringify(String(presentation || "roll")) + ");}"
+        script += "if(window.setStyleOverrides){window.setStyleOverrides(" + JSON.stringify(payload || {}) + ");}"
+        script += "if(window.setPreviewDieKind){window.setPreviewDieKind(" + JSON.stringify(String(kind || "d6")) + ");}"
+        if (startRoll) {
+            script += "if(window.startPreviewRoll){window.startPreviewRoll();}"
+        }
+        script += "})();"
+        webView.runJavaScript(script)
+    }
     function processMainPreviewSnapshotQueue() {
         if (!mainPreviewSnapshotWebReady || mainPreviewSnapshotBusy || !mainPreviewSnapshotWeb) {
             return
@@ -858,11 +873,7 @@ Window {
         mainPreviewSnapshotQueue = q
         mainPreviewSnapshotCurrentTask = task
         mainPreviewSnapshotBusy = true
-        mainPreviewSnapshotWeb.runJavaScript("window.setPreviewRenderVariant && window.setPreviewRenderVariant('main');")
-        mainPreviewSnapshotWeb.runJavaScript("window.setPreviewPresentationMode && window.setPreviewPresentationMode('static');")
-        mainPreviewSnapshotWeb.runJavaScript("window.setStyleOverrides && window.setStyleOverrides(" + JSON.stringify(task.payload) + ");")
-        mainPreviewSnapshotWeb.runJavaScript("window.setPreviewDieKind && window.setPreviewDieKind('" + task.modelKind + "');")
-        mainPreviewSnapshotWeb.runJavaScript("window.startPreviewRoll && window.startPreviewRoll();")
+        runPreviewScene(mainPreviewSnapshotWeb, "main", "static", task.modelKind, task.payload, true)
         mainPreviewSnapshotCaptureTimer.restart()
     }
     function handleMainPreviewSnapshotCaptured(result) {
@@ -901,11 +912,7 @@ Window {
         }
         syncMainPreviewHoverGeometry()
         var spec = resolveMainPreviewSpec(mainPreviewHoverDieType)
-        mainPreviewHoverWeb.runJavaScript("window.setPreviewRenderVariant && window.setPreviewRenderVariant('main');")
-        mainPreviewHoverWeb.runJavaScript("window.setPreviewPresentationMode && window.setPreviewPresentationMode('idle');")
-        mainPreviewHoverWeb.runJavaScript("window.setStyleOverrides && window.setStyleOverrides(" + JSON.stringify(spec.payload) + ");")
-        mainPreviewHoverWeb.runJavaScript("window.setPreviewDieKind && window.setPreviewDieKind('" + spec.modelKind + "');")
-        mainPreviewHoverWeb.runJavaScript("window.startPreviewRoll && window.startPreviewRoll();")
+        runPreviewScene(mainPreviewHoverWeb, "main", "idle", spec.modelKind, spec.payload, true)
     }
     function activateMainPreviewHover(tile) {
         if (!tile || !tile.enabled) {
@@ -1040,11 +1047,7 @@ Window {
             templateSnapshotCurrentTask = null
             return
         }
-        templateSnapshotWeb.runJavaScript("window.setPreviewRenderVariant && window.setPreviewRenderVariant('default');")
-        templateSnapshotWeb.runJavaScript("window.setPreviewStaticMode && window.setPreviewStaticMode(true);")
-        templateSnapshotWeb.runJavaScript("window.setStyleOverrides && window.setStyleOverrides(" + JSON.stringify(task.payload) + ");")
-        templateSnapshotWeb.runJavaScript("window.setPreviewDieKind && window.setPreviewDieKind('" + task.previewKind + "');")
-        templateSnapshotWeb.runJavaScript("window.startPreviewRoll && window.startPreviewRoll();")
+        runPreviewScene(templateSnapshotWeb, "default", "static", task.previewKind, task.payload, true)
         templateSnapshotCaptureTimer.restart()
     }
     function handleTemplateSnapshotCaptured(result) {
@@ -1314,19 +1317,15 @@ Window {
             return
         }
         var stylePayload = styleToWebPayload(dieEditorWorking)
-        previewWeb.runJavaScript("window.setPreviewRenderVariant && window.setPreviewRenderVariant('default');")
-        previewWeb.runJavaScript("window.setPreviewStaticMode && window.setPreviewStaticMode(false);")
-        previewWeb.runJavaScript("window.setStyleOverrides && window.setStyleOverrides(" + JSON.stringify(stylePayload) + ");")
         var previewKind = previewKindForDieType(dieEditorDieKey)
-        previewWeb.runJavaScript("window.setPreviewDieKind && window.setPreviewDieKind('" + previewKind + "');")
+        runPreviewScene(previewWeb, "default", "roll", previewKind, stylePayload, false)
     }
     function startPreviewRollNow() {
         if (!previewWeb || !previewWeb.visible || !previewWebReady) {
             return
         }
-        previewWeb.runJavaScript("window.setPreviewRenderVariant && window.setPreviewRenderVariant('default');")
-        previewWeb.runJavaScript("window.setPreviewStaticMode && window.setPreviewStaticMode(false);")
-        previewWeb.runJavaScript("window.startPreviewRoll && window.startPreviewRoll();")
+        var previewKind = previewKindForDieType(dieEditorDieKey)
+        runPreviewScene(previewWeb, "default", "roll", previewKind, styleToWebPayload(dieEditorWorking), true)
     }
     onResetTokenChanged: resetState()
     onDieEditorWorkingChanged: pushPreviewStyle()
@@ -2671,7 +2670,7 @@ Window {
     }
     Timer {
         id: mainPreviewSnapshotCaptureTimer
-        interval: 120
+        interval: 180
         repeat: false
         onTriggered: diceWindow.captureMainPreviewSnapshotCurrentTask()
     }
@@ -2716,7 +2715,7 @@ Window {
         }
         Timer {
             id: templateSnapshotCaptureTimer
-            interval: 120
+            interval: 180
             repeat: false
             onTriggered: diceWindow.captureTemplateSnapshotCurrentTask()
         }

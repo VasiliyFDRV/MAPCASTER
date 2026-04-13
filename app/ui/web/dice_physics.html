@@ -3274,6 +3274,17 @@
         previewRenderVariant = next === 'main' ? 'main' : 'default';
       };
 
+      window.renderPreviewScene = function renderPreviewScene(options) {
+        const opts = options && typeof options === 'object' ? options : {};
+        window.setPreviewRenderVariant(opts.variant || 'default');
+        window.setPreviewPresentationMode(opts.presentation || 'roll');
+        window.setStyleOverrides(opts.payload || {});
+        window.setPreviewDieKind(opts.kind || 'd6');
+        if (opts.startRoll !== false) {
+          window.startPreviewRoll();
+        }
+      };
+
       window.setPreviewPresentationMode = function setPreviewPresentationMode(mode) {
         const next = String(mode || 'roll').toLowerCase();
         previewPresentationMode = (next === 'static' || next === 'idle') ? next : 'roll';
