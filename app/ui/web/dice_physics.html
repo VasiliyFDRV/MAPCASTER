@@ -678,7 +678,7 @@
         d10t: { modelKind: 'd10t', fitScale: 0.94, offsetX: 0, offsetY: 1, idleScaleBoost: 1.04, rzOffset: 180 },
         d12: { modelKind: 'd12', fitScale: 0.90, offsetX: 0, offsetY: 1, idleScaleBoost: 1.04 },
         d20: { modelKind: 'd20', fitScale: 0.96, offsetX: 0, offsetY: 2, idleScaleBoost: 1.04, rx: -58, ry: 34, rz: 14 },
-        d100: { modelKind: 'd10t', fitScale: 0.94, offsetX: 0, offsetY: 1, idleScaleBoost: 1.04, rzOffset: 180 },
+        d100: { modelKind: 'd10t', fitScale: 0.94, offsetX: 0, offsetY: 1, idleScaleBoost: 1.04 },
       };
 
       const COLLISION_RESTITUTION = 0.14;
@@ -2332,6 +2332,9 @@
             fw: 33.4,
             fh: 33.4,
             clipPath: 'polygon(50% 0%, 97.5528258% 34.5491503%, 79.3892626% 90.4508497%, 20.6107374% 90.4508497%, 2.4471742% 34.5491503%)',
+            labelRotate: t.labelRotate,
+            labelCxPct: t.labelCxPct,
+            labelCyPct: t.labelCyPct,
           })),
           faceNormals: D12_FACE_DATA.faceNormals,
           sides: 12,
@@ -3241,6 +3244,8 @@
         if (k === 'd8') return 8;
         if (k === 'd10') return 10;
         if (k === 'd12') return 12;
+        if (k === 'd20') return 20;
+        if (k === 'd100') return 1;
         return null;
       }
 
@@ -3278,13 +3283,13 @@
         if (key === 'd4') {
           return normalizeAngle(resolveFaceLabelRotation(spec, ft, faceIndex, poseRz) + 180);
         }
-        if (key === 'd10') {
+        if (key === 'd10' || key === 'd10t' || key === 'd100') {
           const faceId = Number(ft && ft.id || (faceIndex + 1));
           const baseRotate = normalizeAngle(resolveFaceLabelRotation(spec, ft, faceIndex, poseRz) - 90);
           const faceOffset = Number(D10_LABEL_ROTATE_OFFSETS[faceId] || 0);
           return normalizeAngle(baseRotate + faceOffset);
         }
-        if (key === 'd12') {
+        if (key === 'd12' || key === 'd20') {
           return normalizeAngle(resolveFaceLabelRotation(spec, ft, faceIndex, poseRz));
         }
         return 0;
@@ -3363,12 +3368,14 @@
           && preset.ry !== undefined
           && preset.rz !== undefined
         );
-        const solvedPose = hasExplicitPose ? {
+        const poseSeed = hasExplicitPose ? {
           rx: Number(preset.rx),
           ry: Number(preset.ry),
           rz: Number(preset.rz),
-        } : solveMainPreviewUprightPose(k, basePose);
-        const applyPresetRollOffset = !(k === 'd4' || k === 'd6' || k === 'd8' || k === 'd10' || k === 'd12');
+        } : basePose;
+        const autoUprightKinds = { d4: true, d6: true, d8: true, d10: true, d12: true, d20: true, d100: true };
+        const solvedPose = autoUprightKinds[k] ? solveMainPreviewUprightPose(k, poseSeed) : poseSeed;
+        const applyPresetRollOffset = !autoUprightKinds[k];
         return {
           variant: 'main',
           kind: k,
