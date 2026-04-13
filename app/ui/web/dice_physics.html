@@ -3047,15 +3047,16 @@
         const previewScale = clamp(Number(styleOverrides.scalePercent || 100) / 100, 0.5, 2.25);
         const previewIdle = state.phase === 'preview_idle';
         const previewFitScale = state.previewMode ? Number(state.previewFitScale || 1.0) : 1.0;
+        const previewViewportScale = state.previewMode ? Number(state.previewViewportScale || 1.0) : 1.0;
         const idleBoost = previewIdle ? Number(state.previewIdleScaleBoost || 1.12) : 1.0;
-        const scale = state.previewMode ? (previewScale * previewFitScale * idleBoost) : (0.78 + (1 - zNorm) * 0.22);
+        const scale = state.previewMode ? (previewScale * previewFitScale * previewViewportScale * idleBoost) : (0.78 + (1 - zNorm) * 0.22);
 
         state.wrap.style.opacity = String(clamp(state.alpha, 0, 1));
         state.wrap.style.transform = `translate(${cx}px, ${cy}px) translate(-50%, -50%) scale(${scale})`;
         state.dice.style.transform =
           `translate(-50%, -50%) rotateZ(${state.rz}deg) rotateY(${state.ry}deg) rotateX(${state.rx}deg)`;
 
-        const shadowScale = state.previewMode ? (0.72 * previewScale * previewFitScale * (previewIdle ? 1.04 : 1.0)) : (0.78 + (1 - zNorm) * 0.26);
+        const shadowScale = state.previewMode ? (0.72 * previewScale * previewFitScale * previewViewportScale * (previewIdle ? 1.04 : 1.0)) : (0.78 + (1 - zNorm) * 0.26);
         const shadowOpacity = (state.previewMode ? (previewIdle ? 0.28 : 0.22) : clamp((1 - zNorm) * 0.38, 0, 0.36)) * state.alpha;
         state.shadow.style.opacity = String(shadowOpacity);
         state.shadow.style.transform = `translate(${state.px}px, ${state.py + 28}px) translate(-50%, -50%) scale(${shadowScale})`;
@@ -3559,7 +3560,8 @@
           previewFitScale: previewSpec ? previewSpec.fitScale : 1.0,
           previewOffsetX: previewSpec ? previewSpec.offsetX : 0,
           previewOffsetY: previewSpec ? previewSpec.offsetY : 0,
-          previewIdleScaleBoost: previewSpec ? previewSpec.idleScaleBoost : 1.10
+          previewIdleScaleBoost: previewSpec ? previewSpec.idleScaleBoost : 1.10,
+          previewViewportScale: previewSpec ? (Math.min(w, h) / 96.0) : 1.0
         };
         applyStyleToState(state);
 
