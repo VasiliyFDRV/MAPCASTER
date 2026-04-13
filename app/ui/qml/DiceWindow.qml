@@ -118,7 +118,7 @@ Window {
     property real mainPreviewHoverY: -1000
     property real mainPreviewHoverWidth: 1
     property real mainPreviewHoverHeight: 1
-    property int mainPreviewPoseVersion: 16
+    property int mainPreviewPoseVersion: 17
     readonly property var mainPreviewDieTypes: (["d4", "d6", "d8", "d10", "d12", "d100", "d20"])
     property var damageTemplateLabels: ([
         "Оружие",
@@ -795,7 +795,7 @@ Window {
         }
         syncMainPreviewHoverGeometry()
         var spec = resolveMainPreviewSpec(mainPreviewHoverDieType)
-        runPreviewScene(mainPreviewHoverWeb, "main", "idle", spec.modelKind, spec.payload, true)
+        runPreviewScene(mainPreviewHoverWeb, "main", "idle", mainPreviewHoverDieType, spec.payload, true)
     }
     function activateMainPreviewHover(tile) {
         if (!tile || !tile.enabled) {
