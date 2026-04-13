@@ -3295,9 +3295,9 @@
         return 0;
       }
 
-      function computeMainPreviewUprightDelta(spec, ft, faceIndex, pose) {
+      function computeMainPreviewUprightScore(spec, ft, faceIndex, pose) {
         if (!spec || !ft || !pose) {
-          return 0;
+          return -1e9;
         }
         const labelRotate = resolvePreviewFaceLabelVisualRotation(spec, ft, faceIndex, Number(pose.rz || 0));
         const localUp2 = rotateScreenVec({ x: 0, y: -1 }, labelRotate);
@@ -3311,18 +3311,25 @@
         const sy = Number(worldUp.y || 0);
         const len = Math.hypot(sx, sy);
         if (!Number.isFinite(len) || len < 1e-5) {
-          return 0;
+          return -1e9;
         }
         const ax = sx / len;
         const ay = sy / len;
-        const tx = 0;
-        const ty = -1;
-        const cross = ax * ty - ay * tx;
-        const dot = ax * tx + ay * ty;
-        if (!Number.isFinite(cross) || !Number.isFinite(dot)) {
-          return 0;
+        return ax * 0 + ay * -1;
+      }
+
+      function mainPreviewPoseKeepsTargetFace(kind, spec, match, pose) {
+        if (!spec || !match || !pose) {
+          return false;
         }
-        return normalizeAngle(Math.atan2(cross, dot) * 180 / Math.PI);
+        const k = String(kind || '').toLowerCase();
+        const rx = Number(pose.rx || 0);
+        const ry = Number(pose.ry || 0);
+        const rz = Number(pose.rz || 0);
+        if (k === 'd4') {
+          return Number(topValueFaceFromSpecEuler(spec, rx, ry, rz) || 0) === Number(match.faceId || 0);
+        }
+        return Number(topFaceFromSpecEuler(spec, rx, ry, rz) || 0) === Number(match.faceId || 0);
       }
 
       function solveMainPreviewUprightPose(kind, basePose) {
@@ -3331,24 +3338,38 @@
         if (!targetValue || !basePose) {
           return basePose;
         }
-        const spec = getDiceSpec(k);
+        const spec = getDiceSpec(k === 'd100' ? 'd10t' : k);
         const match = findFaceTransformByValue(spec, targetValue);
         if (!match) {
           return basePose;
         }
-        const pose = {
+        const seed = {
           rx: Number(basePose.rx || 0),
           ry: Number(basePose.ry || 0),
           rz: Number(basePose.rz || 0),
         };
-        for (let i = 0; i < 3; i += 1) {
-          const delta = computeMainPreviewUprightDelta(spec, match.ft, match.faceIndex, pose);
-          if (!Number.isFinite(delta) || Math.abs(delta) < 0.05) {
-            break;
+        let best = { rx: seed.rx, ry: seed.ry, rz: normalizeAngle(seed.rz) };
+        let bestScore = mainPreviewPoseKeepsTargetFace(k, spec, match, best)
+          ? computeMainPreviewUprightScore(spec, match.ft, match.faceIndex, best)
+          : -1e9;
+
+        for (let delta = -180; delta <= 180; delta += 2) {
+          const candidate = {
+            rx: seed.rx,
+            ry: seed.ry,
+            rz: normalizeAngle(seed.rz + delta),
+          };
+          if (!mainPreviewPoseKeepsTargetFace(k, spec, match, candidate)) {
+            continue;
           }
-          pose.rz = normalizeAngle(pose.rz + delta);
+          const score = computeMainPreviewUprightScore(spec, match.ft, match.faceIndex, candidate)
+            - angularDistance(candidate.rz, seed.rz) * 0.0005;
+          if (score > bestScore) {
+            bestScore = score;
+            best = candidate;
+          }
         }
-        return pose;
+        return best;
       }
 
       function getMainPreviewSpec(kind) {
