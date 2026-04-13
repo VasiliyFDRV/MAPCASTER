@@ -121,7 +121,7 @@ Window {
     property real mainPreviewHoverY: -1000
     property real mainPreviewHoverWidth: 1
     property real mainPreviewHoverHeight: 1
-    property int mainPreviewPoseVersion: 2
+    property int mainPreviewPoseVersion: 3
     readonly property var mainPreviewDieTypes: (["d20", "d4", "d6", "d8", "d10", "d12", "d100"])
     property var damageTemplateLabels: ([
         "Оружие",
@@ -777,15 +777,15 @@ Window {
         var payload = styleToWebPayload(styleObj)
         var key = String(dieType || "d6").toLowerCase()
         var scaleFactors = {
-            "d4": 0.92,
-            "d6": 0.92,
-            "d8": 0.92,
-            "d10": 0.9,
-            "d12": 0.88,
-            "d20": 0.86,
-            "d100": 0.9
+            "d4": 1.56,
+            "d6": 1.56,
+            "d8": 1.54,
+            "d10": 1.5,
+            "d12": 1.42,
+            "d20": 1.38,
+            "d100": 1.5
         }
-        payload.scalePercent = Number(payload.scalePercent || 100) * Number(scaleFactors[key] || 0.9)
+        payload.scalePercent = Number(payload.scalePercent || 100) * Number(scaleFactors[key] || 1.46)
         return payload
     }
     function resolveMainPreviewSpec(dieType, styleOverride) {
