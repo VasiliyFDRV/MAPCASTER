@@ -19,6 +19,19 @@ Window {
         acceptedButtons: Qt.AllButtons
         onTapped: diceController.request_clear_dice_visuals()
     }
+    HoverHandler {
+        id: windowHoverTracker
+        onPointChanged: {
+            if (diceWindow.mainPreviewHoverTile && !diceWindow.isPointerInsideTile(diceWindow.mainPreviewHoverTile, point.position.x, point.position.y)) {
+                diceWindow.deactivateMainPreviewHover(diceWindow.mainPreviewHoverTile)
+            }
+        }
+        onHoveredChanged: {
+            if (!hovered && diceWindow.mainPreviewHoverTile) {
+                diceWindow.deactivateMainPreviewHover(diceWindow.mainPreviewHoverTile)
+            }
+        }
+    }
     property int resetToken: 0
     property int d20Count: 0
     property string d20Mode: "normal"
@@ -119,6 +132,7 @@ Window {
     property real mainPreviewHoverWidth: 1
     property real mainPreviewHoverHeight: 1
     property int mainPreviewPoseVersion: 20
+    readonly property real mainPreviewReferenceSize: 96
     readonly property var mainPreviewDieTypes: (["d4", "d6", "d8", "d10", "d12", "d100", "d20"])
     property var damageTemplateLabels: ([
         "Оружие",
@@ -777,6 +791,13 @@ Window {
         }
         script += "})();"
         webView.runJavaScript(script)
+    }
+    function isPointerInsideTile(tile, sceneX, sceneY) {
+        if (!tile || !diceWindow.contentItem) {
+            return false
+        }
+        var p = diceWindow.contentItem.mapToItem(tile, sceneX, sceneY)
+        return p.x >= 0 && p.y >= 0 && p.x <= tile.width && p.y <= tile.height
     }
     function syncMainPreviewHoverGeometry() {
         if (!mainPreviewHoverTile || !mainPreviewOverlayHost) {
@@ -2577,21 +2598,29 @@ Window {
             radius: Math.max(8, Math.round(Math.min(width, height) * 0.18))
             color: "transparent"
             clip: true
-            WebEngineView {
-                id: mainPreviewHoverWeb
-                anchors.fill: parent
-                visible: true
+            Item {
+                anchors.centerIn: parent
+                width: diceWindow.mainPreviewReferenceSize
+                height: diceWindow.mainPreviewReferenceSize
+                scale: Math.min(mainPreviewHoverFrame.width / width, mainPreviewHoverFrame.height / height)
+                transformOrigin: Item.Center
                 enabled: false
-                backgroundColor: "#00000000"
-                url: Qt.resolvedUrl("../web/dice_physics.html")
-                onLoadingChanged: function(req) {
-                    if (req.status === WebEngineView.LoadFailedStatus) {
-                        mainPreviewHoverWebReady = false
-                        return
-                    }
-                    if (req.status === WebEngineView.LoadSucceededStatus) {
-                        mainPreviewHoverWebReady = true
-                        diceWindow.startMainPreviewHoverNow()
+                WebEngineView {
+                    id: mainPreviewHoverWeb
+                    anchors.fill: parent
+                    visible: true
+                    enabled: false
+                    backgroundColor: "#00000000"
+                    url: Qt.resolvedUrl("../web/dice_physics.html")
+                    onLoadingChanged: function(req) {
+                        if (req.status === WebEngineView.LoadFailedStatus) {
+                            mainPreviewHoverWebReady = false
+                            return
+                        }
+                        if (req.status === WebEngineView.LoadSucceededStatus) {
+                            mainPreviewHoverWebReady = true
+                            diceWindow.startMainPreviewHoverNow()
+                        }
                     }
                 }
             }
