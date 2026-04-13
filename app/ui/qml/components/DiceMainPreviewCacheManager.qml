@@ -5,7 +5,10 @@ import "DicePreviewUtils.js" as DicePreviewUtils
 
 Item {
     id: manager
-    visible: false
+    visible: true
+    opacity: 0.0
+    x: -10000
+    y: -10000
     width: 1
     height: 1
 
@@ -68,20 +71,9 @@ Item {
     }
 
     function readySourceUrl(sourceUrl) {
-        var base = String(sourceUrl || "")
-        if (!base.length) {
-            return ""
-        }
-        return base + "?rev=" + observedStoreRevision
+        return String(sourceUrl || "")
     }
 
-    function provisionalSourceUrl(sourceUrl, cacheKey) {
-        var base = String(sourceUrl || "")
-        if (!base.length) {
-            return ""
-        }
-        return base + "?probe=" + hashText(cacheKey)
-    }
 
     function assignActiveEntry(dieType, cacheKey, sourceUrl) {
         var key = normalizeDieType(dieType)
@@ -113,10 +105,6 @@ Item {
         if (readySource.length > 0) {
             assignActiveEntry(key, cacheKey, readySourceUrl(readySource))
         } else {
-            var active = activeEntries && activeEntries[key] ? activeEntries[key] : null
-            if (!active || !active.source) {
-                assignActiveEntry(key, cacheKey, provisionalSourceUrl(fileUrl, cacheKey))
-            }
             DiceMainPreviewCacheStore.requestTask({
                 "key": cacheKey,
                 "dieType": key,
