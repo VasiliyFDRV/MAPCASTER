@@ -1789,7 +1789,7 @@ Window {
         property string dieType: "d6"
         property int tileSize: 46
         property bool useInset: true
-        readonly property int previewMargin: tile.useInset ? 7 : 4
+        readonly property int previewMargin: tile.useInset ? 0 : 4
         readonly property string snapshotSource: diceWindow.mainPreviewSnapshotSource(tile.dieType)
         signal clicked()
         implicitWidth: tile.tileSize
