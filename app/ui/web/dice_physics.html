@@ -676,9 +676,9 @@
         d8: { modelKind: 'd8', fitScale: 0.98, offsetX: 0, offsetY: 1, idleScaleBoost: 1.04 },
         d10: { modelKind: 'd10', fitScale: 0.94, offsetX: 0, offsetY: 1, idleScaleBoost: 1.04 },
         d10t: { modelKind: 'd10t', fitScale: 0.94, offsetX: 0, offsetY: 1, idleScaleBoost: 1.04, rzOffset: 180 },
-        d12: { modelKind: 'd12', fitScale: 0.90, offsetX: 0, offsetY: 1, idleScaleBoost: 1.04, poseRollOffset: 180 },
-        d20: { modelKind: 'd20', fitScale: 0.96, offsetX: 0, offsetY: 2, idleScaleBoost: 1.04, rx: -58, ry: 34, rz: 14 },
-        d100: { modelKind: 'd10t', fitScale: 0.94, offsetX: 0, offsetY: 1, idleScaleBoost: 1.04, copyPoseFrom: 'd10' },
+        d12: { modelKind: 'd12', fitScale: 0.90, offsetX: 0, offsetY: 1, idleScaleBoost: 1.04 },
+        d20: { modelKind: 'd20', fitScale: 0.96, offsetX: 0, offsetY: 2, idleScaleBoost: 1.04 },
+        d100: { modelKind: 'd10t', basePoseKind: 'd10', fitScale: 0.94, offsetX: 0, offsetY: 1, idleScaleBoost: 1.04 },
       };
 
       const COLLISION_RESTITUTION = 0.14;
@@ -3295,9 +3295,9 @@
         return 0;
       }
 
-      function computeMainPreviewUprightScore(spec, ft, faceIndex, pose) {
+      function computeMainPreviewUprightDelta(spec, ft, faceIndex, pose) {
         if (!spec || !ft || !pose) {
-          return -1e9;
+          return 0;
         }
         const labelRotate = resolvePreviewFaceLabelVisualRotation(spec, ft, faceIndex, Number(pose.rz || 0));
         const localUp2 = rotateScreenVec({ x: 0, y: -1 }, labelRotate);
@@ -3311,80 +3311,22 @@
         const sy = Number(worldUp.y || 0);
         const len = Math.hypot(sx, sy);
         if (!Number.isFinite(len) || len < 1e-5) {
-          return -1e9;
+          return 0;
         }
         const ax = sx / len;
         const ay = sy / len;
-        return ax * 0 + ay * -1;
-      }
-
-      function mainPreviewPoseKeepsTargetFace(kind, spec, match, pose) {
-        if (!spec || !match || !pose) {
-          return false;
+        const tx = 0;
+        const ty = -1;
+        const cross = ax * ty - ay * tx;
+        const dot = ax * tx + ay * ty;
+        if (!Number.isFinite(cross) || !Number.isFinite(dot)) {
+          return 0;
         }
-        const k = String(kind || '').toLowerCase();
-        const rx = Number(pose.rx || 0);
-        const ry = Number(pose.ry || 0);
-        const rz = Number(pose.rz || 0);
-        if (k === 'd4') {
-          return Number(topValueFaceFromSpecEuler(spec, rx, ry, rz) || 0) === Number(match.faceId || 0);
-        }
-        return Number(topFaceFromSpecEuler(spec, rx, ry, rz) || 0) === Number(match.faceId || 0);
-      }
-
-      function computeMainPreviewTargetFaceSupport(spec, match, pose) {
-        if (!spec || !match || !pose || !Array.isArray(spec.faceNormals)) {
-          return -1e9;
-        }
-        const faceNormal = spec.faceNormals[Math.max(0, Number(match.faceId || 1) - 1)];
-        if (!faceNormal) {
-          return -1e9;
-        }
-        const world = rotateVec(faceNormal, Number(pose.rx || 0), Number(pose.ry || 0), Number(pose.rz || 0));
-        return Number(world.z || 0);
-      }
-
-      function searchBestMainPreviewPose(kind, spec, match, seed, includeTiltSearch) {
-        let best = { rx: Number(seed.rx || 0), ry: Number(seed.ry || 0), rz: normalizeAngle(Number(seed.rz || 0)) };
-        let bestScore = mainPreviewPoseKeepsTargetFace(kind, spec, match, best)
-          ? (computeMainPreviewUprightScore(spec, match.ft, match.faceIndex, best)
-            + computeMainPreviewTargetFaceSupport(spec, match, best) * 0.02)
-          : -1e9;
-        const rxSpan = includeTiltSearch ? 12 : 0;
-        const rySpan = includeTiltSearch ? 12 : 0;
-        const rxStep = includeTiltSearch ? 4 : 12;
-        const ryStep = includeTiltSearch ? 4 : 12;
-        for (let drx = -rxSpan; drx <= rxSpan; drx += rxStep) {
-          for (let dry = -rySpan; dry <= rySpan; dry += ryStep) {
-            for (let delta = -180; delta <= 180; delta += 2) {
-              const candidate = {
-                rx: Number(seed.rx || 0) + drx,
-                ry: Number(seed.ry || 0) + dry,
-                rz: normalizeAngle(Number(seed.rz || 0) + delta),
-              };
-              if (!mainPreviewPoseKeepsTargetFace(kind, spec, match, candidate)) {
-                continue;
-              }
-              const score = computeMainPreviewUprightScore(spec, match.ft, match.faceIndex, candidate)
-                + computeMainPreviewTargetFaceSupport(spec, match, candidate) * 0.02
-                - angularDistance(candidate.rz, seed.rz) * 0.0005
-                - Math.abs(drx) * 0.0008
-                - Math.abs(dry) * 0.0008;
-              if (score > bestScore) {
-                bestScore = score;
-                best = candidate;
-              }
-            }
-          }
-        }
-        return best;
+        return normalizeAngle(Math.atan2(cross, dot) * 180 / Math.PI);
       }
 
       function solveMainPreviewUprightPose(kind, basePose) {
         const k = String(kind || 'd6').toLowerCase();
-        if (k === 'd100') {
-          return solveMainPreviewUprightPose('d10', getCanonicalPreviewPose('d10'));
-        }
         const targetValue = getMainPreviewTargetFaceValue(k);
         if (!targetValue || !basePose) {
           return basePose;
@@ -3394,19 +3336,26 @@
         if (!match) {
           return basePose;
         }
-        const seed = {
+        const pose = {
           rx: Number(basePose.rx || 0),
           ry: Number(basePose.ry || 0),
           rz: Number(basePose.rz || 0),
         };
-        const includeTiltSearch = (k === 'd12' || k === 'd20');
-        return searchBestMainPreviewPose(k, spec, match, seed, includeTiltSearch);
+        for (let i = 0; i < 3; i += 1) {
+          const delta = computeMainPreviewUprightDelta(spec, match.ft, match.faceIndex, pose);
+          if (!Number.isFinite(delta) || Math.abs(delta) < 0.05) {
+            break;
+          }
+          pose.rz = normalizeAngle(pose.rz + delta);
+        }
+        return pose;
       }
 
       function getMainPreviewSpec(kind) {
         const k = String(kind || 'd6').toLowerCase();
         const preset = Object.assign({
           modelKind: k,
+          basePoseKind: '',
           fitScale: 0.74,
           offsetX: 0,
           offsetY: 0,
@@ -3414,27 +3363,19 @@
           rzOffset: 0,
         }, MAIN_PREVIEW_PRESETS[k] || {});
         const modelKind = String(preset.modelKind || k);
-        const copyPoseFrom = String(preset.copyPoseFrom || '').toLowerCase();
-        const copiedPose = copyPoseFrom && copyPoseFrom !== k
-          ? ((MAIN_PREVIEW_PRESETS[copyPoseFrom] && MAIN_PREVIEW_PRESETS[copyPoseFrom].copyPoseFrom === k)
-            ? null
-            : getMainPreviewSpec(copyPoseFrom).pose)
-          : null;
-        const basePose = copiedPose || getCanonicalPreviewPose(modelKind);
+        const basePoseKind = String(preset.basePoseKind || modelKind || k);
+        const basePose = getCanonicalPreviewPose(basePoseKind);
         const hasExplicitPose = (
           preset.rx !== undefined
           && preset.ry !== undefined
           && preset.rz !== undefined
         );
-        const poseSeed = hasExplicitPose ? {
+        const solvedPose = hasExplicitPose ? {
           rx: Number(preset.rx),
           ry: Number(preset.ry),
           rz: Number(preset.rz),
-        } : basePose;
-        const autoUprightKinds = { d4: true, d6: true, d8: true, d10: true, d12: true };
-        const applyAutoUpright = autoUprightKinds[k] && !hasExplicitPose;
-        const solvedPose = applyAutoUpright ? solveMainPreviewUprightPose(k, poseSeed) : poseSeed;
-        const finalRollOffset = Number(preset.poseRollOffset || 0) + (applyAutoUpright ? 0 : Number(preset.rzOffset || 0));
+        } : solveMainPreviewUprightPose(k, basePose);
+        const applyPresetRollOffset = false;
         return {
           variant: 'main',
           kind: k,
@@ -3446,7 +3387,7 @@
           pose: {
             rx: Number(solvedPose && solvedPose.rx !== undefined ? solvedPose.rx : basePose.rx),
             ry: Number(solvedPose && solvedPose.ry !== undefined ? solvedPose.ry : basePose.ry),
-            rz: normalizeAngle(Number(solvedPose && solvedPose.rz !== undefined ? solvedPose.rz : basePose.rz) + finalRollOffset),
+            rz: normalizeAngle(Number(solvedPose && solvedPose.rz !== undefined ? solvedPose.rz : basePose.rz) + (applyPresetRollOffset ? Number(preset.rzOffset || 0) : 0)),
           },
         };
       }
