@@ -258,8 +258,8 @@ Item {
             WebEngineView {
                 x: -10000
                 y: -10000
-                width: 96
-                height: 96
+                width: 256
+                height: 256
                 visible: true
                 enabled: true
                 backgroundColor: "#00000000"
