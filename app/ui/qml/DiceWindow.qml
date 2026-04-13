@@ -118,7 +118,7 @@ Window {
     property real mainPreviewHoverY: -1000
     property real mainPreviewHoverWidth: 1
     property real mainPreviewHoverHeight: 1
-    property int mainPreviewPoseVersion: 19
+    property int mainPreviewPoseVersion: 20
     readonly property var mainPreviewDieTypes: (["d4", "d6", "d8", "d10", "d12", "d100", "d20"])
     property var damageTemplateLabels: ([
         "Оружие",
@@ -1796,6 +1796,16 @@ Window {
         implicitHeight: tile.tileSize
         HoverHandler {
             id: tileHover
+            onHoveredChanged: {
+                if (!tile.useInset) {
+                    return
+                }
+                if (hovered) {
+                    diceWindow.activateMainPreviewHover(tile)
+                } else {
+                    diceWindow.deactivateMainPreviewHover(tile)
+                }
+            }
         }
         NeumoInsetSurface {
             id: tileInset
@@ -1869,13 +1879,6 @@ Window {
             hoverEnabled: true
             enabled: tile.enabled
             cursorShape: Qt.PointingHandCursor
-            onContainsMouseChanged: {
-                if (containsMouse && tile.useInset) {
-                    diceWindow.activateMainPreviewHover(tile)
-                } else {
-                    diceWindow.deactivateMainPreviewHover(tile)
-                }
-            }
             onClicked: tile.clicked()
         }
         Component.onCompleted: {
@@ -2560,11 +2563,13 @@ Window {
         id: mainPreviewOverlayHost
         anchors.fill: parent
         z: 20
+        enabled: false
         onWidthChanged: diceWindow.syncMainPreviewHoverGeometry()
         onHeightChanged: diceWindow.syncMainPreviewHoverGeometry()
         Rectangle {
             id: mainPreviewHoverFrame
             visible: !!diceWindow.mainPreviewHoverTile && diceWindow.mainPreviewHoverWebReady
+            enabled: false
             x: diceWindow.mainPreviewHoverX
             y: diceWindow.mainPreviewHoverY
             width: diceWindow.mainPreviewHoverWidth
