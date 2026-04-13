@@ -30,7 +30,7 @@ Window {
     property color textPrimary: "#D0D0D0"
     property color textSecondary: "#909090"
     property real explorerEdgeInset: 12
-    property int mainPreviewPoseVersion: 10
+    property int mainPreviewPoseVersion: 12
 
     function openSceneEditor(draft) {
         if (!draft || !draft.map || !draft.background || !draft.grid) {
