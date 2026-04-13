@@ -3286,11 +3286,17 @@
         if (key === 'd4') {
           return normalizeAngle(resolveFaceLabelRotation(spec, ft, faceIndex, poseRz) + 180);
         }
-        if (key === 'd10' || key === 'd10t' || key === 'd100') {
+        if (key === 'd10') {
           const faceId = Number(ft && ft.id || (faceIndex + 1));
           const baseRotate = normalizeAngle(resolveFaceLabelRotation(spec, ft, faceIndex, poseRz) - 90);
           const faceOffset = Number(D10_LABEL_ROTATE_OFFSETS[faceId] || 0);
           return normalizeAngle(baseRotate + faceOffset);
+        }
+        if (key === 'd10t' || key === 'd100') {
+          const faceId = Number(ft && ft.id || (faceIndex + 1));
+          const baseRotate = normalizeAngle(resolveFaceLabelRotation(spec, ft, faceIndex, poseRz) - 90);
+          const faceOffset = Number(D10_LABEL_ROTATE_OFFSETS[faceId] || 0);
+          return normalizeAngle(baseRotate + faceOffset - 90);
         }
         if (key === 'd12' || key === 'd20') {
           return normalizeAngle(resolveFaceLabelRotation(spec, ft, faceIndex, poseRz));
