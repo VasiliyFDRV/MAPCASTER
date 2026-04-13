@@ -121,8 +121,8 @@ Window {
     property real mainPreviewHoverY: -1000
     property real mainPreviewHoverWidth: 1
     property real mainPreviewHoverHeight: 1
-    property int mainPreviewPoseVersion: 5
-    readonly property var mainPreviewDieTypes: (["d20", "d4", "d6", "d8", "d10", "d12", "d100"])
+    property int mainPreviewPoseVersion: 6
+    readonly property var mainPreviewDieTypes: (["d4", "d6", "d8", "d10", "d12", "d100", "d20"])
     property var damageTemplateLabels: ([
         "Оружие",
         "Огонь",
@@ -874,6 +874,7 @@ Window {
         mainPreviewSnapshotCurrentTask = task
         mainPreviewSnapshotBusy = true
         runPreviewScene(mainPreviewSnapshotWeb, "main", "static", task.modelKind, task.payload, true)
+        mainPreviewSnapshotCaptureTimer.interval = task.modelKind === "d20" ? 420 : 150
         mainPreviewSnapshotCaptureTimer.restart()
     }
     function handleMainPreviewSnapshotCaptured(result) {
