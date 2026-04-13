@@ -118,7 +118,7 @@ Window {
     property real mainPreviewHoverY: -1000
     property real mainPreviewHoverWidth: 1
     property real mainPreviewHoverHeight: 1
-    property int mainPreviewPoseVersion: 15
+    property int mainPreviewPoseVersion: 16
     readonly property var mainPreviewDieTypes: (["d4", "d6", "d8", "d10", "d12", "d100", "d20"])
     property var damageTemplateLabels: ([
         "Оружие",

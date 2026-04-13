@@ -3340,7 +3340,7 @@
         if (!targetValue || !basePose) {
           return basePose;
         }
-        const spec = getDiceSpec(k);
+        const spec = getDiceSpec(k === 'd100' ? 'd10t' : k);
         const match = findFaceTransformByValue(spec, targetValue);
         if (!match) {
           return basePose;
