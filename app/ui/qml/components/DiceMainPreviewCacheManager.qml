@@ -200,7 +200,8 @@ Item {
         snapshotCurrentTask = task
         snapshotBusy = true
         runPreviewScene(snapshotWebLoader.item, "main", "static", task.modelKind, task.payload, true)
-        snapshotCaptureTimer.interval = String(task.modelKind || "") === "d20" ? 420 : 150
+        var captureKind = String(task.modelKind || "")
+        snapshotCaptureTimer.interval = captureKind === "d20" ? 420 : (captureKind === "d4" ? 300 : 150)
         snapshotCaptureTimer.restart()
     }
 
