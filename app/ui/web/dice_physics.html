@@ -1962,6 +1962,9 @@
             ry: t.ry,
             rz: normalizeAngle(t.rz + 180),
             tz: t.tz,
+            labelRotate: normalizeAngle(Number(t.labelRotate || 0) + 180),
+            labelCxPct: t.labelCxPct,
+            labelCyPct: t.labelCyPct,
           });
           faceNormals.push(normalizeVec3Obj(built.normal));
         }
