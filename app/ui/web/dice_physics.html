@@ -652,6 +652,7 @@
       let previewDieKind = "d6";
       let previewStaticMode = false;
       let previewPresentationMode = "roll";
+      let previewRenderVariant = "default";
       const canonicalPreviewPoseCache = new Map();
       let styleOverrides = {
         scalePercent: 100,
@@ -667,6 +668,17 @@
           textGlowOpacity: 1.0,
           edgeColor: "#d4d4d4",
           edgeWidth: 0.0,
+      };
+
+      const MAIN_PREVIEW_PRESETS = {
+        d4: { modelKind: 'd4', fitScale: 0.74, offsetX: 0, offsetY: 1, idleScaleBoost: 1.05, rzOffset: 90 },
+        d6: { modelKind: 'd6', fitScale: 0.76, offsetX: 0, offsetY: 1, idleScaleBoost: 1.05, rzOffset: 0 },
+        d8: { modelKind: 'd8', fitScale: 0.76, offsetX: 0, offsetY: 1, idleScaleBoost: 1.05, rzOffset: 0 },
+        d10: { modelKind: 'd10', fitScale: 0.72, offsetX: 0, offsetY: 1, idleScaleBoost: 1.05, rzOffset: 180 },
+        d10t: { modelKind: 'd10t', fitScale: 0.72, offsetX: 0, offsetY: 1, idleScaleBoost: 1.05, rzOffset: 180 },
+        d12: { modelKind: 'd12', fitScale: 0.70, offsetX: 0, offsetY: 1, idleScaleBoost: 1.05, rzOffset: 180 },
+        d20: { modelKind: 'd20', fitScale: 0.68, offsetX: 0, offsetY: 2, idleScaleBoost: 1.05, rzOffset: 180 },
+        d100: { modelKind: 'd10t', fitScale: 0.72, offsetX: 0, offsetY: 1, idleScaleBoost: 1.05, rzOffset: 180 },
       };
 
       const COLLISION_RESTITUTION = 0.14;
@@ -3028,15 +3040,16 @@
         const cy = state.py - state.z * 0.55;
         const previewScale = clamp(Number(styleOverrides.scalePercent || 100) / 100, 0.5, 2.25);
         const previewIdle = state.phase === 'preview_idle';
-        const idleBoost = previewIdle ? 1.12 : 1.0;
-        const scale = state.previewMode ? (previewScale * idleBoost) : (0.78 + (1 - zNorm) * 0.22);
+        const previewFitScale = state.previewMode ? Number(state.previewFitScale || 1.0) : 1.0;
+        const idleBoost = previewIdle ? Number(state.previewIdleScaleBoost || 1.12) : 1.0;
+        const scale = state.previewMode ? (previewScale * previewFitScale * idleBoost) : (0.78 + (1 - zNorm) * 0.22);
 
         state.wrap.style.opacity = String(clamp(state.alpha, 0, 1));
         state.wrap.style.transform = `translate(${cx}px, ${cy}px) translate(-50%, -50%) scale(${scale})`;
         state.dice.style.transform =
           `translate(-50%, -50%) rotateZ(${state.rz}deg) rotateY(${state.ry}deg) rotateX(${state.rx}deg)`;
 
-        const shadowScale = state.previewMode ? (0.72 * previewScale * (previewIdle ? 1.08 : 1.0)) : (0.78 + (1 - zNorm) * 0.26);
+        const shadowScale = state.previewMode ? (0.72 * previewScale * previewFitScale * (previewIdle ? 1.04 : 1.0)) : (0.78 + (1 - zNorm) * 0.26);
         const shadowOpacity = (state.previewMode ? (previewIdle ? 0.28 : 0.22) : clamp((1 - zNorm) * 0.38, 0, 0.36)) * state.alpha;
         state.shadow.style.opacity = String(shadowOpacity);
         state.shadow.style.transform = `translate(${state.px}px, ${state.py + 28}px) translate(-50%, -50%) scale(${shadowScale})`;
@@ -3221,12 +3234,44 @@
         return pose;
       }
 
+      function getMainPreviewSpec(kind) {
+        const k = String(kind || 'd6').toLowerCase();
+        const preset = Object.assign({
+          modelKind: k,
+          fitScale: 0.74,
+          offsetX: 0,
+          offsetY: 0,
+          idleScaleBoost: 1.05,
+          rzOffset: 0,
+        }, MAIN_PREVIEW_PRESETS[k] || {});
+        const basePose = getCanonicalPreviewPose(preset.modelKind || k);
+        return {
+          variant: 'main',
+          kind: k,
+          modelKind: String(preset.modelKind || k),
+          fitScale: Number(preset.fitScale || 1),
+          offsetX: Number(preset.offsetX || 0),
+          offsetY: Number(preset.offsetY || 0),
+          idleScaleBoost: Number(preset.idleScaleBoost || 1.05),
+          pose: {
+            rx: Number(preset.rx !== undefined ? preset.rx : basePose.rx),
+            ry: Number(preset.ry !== undefined ? preset.ry : basePose.ry),
+            rz: normalizeAngle(Number(preset.rz !== undefined ? preset.rz : basePose.rz) + Number(preset.rzOffset || 0)),
+          },
+        };
+      }
+
       function getPreviewStaticPose(kind) {
         return getCanonicalPreviewPose(kind);
       }
 
       window.setPreviewDieKind = function setPreviewDieKind(kind) {
         previewDieKind = String(kind || "d6").toLowerCase();
+      };
+
+      window.setPreviewRenderVariant = function setPreviewRenderVariant(variant) {
+        const next = String(variant || 'default').toLowerCase();
+        previewRenderVariant = next === 'main' ? 'main' : 'default';
       };
 
       window.setPreviewPresentationMode = function setPreviewPresentationMode(mode) {
@@ -3290,15 +3335,17 @@
         const previewTotal = Math.max(1, Number(totalCount || 1));
         const previewOffset = (previewIndex - (previewTotal - 1) * 0.5) * 56;
         const previewPresentation = previewMode ? String(previewPresentationMode || 'roll') : 'roll';
+        const previewVariant = previewMode ? String(previewRenderVariant || 'default') : 'default';
         const previewStatic = previewMode && previewPresentation === 'static';
         const previewIdle = previewMode && previewPresentation === 'idle';
-        const staticPose = (previewStatic || previewIdle) ? getCanonicalPreviewPose(modelKind) : null;
+        const previewSpec = previewMode && previewVariant === 'main' ? getMainPreviewSpec(modelKind) : null;
+        const staticPose = (previewStatic || previewIdle) ? (previewSpec ? previewSpec.pose : getCanonicalPreviewPose(modelKind)) : null;
 
         const throwPower = previewMode ? 0 : random(0.72, 1.35);
         const spinPower = previewMode ? 0 : random(0.95, 1.90);
         const driftPower = previewMode ? 0 : random(0.95, 1.75);
-        const spawnPy = previewMode ? (h * 0.5) : (h * random(0.10, 0.19));
-        const spawnPx = previewMode ? (centerX + previewOffset) : pickSpawnX(centerX, w, spawnPy);
+        const spawnPy = previewMode ? (h * 0.5 + Number(previewSpec && previewSpec.offsetY || 0)) : (h * random(0.10, 0.19));
+        const spawnPx = previewMode ? (centerX + previewOffset + Number(previewSpec && previewSpec.offsetX || 0)) : pickSpawnX(centerX, w, spawnPy);
 
         const state = {
           px: spawnPx,
@@ -3353,7 +3400,11 @@
           resultMode: 'cube',
           previewMode: previewMode,
           previewSlot: previewIndex,
-          previewTotal: previewTotal
+          previewTotal: previewTotal,
+          previewFitScale: previewSpec ? previewSpec.fitScale : 1.0,
+          previewOffsetX: previewSpec ? previewSpec.offsetX : 0,
+          previewOffsetY: previewSpec ? previewSpec.offsetY : 0,
+          previewIdleScaleBoost: previewSpec ? previewSpec.idleScaleBoost : 1.12
         };
         applyStyleToState(state);
 
@@ -3411,8 +3462,8 @@
             const pw = window.innerWidth;
             const ph = window.innerHeight;
             const pOffset = (Number(state.previewSlot || 0) - (Number(state.previewTotal || 1) - 1) * 0.5) * 56;
-            state.px = pw * 0.5 + pOffset;
-            state.py = ph * 0.5;
+            state.px = pw * 0.5 + pOffset + Number(state.previewOffsetX || 0);
+            state.py = ph * 0.5 + Number(state.previewOffsetY || 0);
             state.z = 0;
             if (state.phase === 'preview') {
               state.rx = normalizeAngle(state.rx + state.vrx * dt);

@@ -121,7 +121,7 @@ Window {
     property real mainPreviewHoverY: -1000
     property real mainPreviewHoverWidth: 1
     property real mainPreviewHoverHeight: 1
-    property int mainPreviewPoseVersion: 1
+    property int mainPreviewPoseVersion: 2
     readonly property var mainPreviewDieTypes: (["d20", "d4", "d6", "d8", "d10", "d12", "d100"])
     property var damageTemplateLabels: ([
         "Оружие",
@@ -768,19 +768,45 @@ Window {
             "edgeWidth": Number(src.edgeWidth !== undefined ? src.edgeWidth : 0.0)
         }
     }
-    function styleToSnapshotPayload(styleObj) {
+    function styleToTemplateSnapshotPayload(styleObj) {
         var payload = styleToWebPayload(styleObj)
         payload.scalePercent = Number(payload.scalePercent || 100) * 2.25
         return payload
     }
-    function mainPreviewSnapshotKey(dieType, styleObj) {
+    function styleToMainPreviewPayload(styleObj, dieType) {
+        var payload = styleToWebPayload(styleObj)
         var key = String(dieType || "d6").toLowerCase()
+        var scaleFactors = {
+            "d4": 0.92,
+            "d6": 0.92,
+            "d8": 0.92,
+            "d10": 0.9,
+            "d12": 0.88,
+            "d20": 0.86,
+            "d100": 0.9
+        }
+        payload.scalePercent = Number(payload.scalePercent || 100) * Number(scaleFactors[key] || 0.9)
+        return payload
+    }
+    function resolveMainPreviewSpec(dieType, styleOverride) {
+        var key = String(dieType || "d6").toLowerCase()
+        var modelKind = key === "d100" ? "d10t" : key
+        var style = styleOverride && typeof styleOverride === "object" ? cloneStyle(styleOverride) : styleForDie(key)
+        var payload = styleToMainPreviewPayload(style, key)
+        return {
+            "dieType": key,
+            "modelKind": modelKind,
+            "payload": payload
+        }
+    }
+    function mainPreviewSnapshotKey(dieType, styleObj) {
+        var spec = resolveMainPreviewSpec(dieType, styleObj)
         return JSON.stringify({
             "variant": "main-preview",
             "poseVersion": Number(mainPreviewPoseVersion || 1),
-            "dieType": key,
-            "previewKind": previewKindForDieType(key),
-            "payload": styleToSnapshotPayload(styleObj)
+            "dieType": spec.dieType,
+            "modelKind": spec.modelKind,
+            "payload": spec.payload
         })
     }
     function mainPreviewSnapshotSource(dieType) {
@@ -790,8 +816,9 @@ Window {
     }
     function enqueueMainPreviewSnapshot(dieType, forceRender, styleOverride) {
         var key = String(dieType || "d6").toLowerCase()
-        var style = styleOverride && typeof styleOverride === "object" ? cloneStyle(styleOverride) : styleForDie(key)
-        var cacheKey = mainPreviewSnapshotKey(key, style)
+        var rawStyle = styleOverride && typeof styleOverride === "object" ? cloneStyle(styleOverride) : styleForDie(key)
+        var spec = resolveMainPreviewSpec(key, rawStyle)
+        var cacheKey = mainPreviewSnapshotKey(spec.dieType, rawStyle)
         var cache = mainPreviewSnapshotCache || {}
         if (!forceRender && cache[cacheKey]) {
             return
@@ -807,9 +834,9 @@ Window {
         }
         q.push({
             "key": cacheKey,
-            "dieType": key,
-            "previewKind": previewKindForDieType(key),
-            "payload": styleToSnapshotPayload(style)
+            "dieType": spec.dieType,
+            "modelKind": spec.modelKind,
+            "payload": spec.payload
         })
         mainPreviewSnapshotQueue = q
         processMainPreviewSnapshotQueue()
@@ -831,9 +858,10 @@ Window {
         mainPreviewSnapshotQueue = q
         mainPreviewSnapshotCurrentTask = task
         mainPreviewSnapshotBusy = true
+        mainPreviewSnapshotWeb.runJavaScript("window.setPreviewRenderVariant && window.setPreviewRenderVariant('main');")
         mainPreviewSnapshotWeb.runJavaScript("window.setPreviewPresentationMode && window.setPreviewPresentationMode('static');")
         mainPreviewSnapshotWeb.runJavaScript("window.setStyleOverrides && window.setStyleOverrides(" + JSON.stringify(task.payload) + ");")
-        mainPreviewSnapshotWeb.runJavaScript("window.setPreviewDieKind && window.setPreviewDieKind('" + task.previewKind + "');")
+        mainPreviewSnapshotWeb.runJavaScript("window.setPreviewDieKind && window.setPreviewDieKind('" + task.modelKind + "');")
         mainPreviewSnapshotWeb.runJavaScript("window.startPreviewRoll && window.startPreviewRoll();")
         mainPreviewSnapshotCaptureTimer.restart()
     }
@@ -872,10 +900,11 @@ Window {
             return
         }
         syncMainPreviewHoverGeometry()
-        var stylePayload = styleToWebPayload(styleForDie(mainPreviewHoverDieType))
+        var spec = resolveMainPreviewSpec(mainPreviewHoverDieType)
+        mainPreviewHoverWeb.runJavaScript("window.setPreviewRenderVariant && window.setPreviewRenderVariant('main');")
         mainPreviewHoverWeb.runJavaScript("window.setPreviewPresentationMode && window.setPreviewPresentationMode('idle');")
-        mainPreviewHoverWeb.runJavaScript("window.setStyleOverrides && window.setStyleOverrides(" + JSON.stringify(stylePayload) + ");")
-        mainPreviewHoverWeb.runJavaScript("window.setPreviewDieKind && window.setPreviewDieKind('" + previewKindForDieType(mainPreviewHoverDieType) + "');")
+        mainPreviewHoverWeb.runJavaScript("window.setStyleOverrides && window.setStyleOverrides(" + JSON.stringify(spec.payload) + ");")
+        mainPreviewHoverWeb.runJavaScript("window.setPreviewDieKind && window.setPreviewDieKind('" + spec.modelKind + "');")
         mainPreviewHoverWeb.runJavaScript("window.startPreviewRoll && window.startPreviewRoll();")
     }
     function activateMainPreviewHover(tile) {
@@ -967,7 +996,7 @@ Window {
             "index": Number(index),
             "dieType": String(dieEditorDieKey || "d6"),
             "previewKind": previewKindForDieType(dieEditorDieKey),
-            "payload": styleToSnapshotPayload(style)
+            "payload": styleToTemplateSnapshotPayload(style)
         })
         templateSnapshotQueue = q
         processTemplateSnapshotQueue()
@@ -1011,6 +1040,7 @@ Window {
             templateSnapshotCurrentTask = null
             return
         }
+        templateSnapshotWeb.runJavaScript("window.setPreviewRenderVariant && window.setPreviewRenderVariant('default');")
         templateSnapshotWeb.runJavaScript("window.setPreviewStaticMode && window.setPreviewStaticMode(true);")
         templateSnapshotWeb.runJavaScript("window.setStyleOverrides && window.setStyleOverrides(" + JSON.stringify(task.payload) + ");")
         templateSnapshotWeb.runJavaScript("window.setPreviewDieKind && window.setPreviewDieKind('" + task.previewKind + "');")
@@ -1284,6 +1314,7 @@ Window {
             return
         }
         var stylePayload = styleToWebPayload(dieEditorWorking)
+        previewWeb.runJavaScript("window.setPreviewRenderVariant && window.setPreviewRenderVariant('default');")
         previewWeb.runJavaScript("window.setPreviewStaticMode && window.setPreviewStaticMode(false);")
         previewWeb.runJavaScript("window.setStyleOverrides && window.setStyleOverrides(" + JSON.stringify(stylePayload) + ");")
         var previewKind = previewKindForDieType(dieEditorDieKey)
@@ -1293,6 +1324,7 @@ Window {
         if (!previewWeb || !previewWeb.visible || !previewWebReady) {
             return
         }
+        previewWeb.runJavaScript("window.setPreviewRenderVariant && window.setPreviewRenderVariant('default');")
         previewWeb.runJavaScript("window.setPreviewStaticMode && window.setPreviewStaticMode(false);")
         previewWeb.runJavaScript("window.startPreviewRoll && window.startPreviewRoll();")
     }
