@@ -21,6 +21,7 @@ Window {
     }
     HoverHandler {
         id: windowHoverTracker
+        enabled: !diceWindow.useLiveMainDicePreview
         onPointChanged: {
             var hoveredTile = diceWindow.mainPreviewTileAt(point.position.x, point.position.y)
             if (hoveredTile) {
@@ -131,6 +132,7 @@ Window {
     property bool templateSnapshotBusy: false
     property bool templateSnapshotWebReady: false
     property var templateSnapshotCurrentTask: null
+    property bool useLiveMainDicePreview: true
     property bool mainPreviewHoverWebReady: false
     property var mainPreviewHoverTile: null
     property string mainPreviewHoverDieType: ""
@@ -1300,7 +1302,7 @@ Window {
         resetState()
         loadDieStylesFromSettings()
         loadDieStyleTemplatesFromSettings()
-        if (diceMainPreviewCache) {
+        if (!useLiveMainDicePreview && diceMainPreviewCache) {
             diceMainPreviewCache.prewarmAll()
         }
     }
@@ -1310,7 +1312,7 @@ Window {
             if (!dieStylePopup || !dieStylePopup.visible) {
                 loadDieStylesFromSettings()
                 loadDieStyleTemplatesFromSettings()
-                if (diceMainPreviewCache) {
+                if (!useLiveMainDicePreview && diceMainPreviewCache) {
                     diceMainPreviewCache.prewarmAll()
                 }
             }
@@ -1866,6 +1868,7 @@ Window {
         property bool useInset: true
         readonly property int previewMargin: tile.useInset ? 0 : 4
         readonly property string snapshotSource: diceWindow.mainPreviewSnapshotSource(tile.dieType)
+        readonly property var livePreviewPayload: diceWindow.styleToMainPreviewPayload(diceWindow.styleForDie(tile.dieType), tile.dieType)
         signal clicked()
         implicitWidth: tile.tileSize
         implicitHeight: tile.tileSize
@@ -1894,11 +1897,29 @@ Window {
             anchors.fill: parent
             visible: !tile.useInset
         }
+        DiceMainPreviewLiveTile {
+            id: mainPreviewLiveTile
+            anchors.fill: tileInset
+            anchors.margins: tile.previewMargin
+            visible: tile.useInset && diceWindow.useLiveMainDicePreview
+            dieType: tile.dieType
+            stylePayload: tile.livePreviewPayload
+            hovered: tileHover.hovered && tile.enabled
+            previewActive: visible
+            previewMargin: 0
+            referenceSize: diceWindow.mainPreviewReferenceSize
+            opacity: tile.enabled ? 1.0 : 0.55
+            scale: tilePress.pressed ? 0.96 : 1.0
+            Behavior on scale {
+                NumberAnimation { duration: 90; easing.type: Easing.OutCubic }
+            }
+        }
         Image {
             id: mainPreviewImage
             anchors.fill: tileInset
             anchors.margins: tile.previewMargin
             visible: tile.useInset
+                && !diceWindow.useLiveMainDicePreview
                 && status === Image.Ready
                 && (!diceWindow.mainPreviewHoverTile || diceWindow.mainPreviewHoverTile !== tile || !diceWindow.mainPreviewHoverWebReady)
             source: tile.snapshotSource
@@ -1917,6 +1938,7 @@ Window {
             anchors.fill: tileInset
             anchors.margins: tile.previewMargin
             visible: tile.useInset
+                && !diceWindow.useLiveMainDicePreview
                 && (!diceWindow.mainPreviewHoverTile || diceWindow.mainPreviewHoverTile !== tile || !diceWindow.mainPreviewHoverWebReady)
                 && mainPreviewImage.status !== Image.Ready
             opacity: tile.enabled ? 1.0 : 0.55
@@ -1947,30 +1969,30 @@ Window {
             onClicked: tile.clicked()
         }
         Component.onCompleted: {
-            if (tile.useInset) {
+            if (tile.useInset && !diceWindow.useLiveMainDicePreview) {
                 diceWindow.registerMainPreviewTile(tile)
             }
-            if (tile.useInset && diceMainPreviewCache) {
+            if (tile.useInset && !diceWindow.useLiveMainDicePreview && diceMainPreviewCache) {
                 diceMainPreviewCache.ensureSnapshotForDie(tile.dieType)
             }
         }
         Component.onDestruction: {
-            if (tile.useInset) {
+            if (tile.useInset && !diceWindow.useLiveMainDicePreview) {
                 diceWindow.unregisterMainPreviewTile(tile)
             }
         }
         onDieTypeChanged: {
-            if (tile.useInset) {
+            if (tile.useInset && !diceWindow.useLiveMainDicePreview) {
                 diceWindow.registerMainPreviewTile(tile)
             }
-            if (tile.useInset && diceMainPreviewCache) {
+            if (tile.useInset && !diceWindow.useLiveMainDicePreview && diceMainPreviewCache) {
                 diceMainPreviewCache.ensureSnapshotForDie(tile.dieType)
             }
         }
-        onXChanged: if (diceWindow.mainPreviewHoverTile === tile) diceWindow.syncMainPreviewHoverGeometry()
-        onYChanged: if (diceWindow.mainPreviewHoverTile === tile) diceWindow.syncMainPreviewHoverGeometry()
-        onWidthChanged: if (diceWindow.mainPreviewHoverTile === tile) diceWindow.syncMainPreviewHoverGeometry()
-        onHeightChanged: if (diceWindow.mainPreviewHoverTile === tile) diceWindow.syncMainPreviewHoverGeometry()
+        onXChanged: if (!diceWindow.useLiveMainDicePreview && diceWindow.mainPreviewHoverTile === tile) diceWindow.syncMainPreviewHoverGeometry()
+        onYChanged: if (!diceWindow.useLiveMainDicePreview && diceWindow.mainPreviewHoverTile === tile) diceWindow.syncMainPreviewHoverGeometry()
+        onWidthChanged: if (!diceWindow.useLiveMainDicePreview && diceWindow.mainPreviewHoverTile === tile) diceWindow.syncMainPreviewHoverGeometry()
+        onHeightChanged: if (!diceWindow.useLiveMainDicePreview && diceWindow.mainPreviewHoverTile === tile) diceWindow.syncMainPreviewHoverGeometry()
     }
     component TemplateSlotButton: Item {
         id: slot
@@ -2639,12 +2661,13 @@ Window {
         id: mainPreviewOverlayHost
         anchors.fill: parent
         z: 20
+        visible: !diceWindow.useLiveMainDicePreview
         enabled: false
         onWidthChanged: diceWindow.syncMainPreviewHoverGeometry()
         onHeightChanged: diceWindow.syncMainPreviewHoverGeometry()
         Rectangle {
             id: mainPreviewHoverFrame
-            visible: !!diceWindow.mainPreviewHoverTile && diceWindow.mainPreviewHoverWebReady
+            visible: !diceWindow.useLiveMainDicePreview && !!diceWindow.mainPreviewHoverTile && diceWindow.mainPreviewHoverWebReady
             enabled: false
             x: diceWindow.mainPreviewHoverX
             y: diceWindow.mainPreviewHoverY

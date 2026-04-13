@@ -3426,6 +3426,17 @@
         }
       };
 
+      window.applyMainPreviewScene = function applyMainPreviewScene(options) {
+        const opts = options && typeof options === 'object' ? options : {};
+        window.renderPreviewScene({
+          variant: 'main',
+          presentation: opts.presentation || 'static',
+          payload: opts.payload || {},
+          kind: opts.kind || 'd6',
+          startRoll: opts.startRoll !== false,
+        });
+      };
+
       window.setPreviewPresentationMode = function setPreviewPresentationMode(mode) {
         const next = String(mode || 'roll').toLowerCase();
         previewPresentationMode = (next === 'static' || next === 'idle') ? next : 'roll';
