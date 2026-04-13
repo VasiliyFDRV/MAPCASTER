@@ -671,12 +671,12 @@
       };
 
       const MAIN_PREVIEW_PRESETS = {
-        d4: { modelKind: 'd4', fitScale: 0.96, offsetX: 0, offsetY: 1, idleScaleBoost: 1.04, rzOffset: 90 },
-        d6: { modelKind: 'd6', fitScale: 0.98, offsetX: 0, offsetY: 1, idleScaleBoost: 1.04, rzOffset: 0 },
-        d8: { modelKind: 'd8', fitScale: 0.98, offsetX: 0, offsetY: 1, idleScaleBoost: 1.04, rzOffset: 0 },
-        d10: { modelKind: 'd10', fitScale: 0.94, offsetX: 0, offsetY: 1, idleScaleBoost: 1.04, rzOffset: 180 },
+        d4: { modelKind: 'd4', fitScale: 0.96, offsetX: 0, offsetY: 1, idleScaleBoost: 1.04 },
+        d6: { modelKind: 'd6', fitScale: 0.98, offsetX: 0, offsetY: 1, idleScaleBoost: 1.04 },
+        d8: { modelKind: 'd8', fitScale: 0.98, offsetX: 0, offsetY: 1, idleScaleBoost: 1.04 },
+        d10: { modelKind: 'd10', fitScale: 0.94, offsetX: 0, offsetY: 1, idleScaleBoost: 1.04 },
         d10t: { modelKind: 'd10t', fitScale: 0.94, offsetX: 0, offsetY: 1, idleScaleBoost: 1.04, rzOffset: 180 },
-        d12: { modelKind: 'd12', fitScale: 0.90, offsetX: 0, offsetY: 1, idleScaleBoost: 1.04, rzOffset: 180 },
+        d12: { modelKind: 'd12', fitScale: 0.90, offsetX: 0, offsetY: 1, idleScaleBoost: 1.04 },
         d20: { modelKind: 'd20', fitScale: 0.96, offsetX: 0, offsetY: 2, idleScaleBoost: 1.04, rx: -58, ry: 34, rz: 14 },
         d100: { modelKind: 'd10t', fitScale: 0.94, offsetX: 0, offsetY: 1, idleScaleBoost: 1.04, rzOffset: 180 },
       };
@@ -3234,6 +3234,118 @@
         return pose;
       }
 
+      function getMainPreviewTargetFaceValue(kind) {
+        const k = String(kind || 'd6').toLowerCase();
+        if (k === 'd4') return 4;
+        if (k === 'd6') return 6;
+        if (k === 'd8') return 8;
+        if (k === 'd10') return 10;
+        if (k === 'd12') return 12;
+        return null;
+      }
+
+      function findFaceTransformByValue(spec, faceValue) {
+        const targetValue = Number(faceValue || 0);
+        if (!spec || !Array.isArray(spec.faceTransforms) || targetValue <= 0) {
+          return null;
+        }
+        for (let i = 0; i < spec.faceTransforms.length; i += 1) {
+          const ft = spec.faceTransforms[i];
+          const value = Number(ft && ft.faceValue !== undefined ? ft.faceValue : Number(ft && ft.id !== undefined ? ft.id : (i + 1)));
+          if (value === targetValue) {
+            return {
+              ft,
+              faceIndex: i,
+              faceId: Number(ft && ft.id !== undefined ? ft.id : (i + 1)),
+            };
+          }
+        }
+        return null;
+      }
+
+      function rotateScreenVec(v, deg) {
+        const a = Number(deg || 0) * Math.PI / 180;
+        const c = Math.cos(a);
+        const s = Math.sin(a);
+        return {
+          x: v.x * c - v.y * s,
+          y: v.x * s + v.y * c,
+        };
+      }
+
+      function resolvePreviewFaceLabelVisualRotation(spec, ft, faceIndex, poseRz) {
+        const key = String(spec && spec.key || '').toLowerCase();
+        if (key === 'd4') {
+          return normalizeAngle(resolveFaceLabelRotation(spec, ft, faceIndex, poseRz) + 180);
+        }
+        if (key === 'd10') {
+          const faceId = Number(ft && ft.id || (faceIndex + 1));
+          const baseRotate = normalizeAngle(resolveFaceLabelRotation(spec, ft, faceIndex, poseRz) - 90);
+          const faceOffset = Number(D10_LABEL_ROTATE_OFFSETS[faceId] || 0);
+          return normalizeAngle(baseRotate + faceOffset);
+        }
+        if (key === 'd12') {
+          return normalizeAngle(resolveFaceLabelRotation(spec, ft, faceIndex, poseRz));
+        }
+        return 0;
+      }
+
+      function computeMainPreviewUprightDelta(spec, ft, faceIndex, pose) {
+        if (!spec || !ft || !pose) {
+          return 0;
+        }
+        const labelRotate = resolvePreviewFaceLabelVisualRotation(spec, ft, faceIndex, Number(pose.rz || 0));
+        const localUp2 = rotateScreenVec({ x: 0, y: -1 }, labelRotate);
+        const faceUp = rotateVecFaceYXRZ({
+          x: localUp2.x,
+          y: localUp2.y,
+          z: 0,
+        }, Number(ft.rx || 0), Number(ft.ry || 0), Number(ft.rz || 0));
+        const worldUp = rotateVec(faceUp, Number(pose.rx || 0), Number(pose.ry || 0), Number(pose.rz || 0));
+        const sx = Number(worldUp.x || 0);
+        const sy = Number(worldUp.y || 0);
+        const len = Math.hypot(sx, sy);
+        if (!Number.isFinite(len) || len < 1e-5) {
+          return 0;
+        }
+        const ax = sx / len;
+        const ay = sy / len;
+        const tx = 0;
+        const ty = -1;
+        const cross = ax * ty - ay * tx;
+        const dot = ax * tx + ay * ty;
+        if (!Number.isFinite(cross) || !Number.isFinite(dot)) {
+          return 0;
+        }
+        return normalizeAngle(Math.atan2(cross, dot) * 180 / Math.PI);
+      }
+
+      function solveMainPreviewUprightPose(kind, basePose) {
+        const k = String(kind || 'd6').toLowerCase();
+        const targetValue = getMainPreviewTargetFaceValue(k);
+        if (!targetValue || !basePose) {
+          return basePose;
+        }
+        const spec = getDiceSpec(k);
+        const match = findFaceTransformByValue(spec, targetValue);
+        if (!match) {
+          return basePose;
+        }
+        const pose = {
+          rx: Number(basePose.rx || 0),
+          ry: Number(basePose.ry || 0),
+          rz: Number(basePose.rz || 0),
+        };
+        for (let i = 0; i < 3; i += 1) {
+          const delta = computeMainPreviewUprightDelta(spec, match.ft, match.faceIndex, pose);
+          if (!Number.isFinite(delta) || Math.abs(delta) < 0.05) {
+            break;
+          }
+          pose.rz = normalizeAngle(pose.rz + delta);
+        }
+        return pose;
+      }
+
       function getMainPreviewSpec(kind) {
         const k = String(kind || 'd6').toLowerCase();
         const preset = Object.assign({
@@ -3244,19 +3356,31 @@
           idleScaleBoost: 1.05,
           rzOffset: 0,
         }, MAIN_PREVIEW_PRESETS[k] || {});
-        const basePose = getCanonicalPreviewPose(preset.modelKind || k);
+        const modelKind = String(preset.modelKind || k);
+        const basePose = getCanonicalPreviewPose(modelKind);
+        const hasExplicitPose = (
+          preset.rx !== undefined
+          && preset.ry !== undefined
+          && preset.rz !== undefined
+        );
+        const solvedPose = hasExplicitPose ? {
+          rx: Number(preset.rx),
+          ry: Number(preset.ry),
+          rz: Number(preset.rz),
+        } : solveMainPreviewUprightPose(k, basePose);
+        const applyPresetRollOffset = !(k === 'd4' || k === 'd6' || k === 'd8' || k === 'd10' || k === 'd12');
         return {
           variant: 'main',
           kind: k,
-          modelKind: String(preset.modelKind || k),
+          modelKind: modelKind,
           fitScale: Number(preset.fitScale || 1),
           offsetX: Number(preset.offsetX || 0),
           offsetY: Number(preset.offsetY || 0),
           idleScaleBoost: Number(preset.idleScaleBoost || 1.05),
           pose: {
-            rx: Number(preset.rx !== undefined ? preset.rx : basePose.rx),
-            ry: Number(preset.ry !== undefined ? preset.ry : basePose.ry),
-            rz: normalizeAngle(Number(preset.rz !== undefined ? preset.rz : basePose.rz) + Number(preset.rzOffset || 0)),
+            rx: Number(solvedPose && solvedPose.rx !== undefined ? solvedPose.rx : basePose.rx),
+            ry: Number(solvedPose && solvedPose.ry !== undefined ? solvedPose.ry : basePose.ry),
+            rz: normalizeAngle(Number(solvedPose && solvedPose.rz !== undefined ? solvedPose.rz : basePose.rz) + (applyPresetRollOffset ? Number(preset.rzOffset || 0) : 0)),
           },
         };
       }
