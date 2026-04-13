@@ -3,6 +3,8 @@ import QtQuick.Controls
 import QtQuick.Layouts
 import QtQuick.Window
 import QtWebEngine
+import "components"
+import "components/DicePreviewUtils.js" as DicePreviewUtils
 import "components/neumo"
 Window {
     id: diceWindow
@@ -109,11 +111,6 @@ Window {
     property bool templateSnapshotBusy: false
     property bool templateSnapshotWebReady: false
     property var templateSnapshotCurrentTask: null
-    property var mainPreviewSnapshotCache: ({})
-    property var mainPreviewSnapshotQueue: ([])
-    property bool mainPreviewSnapshotBusy: false
-    property bool mainPreviewSnapshotWebReady: false
-    property var mainPreviewSnapshotCurrentTask: null
     property bool mainPreviewHoverWebReady: false
     property var mainPreviewHoverTile: null
     property string mainPreviewHoverDieType: ""
@@ -568,23 +565,7 @@ Window {
         return d20CritColor(Number(entry.value || 0))
     }
     function cloneStyle(style) {
-        var legacyGlow = Number(style && style.textShadowIntensity !== undefined ? style.textShadowIntensity : 100)
-        var glowRadius = Number(style && style.textGlowRadius !== undefined ? style.textGlowRadius : legacyGlow)
-        var glowOpacity = Number(style && style.textGlowOpacity !== undefined ? style.textGlowOpacity : legacyGlow)
-        return {
-            "scalePercent": Number(style && style.scalePercent !== undefined ? style.scalePercent : 100),
-            "color": String(style && style.color ? style.color : "#C9C9C9"),
-            "gradientEnabled": Boolean(style && style.gradientEnabled),
-            "gradientCenterColor": String(style && style.gradientCenterColor ? style.gradientCenterColor : "#FFFFFF"),
-            "gradientSharpness": Number(style && style.gradientSharpness !== undefined ? style.gradientSharpness : 50),
-            "gradientOffset": Number(style && style.gradientOffset !== undefined ? style.gradientOffset : 50),
-            "fontColor": String(style && style.fontColor ? style.fontColor : "#1F1F1F"),
-            "textStrokeColor": String(style && style.textStrokeColor ? style.textStrokeColor : "#EEEEEE"),
-            "textGlowRadius": Math.max(0, Math.min(200, glowRadius)),
-            "textGlowOpacity": Math.max(0, Math.min(200, glowOpacity)),
-            "edgeColor": String(style && style.edgeColor ? style.edgeColor : "#D4D4D4"),
-            "edgeWidth": Number(style && style.edgeWidth !== undefined ? style.edgeWidth : 0.0)
-        }
+        return DicePreviewUtils.cloneStyle(style)
     }
     function ensureDieStyle(key) {
         var k = String(key)
@@ -752,98 +733,34 @@ Window {
         return key === "d100" ? "d10t" : key
     }
     function styleToWebPayload(styleObj) {
-        var src = styleObj && typeof styleObj === "object" ? styleObj : cloneStyle(null)
-        return {
-            "scalePercent": Number(src.scalePercent !== undefined ? src.scalePercent : 100),
-            "faceColor": String(src.color || "#C9C9C9"),
-            "gradientEnabled": Boolean(src.gradientEnabled),
-            "gradientCenterColor": String(src.gradientCenterColor || "#FFFFFF"),
-            "gradientSharpness": Math.max(0, Math.min(1, Number(src.gradientSharpness || 50) / 100.0)),
-            "gradientOffset": Math.max(0, Math.min(1, Number(src.gradientOffset || 50) / 100.0)),
-            "textColor": String(src.fontColor || "#1F1F1F"),
-            "textStrokeColor": String(src.textStrokeColor || "#EEEEEE"),
-            "textGlowRadius": Math.max(0, Math.min(2, Number(src.textGlowRadius !== undefined ? src.textGlowRadius : 100) / 100.0)),
-            "textGlowOpacity": Math.max(0, Math.min(2, Number(src.textGlowOpacity !== undefined ? src.textGlowOpacity : 100) / 100.0)),
-            "edgeColor": String(src.edgeColor || "#D4D4D4"),
-            "edgeWidth": Number(src.edgeWidth !== undefined ? src.edgeWidth : 0.0)
-        }
+        return DicePreviewUtils.styleToWebPayload(styleObj)
     }
     function styleToTemplateSnapshotPayload(styleObj) {
-        var payload = styleToWebPayload(styleObj)
-        payload.scalePercent = Number(payload.scalePercent || 100) * 2.25
-        return payload
+        return DicePreviewUtils.styleToTemplateSnapshotPayload(styleObj)
     }
     function styleToMainPreviewPayload(styleObj, dieType) {
-        var payload = styleToWebPayload(styleObj)
-        var key = String(dieType || "d6").toLowerCase()
-        var scaleFactors = {
-            "d4": 1.56,
-            "d6": 1.56,
-            "d8": 1.54,
-            "d10": 1.5,
-            "d12": 1.42,
-            "d20": 1.38,
-            "d100": 1.5
-        }
-        payload.scalePercent = Number(payload.scalePercent || 100) * Number(scaleFactors[key] || 1.46)
-        return payload
+        return DicePreviewUtils.styleToMainPreviewPayload(styleObj, dieType)
     }
     function resolveMainPreviewSpec(dieType, styleOverride) {
-        var key = String(dieType || "d6").toLowerCase()
-        var modelKind = key === "d100" ? "d10t" : key
-        var style = styleOverride && typeof styleOverride === "object" ? cloneStyle(styleOverride) : styleForDie(key)
-        var payload = styleToMainPreviewPayload(style, key)
-        return {
-            "dieType": key,
-            "modelKind": modelKind,
-            "payload": payload
-        }
+        var style = styleOverride && typeof styleOverride === "object" ? cloneStyle(styleOverride) : styleForDie(dieType)
+        return DicePreviewUtils.resolveMainPreviewSpec(dieType, style)
     }
     function mainPreviewSnapshotKey(dieType, styleObj) {
-        var spec = resolveMainPreviewSpec(dieType, styleObj)
-        return JSON.stringify({
-            "variant": "main-preview",
-            "poseVersion": Number(mainPreviewPoseVersion || 1),
-            "dieType": spec.dieType,
-            "modelKind": spec.modelKind,
-            "payload": spec.payload
-        })
+        return DicePreviewUtils.buildMainPreviewSnapshotKey(dieType, styleObj, mainPreviewPoseVersion)
     }
     function mainPreviewSnapshotSource(dieType) {
-        var key = mainPreviewSnapshotKey(dieType, styleForDie(dieType))
-        var cache = mainPreviewSnapshotCache || {}
-        return cache[key] ? String(cache[key]) : ""
-    }
-    function enqueueMainPreviewSnapshot(dieType, forceRender, styleOverride) {
-        var key = String(dieType || "d6").toLowerCase()
-        var rawStyle = styleOverride && typeof styleOverride === "object" ? cloneStyle(styleOverride) : styleForDie(key)
-        var spec = resolveMainPreviewSpec(key, rawStyle)
-        var cacheKey = mainPreviewSnapshotKey(spec.dieType, rawStyle)
-        var cache = mainPreviewSnapshotCache || {}
-        if (!forceRender && cache[cacheKey]) {
-            return
-        }
-        if (mainPreviewSnapshotBusy && mainPreviewSnapshotCurrentTask && mainPreviewSnapshotCurrentTask.key === cacheKey) {
-            return
-        }
-        var q = mainPreviewSnapshotQueue ? mainPreviewSnapshotQueue.slice(0) : []
-        for (var i = 0; i < q.length; ++i) {
-            if (q[i] && q[i].key === cacheKey) {
-                return
-            }
-        }
-        q.push({
-            "key": cacheKey,
-            "dieType": spec.dieType,
-            "modelKind": spec.modelKind,
-            "payload": spec.payload
-        })
-        mainPreviewSnapshotQueue = q
-        processMainPreviewSnapshotQueue()
+        return diceMainPreviewCache ? diceMainPreviewCache.snapshotSourceForDie(dieType) : ""
     }
     function refreshMainPreviewSnapshots(forceRender) {
+        if (!diceMainPreviewCache) {
+            return
+        }
+        if (forceRender) {
+            diceMainPreviewCache.prewarmAll()
+            return
+        }
         for (var i = 0; i < mainPreviewDieTypes.length; ++i) {
-            enqueueMainPreviewSnapshot(mainPreviewDieTypes[i], Boolean(forceRender))
+            diceMainPreviewCache.ensureSnapshotForDie(mainPreviewDieTypes[i])
         }
     }
     function runPreviewScene(webView, renderVariant, presentation, kind, payload, startRoll) {
@@ -860,41 +777,6 @@ Window {
         }
         script += "})();"
         webView.runJavaScript(script)
-    }
-    function processMainPreviewSnapshotQueue() {
-        if (!mainPreviewSnapshotWebReady || mainPreviewSnapshotBusy || !mainPreviewSnapshotWeb) {
-            return
-        }
-        var q = mainPreviewSnapshotQueue ? mainPreviewSnapshotQueue.slice(0) : []
-        if (q.length <= 0) {
-            return
-        }
-        var task = q.shift()
-        mainPreviewSnapshotQueue = q
-        mainPreviewSnapshotCurrentTask = task
-        mainPreviewSnapshotBusy = true
-        runPreviewScene(mainPreviewSnapshotWeb, "main", "static", task.modelKind, task.payload, true)
-        mainPreviewSnapshotCaptureTimer.interval = task.modelKind === "d20" ? 420 : 150
-        mainPreviewSnapshotCaptureTimer.restart()
-    }
-    function handleMainPreviewSnapshotCaptured(result) {
-        var task = mainPreviewSnapshotCurrentTask
-        if (task && result && result.url) {
-            var cache = Object.assign({}, mainPreviewSnapshotCache || {})
-            cache[task.key] = result.url
-            mainPreviewSnapshotCache = cache
-        }
-        mainPreviewSnapshotBusy = false
-        mainPreviewSnapshotCurrentTask = null
-        processMainPreviewSnapshotQueue()
-    }
-    function captureMainPreviewSnapshotCurrentTask() {
-        if (!mainPreviewSnapshotBusy || !mainPreviewSnapshotCurrentTask || !mainPreviewSnapshotWeb) {
-            return
-        }
-        mainPreviewSnapshotWeb.grabToImage(function(result) {
-            diceWindow.handleMainPreviewSnapshotCaptured(result)
-        })
     }
     function syncMainPreviewHoverGeometry() {
         if (!mainPreviewHoverTile || !mainPreviewOverlayHost) {
@@ -1081,7 +963,9 @@ Window {
         var bag = Object.assign({}, dieStyles || {})
         bag[key] = savedStyle
         dieStyles = bag
-        enqueueMainPreviewSnapshot(key, true, savedStyle)
+        if (diceMainPreviewCache) {
+            diceMainPreviewCache.invalidateDie(key)
+        }
         if (typeof appController !== "undefined" && appController && appController.update_dice_style) {
             appController.update_dice_style(key, savedStyle)
         }
@@ -1341,7 +1225,9 @@ Window {
         resetState()
         loadDieStylesFromSettings()
         loadDieStyleTemplatesFromSettings()
-        refreshMainPreviewSnapshots(false)
+        if (diceMainPreviewCache) {
+            diceMainPreviewCache.prewarmAll()
+        }
     }
     Connections {
         target: appController
@@ -1349,7 +1235,9 @@ Window {
             if (!dieStylePopup || !dieStylePopup.visible) {
                 loadDieStylesFromSettings()
                 loadDieStyleTemplatesFromSettings()
-                refreshMainPreviewSnapshots(true)
+                if (diceMainPreviewCache) {
+                    diceMainPreviewCache.prewarmAll()
+                }
             }
         }
     }
@@ -1358,6 +1246,15 @@ Window {
         function onRollCompleted(payload) {
             diceWindow.handleRollCompleted(payload)
         }
+    }
+    DiceMainPreviewCacheManager {
+        id: diceMainPreviewCache
+        dieStyles: diceWindow.dieStyles
+        dieTypes: diceWindow.mainPreviewDieTypes
+        poseVersion: diceWindow.mainPreviewPoseVersion
+        cacheDirUrl: Qt.resolvedUrl("../../../app_data/cache/dice_main_preview/")
+        renderingEnabled: false
+        prewarmEnabled: false
     }
     component AppPanel: Rectangle {
         radius: 12
@@ -1848,6 +1745,45 @@ Window {
         onHeightChanged: templateCanvas.requestPaint()
         Component.onCompleted: templateCanvas.requestPaint()
     }
+    component DicePreviewLoader: Item {
+        id: loaderRoot
+        property color dotColor: Qt.rgba(0.88, 0.88, 0.9, 0.78)
+        property real dotSize: Math.max(4, Math.round(Math.min(width, height) * 0.12))
+        implicitWidth: 28
+        implicitHeight: 12
+        Row {
+            anchors.centerIn: parent
+            spacing: loaderRoot.dotSize * 0.55
+            Repeater {
+                model: 3
+                Rectangle {
+                    required property int index
+                    width: loaderRoot.dotSize
+                    height: loaderRoot.dotSize
+                    radius: width / 2
+                    color: loaderRoot.dotColor
+                    opacity: 0.2
+                    scale: 0.82
+                    SequentialAnimation on opacity {
+                        loops: Animation.Infinite
+                        running: loaderRoot.visible
+                        PauseAnimation { duration: index * 120 }
+                        NumberAnimation { to: 0.8; duration: 360; easing.type: Easing.InOutSine }
+                        NumberAnimation { to: 0.2; duration: 360; easing.type: Easing.InOutSine }
+                        PauseAnimation { duration: Math.max(0, 240 - index * 120) }
+                    }
+                    SequentialAnimation on scale {
+                        loops: Animation.Infinite
+                        running: loaderRoot.visible
+                        PauseAnimation { duration: index * 120 }
+                        NumberAnimation { to: 1.0; duration: 360; easing.type: Easing.InOutSine }
+                        NumberAnimation { to: 0.82; duration: 360; easing.type: Easing.InOutSine }
+                        PauseAnimation { duration: Math.max(0, 240 - index * 120) }
+                    }
+                }
+            }
+        }
+    }
     component DiePreviewTile: Item {
         id: tile
         property string dieType: "d6"
@@ -1855,7 +1791,6 @@ Window {
         property bool useInset: true
         readonly property int previewMargin: tile.useInset ? 7 : 4
         readonly property string snapshotSource: diceWindow.mainPreviewSnapshotSource(tile.dieType)
-        readonly property bool snapshotReady: snapshotSource.length > 0
         signal clicked()
         implicitWidth: tile.tileSize
         implicitHeight: tile.tileSize
@@ -1885,10 +1820,11 @@ Window {
             visible: !tile.useInset
         }
         Image {
+            id: mainPreviewImage
             anchors.fill: tileInset
             anchors.margins: tile.previewMargin
             visible: tile.useInset
-                && tile.snapshotReady
+                && status === Image.Ready
                 && (!diceWindow.mainPreviewHoverTile || diceWindow.mainPreviewHoverTile !== tile || !diceWindow.mainPreviewHoverWebReady)
             source: tile.snapshotSource
             asynchronous: true
@@ -1902,14 +1838,12 @@ Window {
                 NumberAnimation { duration: 90; easing.type: Easing.OutCubic }
             }
         }
-        TemplateStylePreview {
+        DicePreviewLoader {
             anchors.fill: tileInset
             anchors.margins: tile.previewMargin
             visible: tile.useInset
-                && (!tile.snapshotReady || (diceWindow.mainPreviewHoverTile === tile && !diceWindow.mainPreviewHoverWebReady))
-            dieType: tile.dieType
-            styleData: diceWindow.styleForDie(tile.dieType)
-            labelText: diceWindow.previewLabelForDieType(tile.dieType)
+                && (!diceWindow.mainPreviewHoverTile || diceWindow.mainPreviewHoverTile !== tile || !diceWindow.mainPreviewHoverWebReady)
+                && mainPreviewImage.status !== Image.Ready
             opacity: tile.enabled ? 1.0 : 0.55
             scale: tilePress.pressed ? 0.96 : 1.0
             Behavior on scale {
@@ -1943,6 +1877,16 @@ Window {
                 }
             }
             onClicked: tile.clicked()
+        }
+        Component.onCompleted: {
+            if (tile.useInset && diceMainPreviewCache) {
+                diceMainPreviewCache.ensureSnapshotForDie(tile.dieType)
+            }
+        }
+        onDieTypeChanged: {
+            if (tile.useInset && diceMainPreviewCache) {
+                diceMainPreviewCache.ensureSnapshotForDie(tile.dieType)
+            }
         }
         onXChanged: if (diceWindow.mainPreviewHoverTile === tile) diceWindow.syncMainPreviewHoverGeometry()
         onYChanged: if (diceWindow.mainPreviewHoverTile === tile) diceWindow.syncMainPreviewHoverGeometry()
@@ -2647,33 +2591,6 @@ Window {
                 }
             }
         }
-    }
-    WebEngineView {
-        id: mainPreviewSnapshotWeb
-        x: -10000
-        y: -10000
-        width: 96
-        height: 96
-        visible: true
-        enabled: true
-        backgroundColor: "#00000000"
-        url: Qt.resolvedUrl("../web/dice_physics.html")
-        onLoadingChanged: function(req) {
-            if (req.status === WebEngineView.LoadFailedStatus) {
-                mainPreviewSnapshotWebReady = false
-                return
-            }
-            if (req.status === WebEngineView.LoadSucceededStatus) {
-                mainPreviewSnapshotWebReady = true
-                diceWindow.processMainPreviewSnapshotQueue()
-            }
-        }
-    }
-    Timer {
-        id: mainPreviewSnapshotCaptureTimer
-        interval: 180
-        repeat: false
-        onTriggered: diceWindow.captureMainPreviewSnapshotCurrentTask()
     }
     Popup {
         id: dieStylePopup

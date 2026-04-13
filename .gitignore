@@ -1,6 +1,12 @@
 __pycache__/
 *.pyc
-app_data/
+!app_data/
+app_data/*
+!app_data/cache/
+app_data/cache/*
+!app_data/cache/dice_main_preview/
+app_data/cache/dice_main_preview/*
+!app_data/cache/dice_main_preview/.gitkeep
 build/
 dist/
 *.zip

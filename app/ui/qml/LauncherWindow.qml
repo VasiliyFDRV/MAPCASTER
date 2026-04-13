@@ -30,6 +30,7 @@ Window {
     property color textPrimary: "#D0D0D0"
     property color textSecondary: "#909090"
     property real explorerEdgeInset: 12
+    property int mainPreviewPoseVersion: 6
 
     function openSceneEditor(draft) {
         if (!draft || !draft.map || !draft.background || !draft.grid) {
@@ -73,6 +74,15 @@ Window {
     Rectangle {
         anchors.fill: parent
         color: launcherWindow.bgBase
+
+        DiceMainPreviewCacheManager {
+            id: launcherDiceMainPreviewCache
+            dieStyles: appController && appController.diceStyles ? appController.diceStyles : ({})
+            poseVersion: launcherWindow.mainPreviewPoseVersion
+            cacheDirUrl: Qt.resolvedUrl("../../../app_data/cache/dice_main_preview/")
+            renderingEnabled: true
+            prewarmEnabled: true
+        }
 
         LauncherLibrarySurface {
             anchors.fill: parent
