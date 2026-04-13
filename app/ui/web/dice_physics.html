@@ -3439,8 +3439,12 @@
       window.startPreviewRoll = function startPreviewRoll() {
         window.clearAllDice();
         if (previewDieKind === "d100") {
-          window.startD6Roll(0, "d10t", 0, 2);
-          window.startD6Roll(0, "d10", 1, 2);
+          if (previewRenderVariant === 'main') {
+            window.startD6Roll(0, "d10t", 0, 1);
+          } else {
+            window.startD6Roll(0, "d10t", 0, 2);
+            window.startD6Roll(0, "d10", 1, 2);
+          }
           return;
         }
         window.startD6Roll(0, previewDieKind, 0, 1);
