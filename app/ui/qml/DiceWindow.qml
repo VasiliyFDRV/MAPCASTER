@@ -2587,7 +2587,7 @@ Window {
                                     onClicked: openDieEditor("d100")
                                 }
                                 Item {
-                                    Layout.preferredWidth: Math.max(0, diceWindow.cardPadding - d100ActionTile.contentPadding)
+                                    Layout.preferredWidth: 8
                                     Layout.preferredHeight: 1
                                 }
                             }
