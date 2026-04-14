@@ -2550,7 +2550,7 @@ Window {
                             theme: neumoTheme
                             toolTip: "Бросить d100"
                             compactMode: true
-                            contentPadding: 8
+                            contentPadding: diceWindow.cardPadding
                             baseShadowOffset: diceWindow.cardShadowOffset
                             baseShadowRadius: diceWindow.cardShadowRadius
                             hoverShadowOffset: diceWindow.cardShadowOffset + 0.35
@@ -2562,33 +2562,27 @@ Window {
                             Layout.maximumWidth: diceWindow.d100ActionWidth
                             Layout.preferredHeight: diceWindow.actionButtonHeight + 4
                             onClicked: rollD100Only()
-
-                            RowLayout {
+                            Item {
                                 anchors.fill: parent
-                                spacing: 8
 
                                 DiePreviewTile {
                                     dieType: "d100"
                                     tileSize: diceWindow.standardPreviewSize
-                                    Layout.alignment: Qt.AlignVCenter
+                                    anchors.left: parent.left
+                                    anchors.verticalCenter: parent.verticalCenter
                                     onClicked: rollD100Only()
                                 }
-
-                                Item { Layout.fillWidth: true }
 
                                 NeumoGhostIconButton {
                                     theme: neumoTheme
                                     rowHovered: d100ActionTile.hovered
                                     width: diceWindow.ghostIconSize
                                     height: diceWindow.ghostIconSize
+                                    anchors.right: parent.right
+                                    anchors.verticalCenter: parent.verticalCenter
                                     iconSource: Qt.resolvedUrl("icons/brush.svg")
                                     toolTip: "Редактировать стиль"
-                                    Layout.alignment: Qt.AlignVCenter
                                     onClicked: openDieEditor("d100")
-                                }
-                                Item {
-                                    Layout.preferredWidth: 8
-                                    Layout.preferredHeight: 1
                                 }
                             }
                         }
