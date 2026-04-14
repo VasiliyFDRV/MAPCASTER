@@ -176,6 +176,8 @@ Window {
         "edgeWidth": 0.0
     })
     property bool previewWebReady: false
+    property string diceViewMode: "main"
+    readonly property bool styleEditorActive: diceViewMode === "styleEditor"
     property int pickerHue: 0
     property int pickerSaturation: 0
     property int pickerValue: 100
@@ -747,10 +749,10 @@ Window {
         return "6"
     }
     function templateSlotSizeForWidth(availableWidth) {
-        var gap = 6
+        var gap = 8
         var width = Math.max(320, Number(availableWidth || 0))
-        var s = Math.floor((width - gap * 9) / 10)
-        return Math.max(30, Math.min(54, s))
+        var s = Math.floor((width - gap * 4) / 5)
+        return Math.max(42, Math.min(62, s))
     }
     function previewKindForDieType(dieType) {
         var key = String(dieType || "d6").toLowerCase()
@@ -988,7 +990,7 @@ Window {
         templateSnapshotCaptureTimer.stop()
     }
     function processTemplateSnapshotQueue() {
-        if (!dieStylePopup || !dieStylePopup.visible) {
+        if (!styleEditorActive) {
             return
         }
         if (!templateSnapshotWebReady || templateSnapshotBusy) {
@@ -1049,7 +1051,10 @@ Window {
         if (mainPreviewHoverTile && mainPreviewHoverDieType === key) {
             startMainPreviewHoverNow()
         }
-        dieStylePopup.close()
+        if (colorPickerPopup.visible) {
+            colorPickerPopup.close()
+        }
+        diceViewMode = "main"
     }
     function resetDieEditorToDefaults() {
         dieEditorWorking = cloneStyle(null)
@@ -1269,10 +1274,16 @@ Window {
     function openDieEditor(key) {
         dieEditorDieKey = String(key)
         dieEditorWorking = styleForDie(dieEditorDieKey)
-        dieStylePopup.open()
+        diceViewMode = "styleEditor"
+    }
+    function closeDieEditor() {
+        if (colorPickerPopup.visible) {
+            colorPickerPopup.close()
+        }
+        diceViewMode = "main"
     }
     function pushPreviewStyle() {
-        if (!dieStylePopup || !dieStylePopup.visible) {
+        if (!styleEditorActive) {
             return
         }
         if (!previewWeb || !previewWeb.visible || !previewWebReady) {
@@ -1294,8 +1305,22 @@ Window {
     onDieEditorDieKeyChanged: {
         pushPreviewStyle()
         startPreviewRollNow()
-        if (dieStylePopup && dieStylePopup.visible) {
+        if (styleEditorActive) {
             refreshAllTemplateSnapshots(true)
+        }
+    }
+    onStyleEditorActiveChanged: {
+        if (styleEditorActive) {
+            pushPreviewStyle()
+            startPreviewRollNow()
+            refreshAllTemplateSnapshots(false)
+            processTemplateSnapshotQueue()
+            return
+        }
+        clearTemplateSnapshotQueue()
+        templateSlotContextMenu.close()
+        if (colorPickerPopup.visible) {
+            colorPickerPopup.close()
         }
     }
     Component.onCompleted: {
@@ -1309,7 +1334,7 @@ Window {
     Connections {
         target: appController
         function onSettingsChanged() {
-            if (!dieStylePopup || !dieStylePopup.visible) {
+            if (!styleEditorActive) {
                 loadDieStylesFromSettings()
                 loadDieStyleTemplatesFromSettings()
                 if (!useLiveMainDicePreview && diceMainPreviewCache) {
@@ -2082,7 +2107,7 @@ Window {
                     return
                 }
                 if (mouse.button === Qt.RightButton && slot.slotStyle) {
-                    var p = slot.mapToItem(dieStylePopup.contentItem, mouse.x, mouse.y)
+                    var p = slot.mapToItem(diceWindow.contentItem, mouse.x, mouse.y)
                     diceWindow.openTemplateContextMenu(slot.rowKey, slot.slotIndex, p.x, p.y)
                 }
             }
@@ -2150,6 +2175,7 @@ Window {
         anchors.fill: parent
         anchors.margins: 16
         spacing: 0
+        visible: !diceWindow.styleEditorActive
         Flickable {
             id: diceScroll
             Layout.fillWidth: true
@@ -2640,6 +2666,420 @@ Window {
                 }
             }
     }
+    Item {
+        id: styleEditorScreen
+        anchors.fill: parent
+        visible: diceWindow.styleEditorActive
+
+        NeumoInsetSurface {
+            anchors.fill: parent
+            anchors.margins: 16
+            theme: neumoTheme
+            useFrameProfile: true
+            radius: diceWindow.cardRadius
+            fillColor: neumoTheme.baseColor
+            contentPadding: diceWindow.cardPadding
+
+            ColumnLayout {
+                anchors.fill: parent
+                spacing: 10
+
+                RowLayout {
+                    Layout.fillWidth: true
+                    spacing: 10
+
+                    NeumoIconButton {
+                        theme: neumoTheme
+                        width: 30
+                        height: 30
+                        iconSource: Qt.resolvedUrl("icons/back.svg")
+                        toolTip: "Назад"
+                        onClicked: closeDieEditor()
+                    }
+
+                    Label {
+                        Layout.fillWidth: true
+                        text: "Кастомизация " + dieEditorDieKey
+                        color: textPrimary
+                        font.pixelSize: 16
+                        font.weight: Font.DemiBold
+                        verticalAlignment: Text.AlignVCenter
+                        elide: Text.ElideRight
+                    }
+                }
+
+                NeumoInsetSurface {
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: diceWindow.narrowLayout ? 154 : 176
+                    theme: neumoTheme
+                    radius: diceWindow.innerCardRadius + 2
+                    fillColor: diceWindow.resultsFillColor
+                    insetDarkColor: diceWindow.resultsInsetDarkColor
+                    insetLightColor: diceWindow.resultsInsetLightColor
+                    contentPadding: 0
+
+                    Item {
+                        anchors.fill: parent
+                        clip: true
+
+                        WebEngineView {
+                            id: previewWeb
+                            anchors.fill: parent
+                            visible: diceWindow.styleEditorActive
+                            enabled: visible
+                            backgroundColor: "#121214"
+                            url: Qt.resolvedUrl("../web/dice_physics.html")
+                            onLoadingChanged: function(req) {
+                                if (req.status === WebEngineView.LoadFailedStatus) {
+                                    previewWebReady = false
+                                    return
+                                }
+                                if (req.status === WebEngineView.LoadSucceededStatus) {
+                                    previewWebReady = true
+                                    diceWindow.pushPreviewStyle()
+                                    diceWindow.startPreviewRollNow()
+                                }
+                            }
+                            onVisibleChanged: {
+                                if (visible) {
+                                    diceWindow.pushPreviewStyle()
+                                    diceWindow.startPreviewRollNow()
+                                }
+                            }
+                            onJavaScriptConsoleMessage: function(level, message, lineNumber, sourceID) {
+                                console.log("[dice-preview-web]", String(message), String(sourceID) + ":" + String(lineNumber))
+                            }
+                        }
+
+                        DicePreviewLoader {
+                            anchors.fill: parent
+                            visible: !previewWebReady
+                        }
+                    }
+                }
+
+                Timer {
+                    id: previewRollTimer
+                    interval: 3200
+                    repeat: true
+                    running: diceWindow.styleEditorActive && previewWebReady
+                    onTriggered: diceWindow.startPreviewRollNow()
+                }
+
+                ScrollView {
+                    id: styleEditorScroll
+                    Layout.fillWidth: true
+                    Layout.fillHeight: true
+                    Layout.minimumHeight: 0
+                    clip: true
+                    ScrollBar.vertical: NeumoScrollBar {}
+                    ScrollBar.horizontal.policy: ScrollBar.AlwaysOff
+
+                    ColumnLayout {
+                        id: styleEditorContent
+                        width: styleEditorScroll.availableWidth > 0 ? styleEditorScroll.availableWidth : styleEditorScroll.width
+                        spacing: 8
+
+                        Label { text: "Грани"; color: textPrimary; font.pixelSize: 12; font.weight: Font.DemiBold }
+                        Label { text: "Размер (50%..150%)"; color: textSecondary; font.pixelSize: 11 }
+                        SliderNumberControl {
+                            minValue: 50
+                            maxValue: 150
+                            step: 1
+                            decimals: 0
+                            value: Number(dieEditorWorking.scalePercent || 100)
+                            onValueCommitted: updateEditorField("scalePercent", Math.round(value))
+                        }
+                        RowLayout {
+                            Layout.fillWidth: true
+                            spacing: 8
+                            Label { text: "Цвет граней"; color: textSecondary; font.pixelSize: 11 }
+                            Rectangle {
+                                implicitWidth: 40
+                                implicitHeight: 20
+                                radius: 6
+                                color: dieEditorWorking.color
+                                border.width: 1
+                                border.color: "#666666"
+                            }
+                            AppButton {
+                                text: "🎨"
+                                implicitWidth: 32
+                                implicitHeight: 24
+                                onClicked: openDieColorDialog("color", "Выбор цвета граней", "#C9C9C9")
+                            }
+                            Item { Layout.fillWidth: true }
+                        }
+
+                        Label { text: "Градиент"; color: textPrimary; font.pixelSize: 12; font.weight: Font.DemiBold }
+                        RowLayout {
+                            Layout.fillWidth: true
+                            spacing: 8
+                            Label { text: "Включить градиент"; color: textSecondary; font.pixelSize: 11 }
+                            Switch {
+                                checked: Boolean(dieEditorWorking.gradientEnabled)
+                                onToggled: updateEditorField("gradientEnabled", checked)
+                            }
+                            Item { Layout.fillWidth: true }
+                        }
+                        RowLayout {
+                            visible: Boolean(dieEditorWorking.gradientEnabled)
+                            Layout.fillWidth: true
+                            spacing: 8
+                            Label { text: "Цвет центра"; color: textSecondary; font.pixelSize: 11 }
+                            Rectangle {
+                                implicitWidth: 40
+                                implicitHeight: 20
+                                radius: 6
+                                color: dieEditorWorking.gradientCenterColor
+                                border.width: 1
+                                border.color: "#666666"
+                            }
+                            AppButton {
+                                text: "🎨"
+                                implicitWidth: 32
+                                implicitHeight: 24
+                                onClicked: openDieColorDialog("gradientCenterColor", "Выбор цвета центра градиента", "#FFFFFF")
+                            }
+                            Item { Layout.fillWidth: true }
+                        }
+                        Label {
+                            visible: Boolean(dieEditorWorking.gradientEnabled)
+                            text: "Резкость/плавность градиента"
+                            color: textSecondary
+                            font.pixelSize: 11
+                        }
+                        SliderNumberControl {
+                            visible: Boolean(dieEditorWorking.gradientEnabled)
+                            minValue: 0
+                            maxValue: 100
+                            step: 1
+                            decimals: 0
+                            value: Number(dieEditorWorking.gradientSharpness || 50)
+                            onValueCommitted: updateEditorField("gradientSharpness", Math.round(value))
+                        }
+                        Label {
+                            visible: Boolean(dieEditorWorking.gradientEnabled)
+                            text: "Смещение градиента"
+                            color: textSecondary
+                            font.pixelSize: 11
+                        }
+                        SliderNumberControl {
+                            visible: Boolean(dieEditorWorking.gradientEnabled)
+                            minValue: 0
+                            maxValue: 100
+                            step: 1
+                            decimals: 0
+                            value: Number(dieEditorWorking.gradientOffset || 50)
+                            onValueCommitted: updateEditorField("gradientOffset", Math.round(value))
+                        }
+
+                        Label { text: "Текст"; color: textPrimary; font.pixelSize: 12; font.weight: Font.DemiBold }
+                        RowLayout {
+                            Layout.fillWidth: true
+                            spacing: 8
+                            Label { text: "Цвет текста"; color: textSecondary; font.pixelSize: 11 }
+                            Rectangle {
+                                implicitWidth: 40
+                                implicitHeight: 20
+                                radius: 6
+                                color: dieEditorWorking.fontColor
+                                border.width: 1
+                                border.color: "#666666"
+                            }
+                            AppButton {
+                                text: "🎨"
+                                implicitWidth: 32
+                                implicitHeight: 24
+                                onClicked: openDieColorDialog("fontColor", "Выбор цвета шрифта", "#1F1F1F")
+                            }
+                            Item { Layout.fillWidth: true }
+                        }
+                        RowLayout {
+                            Layout.fillWidth: true
+                            spacing: 8
+                            Label { text: "Цвет свечения текста"; color: textSecondary; font.pixelSize: 11 }
+                            Rectangle {
+                                implicitWidth: 40
+                                implicitHeight: 20
+                                radius: 6
+                                color: dieEditorWorking.textStrokeColor
+                                border.width: 1
+                                border.color: "#666666"
+                            }
+                            AppButton {
+                                text: "🎨"
+                                implicitWidth: 32
+                                implicitHeight: 24
+                                onClicked: openDieColorDialog("textStrokeColor", "Выбор цвета свечения текста", "#EEEEEE")
+                            }
+                            Item { Layout.fillWidth: true }
+                        }
+
+                        Label { text: "Свечение"; color: textPrimary; font.pixelSize: 12; font.weight: Font.DemiBold }
+                        Label { text: "Радиус свечения"; color: textSecondary; font.pixelSize: 11 }
+                        SliderNumberControl {
+                            minValue: 0
+                            maxValue: 200
+                            step: 1
+                            decimals: 0
+                            value: Number(dieEditorWorking.textGlowRadius !== undefined ? dieEditorWorking.textGlowRadius : 100)
+                            onValueCommitted: updateEditorField("textGlowRadius", Math.round(value))
+                        }
+                        Label { text: "Интенсивность свечения"; color: textSecondary; font.pixelSize: 11 }
+                        SliderNumberControl {
+                            minValue: 0
+                            maxValue: 200
+                            step: 1
+                            decimals: 0
+                            value: Number(dieEditorWorking.textGlowOpacity !== undefined ? dieEditorWorking.textGlowOpacity : 100)
+                            onValueCommitted: updateEditorField("textGlowOpacity", Math.round(value))
+                        }
+
+                        Label { text: "Ребра"; color: textPrimary; font.pixelSize: 12; font.weight: Font.DemiBold }
+                        RowLayout {
+                            Layout.fillWidth: true
+                            spacing: 8
+                            Label { text: "Цвет ребер"; color: textSecondary; font.pixelSize: 11 }
+                            Rectangle {
+                                implicitWidth: 40
+                                implicitHeight: 20
+                                radius: 6
+                                color: dieEditorWorking.edgeColor
+                                border.width: 1
+                                border.color: "#666666"
+                            }
+                            AppButton {
+                                text: "🎨"
+                                implicitWidth: 32
+                                implicitHeight: 24
+                                onClicked: openDieColorDialog("edgeColor", "Выбор цвета ребер", "#D4D4D4")
+                            }
+                            Item { Layout.fillWidth: true }
+                        }
+                        Label { text: "Толщина ребер"; color: textSecondary; font.pixelSize: 11 }
+                        SliderNumberControl {
+                            minValue: 0
+                            maxValue: 5
+                            step: 0.1
+                            decimals: 1
+                            value: Number(dieEditorWorking.edgeWidth !== undefined ? dieEditorWorking.edgeWidth : 0.0)
+                            onValueCommitted: updateEditorField("edgeWidth", roundToDecimals(value, 1))
+                        }
+
+                        Label { text: "Шаблоны"; color: textPrimary; font.pixelSize: 12; font.weight: Font.DemiBold }
+                        Label { text: "Пользовательские"; color: textSecondary; font.pixelSize: 10 }
+                        GridLayout {
+                            id: userTemplateGrid
+                            Layout.fillWidth: true
+                            columns: 5
+                            columnSpacing: 8
+                            rowSpacing: 8
+                            property int slotSize: diceWindow.templateSlotSizeForWidth(width)
+
+                            Repeater {
+                                model: 10
+                                delegate: TemplateSlotButton {
+                                    rowKey: "user"
+                                    slotIndex: index
+                                    slotSize: userTemplateGrid.slotSize
+                                    slotStyle: diceWindow.templateStyle("user", index)
+                                    Layout.preferredWidth: userTemplateGrid.slotSize
+                                    Layout.preferredHeight: userTemplateGrid.slotSize
+                                }
+                            }
+                        }
+                        Label { text: "Типы урона"; color: textSecondary; font.pixelSize: 10 }
+                        GridLayout {
+                            id: damageTemplateGrid
+                            Layout.fillWidth: true
+                            columns: 5
+                            columnSpacing: 8
+                            rowSpacing: 8
+                            property int slotSize: diceWindow.templateSlotSizeForWidth(width)
+
+                            Repeater {
+                                model: 10
+                                delegate: TemplateSlotButton {
+                                    rowKey: "damage"
+                                    slotIndex: index
+                                    slotSize: damageTemplateGrid.slotSize
+                                    slotStyle: diceWindow.templateStyle("damage", index)
+                                    Layout.preferredWidth: damageTemplateGrid.slotSize
+                                    Layout.preferredHeight: damageTemplateGrid.slotSize
+                                }
+                            }
+                        }
+
+                        Item {
+                            Layout.fillWidth: true
+                            Layout.preferredHeight: 2
+                        }
+                    }
+                }
+
+                RowLayout {
+                    Layout.fillWidth: true
+                    spacing: 10
+
+                    NeumoIconButton {
+                        theme: neumoTheme
+                        width: 30
+                        height: 30
+                        iconSource: Qt.resolvedUrl("icons/undo.svg")
+                        toolTip: "По умолчанию"
+                        onClicked: resetDieEditorToDefaults()
+                    }
+
+                    NeumoRaisedActionButton {
+                        theme: neumoTheme
+                        Layout.fillWidth: true
+                        Layout.minimumWidth: 0
+                        Layout.preferredHeight: diceWindow.actionButtonHeight
+                        text: "Сохранить"
+                        compactMode: true
+                        onClicked: saveDieEditor()
+                    }
+
+                    NeumoIconButton {
+                        theme: neumoTheme
+                        width: 30
+                        height: 30
+                        iconSource: Qt.resolvedUrl("icons/save.svg")
+                        toolTip: "Сохранить стиль"
+                        onClicked: saveCurrentStyleToTemplateQueue()
+                    }
+                }
+            }
+        }
+    }
+    WebEngineView {
+        id: templateSnapshotWeb
+        x: -10000
+        y: -10000
+        width: 148
+        height: 148
+        visible: diceWindow.styleEditorActive
+        enabled: visible
+        backgroundColor: "#121214"
+        url: Qt.resolvedUrl("../web/dice_physics.html")
+        onLoadingChanged: function(req) {
+            if (req.status === WebEngineView.LoadFailedStatus) {
+                templateSnapshotWebReady = false
+                return
+            }
+            if (req.status === WebEngineView.LoadSucceededStatus) {
+                templateSnapshotWebReady = true
+                diceWindow.processTemplateSnapshotQueue()
+            }
+        }
+    }
+    Timer {
+        id: templateSnapshotCaptureTimer
+        interval: 180
+        repeat: false
+        onTriggered: diceWindow.captureTemplateSnapshotCurrentTask()
+    }
     Timer {
         id: physicsFallbackTimer
         interval: 2300
@@ -2699,365 +3139,6 @@ Window {
                         }
                     }
                 }
-            }
-        }
-    }
-    Popup {
-        id: dieStylePopup
-        modal: true
-        focus: true
-        width: Math.min(460, diceWindow.width - 24)
-        height: Math.min(760, diceWindow.height - 24)
-        closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
-        anchors.centerIn: Overlay.overlay
-        padding: 0
-        onOpened: {
-            diceWindow.pushPreviewStyle()
-            diceWindow.startPreviewRollNow()
-            diceWindow.refreshAllTemplateSnapshots(false)
-            diceWindow.processTemplateSnapshotQueue()
-        }
-        onClosed: {
-            diceWindow.clearTemplateSnapshotQueue()
-        }
-        WebEngineView {
-            id: templateSnapshotWeb
-            x: -10000
-            y: -10000
-            width: 148
-            height: 148
-            visible: dieStylePopup.visible
-            enabled: visible
-            backgroundColor: "#121214"
-            url: Qt.resolvedUrl("../web/dice_physics.html")
-            onLoadingChanged: function(req) {
-                if (req.status === WebEngineView.LoadFailedStatus) {
-                    templateSnapshotWebReady = false
-                    return
-                }
-                if (req.status === WebEngineView.LoadSucceededStatus) {
-                    templateSnapshotWebReady = true
-                    diceWindow.processTemplateSnapshotQueue()
-                }
-            }
-        }
-        Timer {
-            id: templateSnapshotCaptureTimer
-            interval: 180
-            repeat: false
-            onTriggered: diceWindow.captureTemplateSnapshotCurrentTask()
-        }
-        background: Rectangle {
-            radius: 12
-            color: "#1E1E1F"
-            border.width: 1
-            border.color: "#4D4D4D"
-        }
-        ColumnLayout {
-            anchors.fill: parent
-            anchors.margins: 10
-            spacing: 8
-            Label {
-                Layout.fillWidth: true
-                text: "Кастомизация " + dieEditorDieKey
-                color: textPrimary
-                font.pixelSize: 14
-                font.weight: Font.DemiBold
-            }
-            Rectangle {
-                Layout.fillWidth: true
-                Layout.preferredHeight: 120
-                radius: 10
-                color: "#121214"
-                border.width: 1
-                border.color: "#353535"
-            clip: true
-                Item {
-                    id: previewStage
-                    anchors.fill: parent
-                    WebEngineView {
-                        id: previewWeb
-                        anchors.fill: parent
-                        visible: dieStylePopup.visible
-                        enabled: visible
-                        backgroundColor: "#121214"
-                        url: Qt.resolvedUrl("../web/dice_physics.html")
-                        onLoadingChanged: function(req) {
-                            if (req.status === WebEngineView.LoadFailedStatus) {
-                                previewWebReady = false
-                                return
-                            }
-                            if (req.status === WebEngineView.LoadSucceededStatus) {
-                                previewWebReady = true
-                                diceWindow.pushPreviewStyle()
-                                diceWindow.startPreviewRollNow()
-                            }
-                        }
-                        onVisibleChanged: {
-                            if (visible) {
-                                diceWindow.pushPreviewStyle()
-                                diceWindow.startPreviewRollNow()
-                            }
-                        }
-                        onJavaScriptConsoleMessage: function(level, message, lineNumber, sourceID) {
-                            console.log("[dice-preview-web]", String(message), String(sourceID) + ":" + String(lineNumber))
-                        }
-                    }
-                    Timer {
-                        id: previewRollTimer
-                        interval: 3200
-                        repeat: true
-                        running: false
-                        onTriggered: diceWindow.startPreviewRollNow()
-                    }
-                }
-            }
-            ScrollView {
-                id: styleEditorScroll
-                Layout.fillWidth: true
-                Layout.fillHeight: true
-            clip: true
-                ScrollBar.vertical.policy: ScrollBar.AsNeeded
-            ColumnLayout {
-                    id: styleEditorContent
-                    width: styleEditorScroll.availableWidth > 0 ? styleEditorScroll.availableWidth : styleEditorScroll.width
-                    spacing: 8
-                    Label { text: "Размер (50%..150%)"; color: textSecondary; font.pixelSize: 11 }
-                    SliderNumberControl {
-                        minValue: 50
-                        maxValue: 150
-                        step: 1
-                        decimals: 0
-                        value: Number(dieEditorWorking.scalePercent || 100)
-                        onValueCommitted: updateEditorField("scalePercent", Math.round(value))
-                    }
-                    RowLayout {
-                        Layout.fillWidth: true
-                        spacing: 8
-                        Label { text: "Цвет граней"; color: textSecondary; font.pixelSize: 11 }
-                        Rectangle {
-                            implicitWidth: 40
-                            implicitHeight: 20
-                            radius: 6
-                            color: dieEditorWorking.color
-                            border.width: 1
-                            border.color: "#666666"
-                        }
-                        AppButton {
-                            text: "🎨"
-                            implicitWidth: 32
-                            implicitHeight: 24
-                            onClicked: openDieColorDialog("color", "Выбор цвета граней", "#C9C9C9")
-                        }
-                        Item { Layout.fillWidth: true }
-                    }
-                    RowLayout {
-                        Layout.fillWidth: true
-                        spacing: 8
-                        Label { text: "Градиент"; color: textSecondary; font.pixelSize: 11 }
-                        Switch {
-                            checked: Boolean(dieEditorWorking.gradientEnabled)
-                            onToggled: updateEditorField("gradientEnabled", checked)
-                        }
-                        Item { Layout.fillWidth: true }
-                    }
-                    RowLayout {
-                        visible: Boolean(dieEditorWorking.gradientEnabled)
-                        Layout.fillWidth: true
-                        spacing: 8
-                        Label { text: "Цвет центра"; color: textSecondary; font.pixelSize: 11 }
-                        Rectangle {
-                            implicitWidth: 40
-                            implicitHeight: 20
-                            radius: 6
-                            color: dieEditorWorking.gradientCenterColor
-                            border.width: 1
-                            border.color: "#666666"
-                        }
-                        AppButton {
-                            text: "🎨"
-                            implicitWidth: 32
-                            implicitHeight: 24
-                            onClicked: openDieColorDialog("gradientCenterColor", "Выбор цвета центра градиента", "#FFFFFF")
-                        }
-                        Item { Layout.fillWidth: true }
-                    }
-                    Label {
-                        visible: Boolean(dieEditorWorking.gradientEnabled)
-                        text: "Резкость/плавность градиента"
-                        color: textSecondary
-                        font.pixelSize: 11
-                    }
-                    SliderNumberControl {
-                        visible: Boolean(dieEditorWorking.gradientEnabled)
-                        minValue: 0
-                        maxValue: 100
-                        step: 1
-                        decimals: 0
-                        value: Number(dieEditorWorking.gradientSharpness || 50)
-                        onValueCommitted: updateEditorField("gradientSharpness", Math.round(value))
-                    }
-                    Label {
-                        visible: Boolean(dieEditorWorking.gradientEnabled)
-                        text: "Смещение градиента"
-                        color: textSecondary
-                        font.pixelSize: 11
-                    }
-                    SliderNumberControl {
-                        visible: Boolean(dieEditorWorking.gradientEnabled)
-                        minValue: 0
-                        maxValue: 100
-                        step: 1
-                        decimals: 0
-                        value: Number(dieEditorWorking.gradientOffset || 50)
-                        onValueCommitted: updateEditorField("gradientOffset", Math.round(value))
-                    }
-                    RowLayout {
-                        Layout.fillWidth: true
-                        spacing: 8
-                        Label { text: "Цвет текста"; color: textSecondary; font.pixelSize: 11 }
-                        Rectangle {
-                            implicitWidth: 40
-                            implicitHeight: 20
-                            radius: 6
-                            color: dieEditorWorking.fontColor
-                            border.width: 1
-                            border.color: "#666666"
-                        }
-                        AppButton {
-                            text: "🎨"
-                            implicitWidth: 32
-                            implicitHeight: 24
-                            onClicked: openDieColorDialog("fontColor", "Выбор цвета шрифта", "#1F1F1F")
-                        }
-                        Item { Layout.fillWidth: true }
-                    }
-                    RowLayout {
-                        Layout.fillWidth: true
-                        spacing: 8
-                        Label { text: "Цвет свечения текста"; color: textSecondary; font.pixelSize: 11 }
-                        Rectangle {
-                            implicitWidth: 40
-                            implicitHeight: 20
-                            radius: 6
-                            color: dieEditorWorking.textStrokeColor
-                            border.width: 1
-                            border.color: "#666666"
-                        }
-                        AppButton {
-                            text: "🎨"
-                            implicitWidth: 32
-                            implicitHeight: 24
-                            onClicked: openDieColorDialog("textStrokeColor", "Выбор цвета свечения текста", "#EEEEEE")
-                        }
-                        Item { Layout.fillWidth: true }
-                    }
-                    Label { text: "\u0420\u0430\u0434\u0438\u0443\u0441 \u0441\u0432\u0435\u0447\u0435\u043d\u0438\u044f"; color: textSecondary; font.pixelSize: 11 }
-                    SliderNumberControl {
-                        minValue: 0
-                        maxValue: 200
-                        step: 1
-                        decimals: 0
-                        value: Number(dieEditorWorking.textGlowRadius !== undefined ? dieEditorWorking.textGlowRadius : 100)
-                        onValueCommitted: updateEditorField("textGlowRadius", Math.round(value))
-                    }
-                    Label { text: "\u0418\u043d\u0442\u0435\u043d\u0441\u0438\u0432\u043d\u043e\u0441\u0442\u044c \u0441\u0432\u0435\u0447\u0435\u043d\u0438\u044f"; color: textSecondary; font.pixelSize: 11 }
-                    SliderNumberControl {
-                        minValue: 0
-                        maxValue: 200
-                        step: 1
-                        decimals: 0
-                        value: Number(dieEditorWorking.textGlowOpacity !== undefined ? dieEditorWorking.textGlowOpacity : 100)
-                        onValueCommitted: updateEditorField("textGlowOpacity", Math.round(value))
-                    }
-                    RowLayout {
-                        Layout.fillWidth: true
-                        spacing: 8
-                        Label { text: "Цвет ребер"; color: textSecondary; font.pixelSize: 11 }
-                        Rectangle {
-                            implicitWidth: 40
-                            implicitHeight: 20
-                            radius: 6
-                            color: dieEditorWorking.edgeColor
-                            border.width: 1
-                            border.color: "#666666"
-                        }
-                        AppButton {
-                            text: "🎨"
-                            implicitWidth: 32
-                            implicitHeight: 24
-                            onClicked: openDieColorDialog("edgeColor", "Выбор цвета ребер", "#D4D4D4")
-                        }
-                        Item { Layout.fillWidth: true }
-                    }
-                    Label { text: "Толщина ребер"; color: textSecondary; font.pixelSize: 11 }
-                    SliderNumberControl {
-                        minValue: 0
-                        maxValue: 5
-                        step: 0.1
-                        decimals: 1
-                        value: Number(dieEditorWorking.edgeWidth !== undefined ? dieEditorWorking.edgeWidth : 0.0)
-                        onValueCommitted: updateEditorField("edgeWidth", roundToDecimals(value, 1))
-                    }
-                    Item { Layout.fillWidth: true; Layout.preferredHeight: 4 }
-                    Label { text: "Шаблоны стиля"; color: textSecondary; font.pixelSize: 11 }
-                    Label { text: "Пользовательские"; color: textSecondary; font.pixelSize: 10 }
-                    Item {
-                        Layout.fillWidth: true
-                        property int gap: 6
-                        property int slotSize: diceWindow.templateSlotSizeForWidth(width)
-                        implicitHeight: slotSize
-                        Row {
-                            anchors.horizontalCenter: parent.horizontalCenter
-                            spacing: parent.gap
-                            Repeater {
-                                model: 10
-                                delegate: TemplateSlotButton {
-                                    rowKey: "user"
-                                    slotIndex: index
-                                    slotSize: parent.parent.slotSize
-                                    slotStyle: diceWindow.templateStyle("user", index)
-                                }
-                            }
-                        }
-                    }
-                    Label { text: "Типы урона"; color: textSecondary; font.pixelSize: 10 }
-                    Item {
-                        Layout.fillWidth: true
-                        property int gap: 6
-                        property int slotSize: diceWindow.templateSlotSizeForWidth(width)
-                        implicitHeight: slotSize
-                        Row {
-                            anchors.horizontalCenter: parent.horizontalCenter
-                            spacing: parent.gap
-                            Repeater {
-                                model: 10
-                                delegate: TemplateSlotButton {
-                                    rowKey: "damage"
-                                    slotIndex: index
-                                    slotSize: parent.parent.slotSize
-                                    slotStyle: diceWindow.templateStyle("damage", index)
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-            RowLayout {
-                Layout.fillWidth: true
-                spacing: 8
-                AppButton {
-                    Layout.fillWidth: true
-                    text: "Сохранить стиль"
-                    onClicked: saveCurrentStyleToTemplateQueue()
-                }
-            }
-            RowLayout {
-                Layout.fillWidth: true
-                spacing: 8
-                AppButton { Layout.fillWidth: true; text: "Отмена"; onClicked: dieStylePopup.close() }
-                AppButton { Layout.fillWidth: true; text: "По умолчанию"; onClicked: resetDieEditorToDefaults() }
-                AppButton { Layout.fillWidth: true; text: "Сохранить"; accent: true; onClicked: saveDieEditor() }
             }
         }
     }
