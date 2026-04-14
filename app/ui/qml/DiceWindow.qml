@@ -1535,33 +1535,152 @@ Window {
         property real value: 0
         signal valueCommitted(real value)
         Layout.fillWidth: true
-        spacing: 8
+        spacing: 10
+
         Slider {
             id: slider
             Layout.fillWidth: true
+            Layout.minimumWidth: 0
+            implicitHeight: 30
             from: control.minValue
             to: control.maxValue
             stepSize: control.step
             value: control.value
+            leftPadding: 0
+            rightPadding: 0
+            topPadding: 0
+            bottomPadding: 0
+            hoverEnabled: true
+
             onMoved: control.valueCommitted(value)
             onValueChanged: if (pressed) control.valueCommitted(value)
-        }
-        TextField {
-            id: valueInput
-            Layout.preferredWidth: 62
-            selectByMouse: true
-            inputMethodHints: Qt.ImhFormattedNumbersOnly
-            validator: RegularExpressionValidator { regularExpression: /[+-]?\d*(?:\.\d*)?/ }
-            text: formatSliderValue(control.value, control.decimals)
-            onEditingFinished: {
-                var v = clampAndRound(text, control.minValue, control.maxValue, control.decimals, control.value)
-                control.valueCommitted(v)
-                text = formatSliderValue(v, control.decimals)
+
+            background: Item {
+                x: slider.leftPadding
+                y: slider.topPadding + (slider.availableHeight - height) / 2
+                width: slider.availableWidth
+                height: 26
+
+                NeumoInsetSurface {
+                    id: sliderTrack
+                    anchors.left: parent.left
+                    anchors.right: parent.right
+                    anchors.verticalCenter: parent.verticalCenter
+                    height: 12
+                    theme: neumoTheme
+                    radius: 6
+                    fillColor: neumoTheme ? neumoTheme.fieldInlineFillColor : "#252525"
+                    contentPadding: 0
+                    insetDarkColor: neumoTheme
+                        ? Qt.rgba(neumoTheme.shadowDarkBase.r, neumoTheme.shadowDarkBase.g, neumoTheme.shadowDarkBase.b, 0.92)
+                        : "#D6151618"
+                    insetLightColor: neumoTheme
+                        ? Qt.rgba(neumoTheme.shadowLightBase.r, neumoTheme.shadowLightBase.g, neumoTheme.shadowLightBase.b, 0.44)
+                        : "#553B3C40"
+                }
+
+                Rectangle {
+                    anchors.left: sliderTrack.left
+                    anchors.verticalCenter: sliderTrack.verticalCenter
+                    width: Math.max(height, slider.visualPosition * sliderTrack.width)
+                    height: Math.max(4, sliderTrack.height - 4)
+                    radius: height / 2
+                    color: Qt.rgba(
+                        neumoTheme ? neumoTheme.textPrimary.r : 0.94,
+                        neumoTheme ? neumoTheme.textPrimary.g : 0.94,
+                        neumoTheme ? neumoTheme.textPrimary.b : 0.94,
+                        slider.pressed ? 0.22 : 0.14)
+                }
+            }
+
+            handle: Item {
+                x: slider.leftPadding + slider.visualPosition * (slider.availableWidth - width)
+                y: slider.topPadding + (slider.availableHeight - height) / 2
+                width: 22
+                height: 22
+
+                NeumoRaisedSurface {
+                    anchors.fill: parent
+                    theme: neumoTheme
+                    radius: width / 2
+                    fillColor: neumoTheme ? neumoTheme.baseColor : "#2D2D2D"
+                    shadowOffset: slider.pressed ? 2.1 : (slider.hovered ? 3.6 : 2.8)
+                    shadowRadius: slider.pressed ? 4.6 : (slider.hovered ? 7.4 : 5.8)
+                    shadowSamples: 17
+                    shadowDarkColor: slider.hovered
+                        ? (neumoTheme ? neumoTheme.raisedShadowDarkColorHover : "#FC151618")
+                        : (neumoTheme ? neumoTheme.raisedShadowDarkColor : "#B8151618")
+                    shadowLightColor: slider.hovered
+                        ? (neumoTheme ? neumoTheme.raisedShadowLightColorHover : "#AD55565C")
+                        : (neumoTheme ? neumoTheme.raisedShadowLightColor : "#703B3C40")
+                }
+
+                Rectangle {
+                    anchors.fill: parent
+                    anchors.margins: 3
+                    radius: width / 2
+                    color: Qt.rgba(1, 1, 1, slider.hovered ? 0.12 : 0.08)
+                }
             }
         }
-        onValueChanged: {
-            if (!valueInput.activeFocus) {
-                valueInput.text = formatSliderValue(control.value, control.decimals)
+
+        NeumoStepperField {
+            theme: neumoTheme
+            from: control.minValue
+            to: control.maxValue
+            stepSize: control.step
+            decimals: control.decimals
+            value: control.value
+            compactMode: true
+            visualStyle: "launcherInline"
+            Layout.preferredWidth: control.decimals > 0 ? 108 : 100
+            Layout.alignment: Qt.AlignVCenter
+            onValueModified: control.valueCommitted(value)
+        }
+    }
+    component EditorSectionLabel: Label {
+        color: textPrimary
+        font.pixelSize: 13
+        font.weight: Font.DemiBold
+    }
+    component EditorFieldLabel: Label {
+        color: textSecondary
+        font.pixelSize: 11
+        wrapMode: Text.WordWrap
+    }
+    component ColorFieldButton: NeumoRaisedActionButton {
+        id: button
+        property color swatchColor: "#FFFFFF"
+        property string labelText: ""
+        compactMode: true
+        radius: 12
+        contentPadding: 4
+        implicitWidth: 118
+        implicitHeight: 34
+
+        RowLayout {
+            anchors.fill: parent
+            anchors.margins: 4
+            spacing: 8
+
+            Rectangle {
+                Layout.preferredWidth: 22
+                Layout.preferredHeight: 22
+                radius: 7
+                color: button.swatchColor
+                border.width: 1
+                border.color: Qt.rgba(1, 1, 1, 0.18)
+            }
+
+            Label {
+                Layout.fillWidth: true
+                Layout.minimumWidth: 0
+                text: button.labelText.length > 0 ? button.labelText : String(button.swatchColor).toUpperCase()
+                color: textPrimary
+                font.pixelSize: 11
+                font.weight: Font.Medium
+                elide: Text.ElideRight
+                verticalAlignment: Text.AlignVCenter
             }
         }
     }
@@ -2042,17 +2161,31 @@ Window {
         }
         implicitWidth: slotSize
         implicitHeight: slotSize
+        NeumoInsetSurface {
+            anchors.fill: parent
+            theme: neumoTheme
+            radius: Math.max(6, slot.slotSize * 0.18)
+            fillColor: slot.slotStyle ? diceWindow.resultsFillColor : Qt.rgba(22 / 255, 23 / 255, 25 / 255, 1.0)
+            insetDarkColor: slot.slotStyle ? diceWindow.resultsInsetDarkColor : Qt.rgba(neumoTheme.shadowDarkBase.r, neumoTheme.shadowDarkBase.g, neumoTheme.shadowDarkBase.b, 0.92)
+            insetLightColor: slot.slotStyle ? diceWindow.resultsInsetLightColor : Qt.rgba(neumoTheme.shadowLightBase.r, neumoTheme.shadowLightBase.g, neumoTheme.shadowLightBase.b, 0.18)
+            contentPadding: 0
+        }
         Rectangle {
             anchors.fill: parent
             radius: Math.max(6, slot.slotSize * 0.18)
-            color: slot.slotStyle ? "#151619" : "#111214"
-            border.width: 1
-            border.color: slot.slotStyle ? "#5B5D64" : "#3B3D43"
+            color: "transparent"
+            border.width: slotHoverArea.containsMouse ? 1 : 0
+            border.color: Qt.rgba(1, 1, 1, 0.18)
+            opacity: slotHoverArea.containsMouse ? 1.0 : 0.0
+
+            Behavior on opacity {
+                NumberAnimation { duration: 100 }
+            }
         }
         TemplateStylePreview {
             anchors.centerIn: parent
-            width: Math.max(18, slot.slotSize - 8)
-            height: Math.max(18, slot.slotSize - 8)
+            width: Math.max(22, slot.slotSize - 10)
+            height: Math.max(22, slot.slotSize - 10)
             visible: !!slot.slotStyle && (!slot.snapshotSource || slot.snapshotSource.length <= 0)
             dieType: diceWindow.dieEditorDieKey
             styleData: slot.slotStyle || ({})
@@ -2060,8 +2193,8 @@ Window {
         }
         Image {
             anchors.centerIn: parent
-            width: Math.max(18, slot.slotSize - 8)
-            height: Math.max(18, slot.slotSize - 8)
+            width: Math.max(22, slot.slotSize - 10)
+            height: Math.max(22, slot.slotSize - 10)
             fillMode: Image.PreserveAspectFit
             smooth: true
             asynchronous: true
@@ -2069,16 +2202,18 @@ Window {
             source: slot.snapshotSource
             visible: !!slot.slotStyle && slot.snapshotSource.length > 0 && status === Image.Ready
         }
-        Rectangle {
+        NeumoRaisedSurface {
             id: damageIconFrame
             width: Math.max(12, damageIcon.width + 4)
             height: width
+            theme: neumoTheme
             radius: Math.max(4, width * 0.18)
             x: parent.width - width - 3
             y: parent.height - height - 3
-            color: "#111214"
-            border.width: 1
-            border.color: "#3B3D43"
+            fillColor: neumoTheme.baseColor
+            shadowOffset: 2.0
+            shadowRadius: 4.8
+            shadowSamples: 15
             visible: damageIcon.visible
             z: 3
         }
@@ -2780,8 +2915,8 @@ Window {
                         width: styleEditorScroll.availableWidth > 0 ? styleEditorScroll.availableWidth : styleEditorScroll.width
                         spacing: 8
 
-                        Label { text: "Грани"; color: textPrimary; font.pixelSize: 12; font.weight: Font.DemiBold }
-                        Label { text: "Размер (50%..150%)"; color: textSecondary; font.pixelSize: 11 }
+                        EditorSectionLabel { text: "Грани" }
+                        EditorFieldLabel { text: "Размер (50%..150%)" }
                         SliderNumberControl {
                             minValue: 50
                             maxValue: 150
@@ -2792,62 +2927,52 @@ Window {
                         }
                         RowLayout {
                             Layout.fillWidth: true
-                            spacing: 8
-                            Label { text: "Цвет граней"; color: textSecondary; font.pixelSize: 11 }
-                            Rectangle {
-                                implicitWidth: 40
-                                implicitHeight: 20
-                                radius: 6
-                                color: dieEditorWorking.color
-                                border.width: 1
-                                border.color: "#666666"
+                            spacing: 10
+                            EditorFieldLabel {
+                                Layout.fillWidth: true
+                                text: "Цвет граней"
                             }
-                            AppButton {
-                                text: "🎨"
-                                implicitWidth: 32
-                                implicitHeight: 24
+                            ColorFieldButton {
+                                theme: neumoTheme
+                                swatchColor: dieEditorWorking.color
+                                labelText: String(dieEditorWorking.color || "#C9C9C9").toUpperCase()
                                 onClicked: openDieColorDialog("color", "Выбор цвета граней", "#C9C9C9")
                             }
-                            Item { Layout.fillWidth: true }
                         }
 
-                        Label { text: "Градиент"; color: textPrimary; font.pixelSize: 12; font.weight: Font.DemiBold }
+                        Item { Layout.fillWidth: true; Layout.preferredHeight: 2 }
+                        EditorSectionLabel { text: "Градиент" }
                         RowLayout {
                             Layout.fillWidth: true
-                            spacing: 8
-                            Label { text: "Включить градиент"; color: textSecondary; font.pixelSize: 11 }
-                            Switch {
+                            spacing: 10
+                            EditorFieldLabel {
+                                Layout.fillWidth: true
+                                text: "Включить градиент"
+                            }
+                            NeumoToggle {
+                                theme: neumoTheme
                                 checked: Boolean(dieEditorWorking.gradientEnabled)
                                 onToggled: updateEditorField("gradientEnabled", checked)
                             }
-                            Item { Layout.fillWidth: true }
                         }
                         RowLayout {
                             visible: Boolean(dieEditorWorking.gradientEnabled)
                             Layout.fillWidth: true
-                            spacing: 8
-                            Label { text: "Цвет центра"; color: textSecondary; font.pixelSize: 11 }
-                            Rectangle {
-                                implicitWidth: 40
-                                implicitHeight: 20
-                                radius: 6
-                                color: dieEditorWorking.gradientCenterColor
-                                border.width: 1
-                                border.color: "#666666"
+                            spacing: 10
+                            EditorFieldLabel {
+                                Layout.fillWidth: true
+                                text: "Цвет центра"
                             }
-                            AppButton {
-                                text: "🎨"
-                                implicitWidth: 32
-                                implicitHeight: 24
+                            ColorFieldButton {
+                                theme: neumoTheme
+                                swatchColor: dieEditorWorking.gradientCenterColor
+                                labelText: String(dieEditorWorking.gradientCenterColor || "#FFFFFF").toUpperCase()
                                 onClicked: openDieColorDialog("gradientCenterColor", "Выбор цвета центра градиента", "#FFFFFF")
                             }
-                            Item { Layout.fillWidth: true }
                         }
-                        Label {
+                        EditorFieldLabel {
                             visible: Boolean(dieEditorWorking.gradientEnabled)
                             text: "Резкость/плавность градиента"
-                            color: textSecondary
-                            font.pixelSize: 11
                         }
                         SliderNumberControl {
                             visible: Boolean(dieEditorWorking.gradientEnabled)
@@ -2858,11 +2983,9 @@ Window {
                             value: Number(dieEditorWorking.gradientSharpness || 50)
                             onValueCommitted: updateEditorField("gradientSharpness", Math.round(value))
                         }
-                        Label {
+                        EditorFieldLabel {
                             visible: Boolean(dieEditorWorking.gradientEnabled)
                             text: "Смещение градиента"
-                            color: textSecondary
-                            font.pixelSize: 11
                         }
                         SliderNumberControl {
                             visible: Boolean(dieEditorWorking.gradientEnabled)
@@ -2874,50 +2997,40 @@ Window {
                             onValueCommitted: updateEditorField("gradientOffset", Math.round(value))
                         }
 
-                        Label { text: "Текст"; color: textPrimary; font.pixelSize: 12; font.weight: Font.DemiBold }
+                        Item { Layout.fillWidth: true; Layout.preferredHeight: 2 }
+                        EditorSectionLabel { text: "Текст" }
                         RowLayout {
                             Layout.fillWidth: true
-                            spacing: 8
-                            Label { text: "Цвет текста"; color: textSecondary; font.pixelSize: 11 }
-                            Rectangle {
-                                implicitWidth: 40
-                                implicitHeight: 20
-                                radius: 6
-                                color: dieEditorWorking.fontColor
-                                border.width: 1
-                                border.color: "#666666"
+                            spacing: 10
+                            EditorFieldLabel {
+                                Layout.fillWidth: true
+                                text: "Цвет текста"
                             }
-                            AppButton {
-                                text: "🎨"
-                                implicitWidth: 32
-                                implicitHeight: 24
+                            ColorFieldButton {
+                                theme: neumoTheme
+                                swatchColor: dieEditorWorking.fontColor
+                                labelText: String(dieEditorWorking.fontColor || "#1F1F1F").toUpperCase()
                                 onClicked: openDieColorDialog("fontColor", "Выбор цвета шрифта", "#1F1F1F")
                             }
-                            Item { Layout.fillWidth: true }
                         }
                         RowLayout {
                             Layout.fillWidth: true
-                            spacing: 8
-                            Label { text: "Цвет свечения текста"; color: textSecondary; font.pixelSize: 11 }
-                            Rectangle {
-                                implicitWidth: 40
-                                implicitHeight: 20
-                                radius: 6
-                                color: dieEditorWorking.textStrokeColor
-                                border.width: 1
-                                border.color: "#666666"
+                            spacing: 10
+                            EditorFieldLabel {
+                                Layout.fillWidth: true
+                                text: "Цвет свечения текста"
                             }
-                            AppButton {
-                                text: "🎨"
-                                implicitWidth: 32
-                                implicitHeight: 24
+                            ColorFieldButton {
+                                theme: neumoTheme
+                                swatchColor: dieEditorWorking.textStrokeColor
+                                labelText: String(dieEditorWorking.textStrokeColor || "#EEEEEE").toUpperCase()
                                 onClicked: openDieColorDialog("textStrokeColor", "Выбор цвета свечения текста", "#EEEEEE")
                             }
-                            Item { Layout.fillWidth: true }
                         }
 
-                        Label { text: "Свечение"; color: textPrimary; font.pixelSize: 12; font.weight: Font.DemiBold }
-                        Label { text: "Радиус свечения"; color: textSecondary; font.pixelSize: 11 }
+                        Item { Layout.fillWidth: true; Layout.preferredHeight: 2 }
+                        EditorSectionLabel { text: "Свечение" }
+                        EditorFieldLabel { text: "Радиус свечения" }
                         SliderNumberControl {
                             minValue: 0
                             maxValue: 200
@@ -2926,7 +3039,7 @@ Window {
                             value: Number(dieEditorWorking.textGlowRadius !== undefined ? dieEditorWorking.textGlowRadius : 100)
                             onValueCommitted: updateEditorField("textGlowRadius", Math.round(value))
                         }
-                        Label { text: "Интенсивность свечения"; color: textSecondary; font.pixelSize: 11 }
+                        EditorFieldLabel { text: "Интенсивность свечения" }
                         SliderNumberControl {
                             minValue: 0
                             maxValue: 200
@@ -2936,28 +3049,23 @@ Window {
                             onValueCommitted: updateEditorField("textGlowOpacity", Math.round(value))
                         }
 
-                        Label { text: "Ребра"; color: textPrimary; font.pixelSize: 12; font.weight: Font.DemiBold }
+                        Item { Layout.fillWidth: true; Layout.preferredHeight: 2 }
+                        EditorSectionLabel { text: "Ребра" }
                         RowLayout {
                             Layout.fillWidth: true
-                            spacing: 8
-                            Label { text: "Цвет ребер"; color: textSecondary; font.pixelSize: 11 }
-                            Rectangle {
-                                implicitWidth: 40
-                                implicitHeight: 20
-                                radius: 6
-                                color: dieEditorWorking.edgeColor
-                                border.width: 1
-                                border.color: "#666666"
+                            spacing: 10
+                            EditorFieldLabel {
+                                Layout.fillWidth: true
+                                text: "Цвет ребер"
                             }
-                            AppButton {
-                                text: "🎨"
-                                implicitWidth: 32
-                                implicitHeight: 24
+                            ColorFieldButton {
+                                theme: neumoTheme
+                                swatchColor: dieEditorWorking.edgeColor
+                                labelText: String(dieEditorWorking.edgeColor || "#D4D4D4").toUpperCase()
                                 onClicked: openDieColorDialog("edgeColor", "Выбор цвета ребер", "#D4D4D4")
                             }
-                            Item { Layout.fillWidth: true }
                         }
-                        Label { text: "Толщина ребер"; color: textSecondary; font.pixelSize: 11 }
+                        EditorFieldLabel { text: "Толщина ребер" }
                         SliderNumberControl {
                             minValue: 0
                             maxValue: 5
@@ -2967,8 +3075,9 @@ Window {
                             onValueCommitted: updateEditorField("edgeWidth", roundToDecimals(value, 1))
                         }
 
-                        Label { text: "Шаблоны"; color: textPrimary; font.pixelSize: 12; font.weight: Font.DemiBold }
-                        Label { text: "Пользовательские"; color: textSecondary; font.pixelSize: 10 }
+                        Item { Layout.fillWidth: true; Layout.preferredHeight: 2 }
+                        EditorSectionLabel { text: "Шаблоны" }
+                        EditorFieldLabel { text: "Пользовательские" }
                         GridLayout {
                             id: userTemplateGrid
                             Layout.fillWidth: true
@@ -2989,7 +3098,7 @@ Window {
                                 }
                             }
                         }
-                        Label { text: "Типы урона"; color: textSecondary; font.pixelSize: 10 }
+                        EditorFieldLabel { text: "Типы урона" }
                         GridLayout {
                             id: damageTemplateGrid
                             Layout.fillWidth: true
@@ -3013,7 +3122,7 @@ Window {
 
                         Item {
                             Layout.fillWidth: true
-                            Layout.preferredHeight: 2
+                            Layout.preferredHeight: 4
                         }
                     }
                 }
@@ -3160,62 +3269,87 @@ Window {
         modal: true
         focus: true
         width: Math.min(420, diceWindow.width - 24)
-        height: 430
+        height: 468
         closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
         anchors.centerIn: Overlay.overlay
         padding: 0
-        background: Rectangle {
-            radius: 12
-            color: "#1E1E1F"
-            border.width: 1
-            border.color: "#4D4D4D"
+        background: Item {
+            NeumoRaisedSurface {
+                anchors.fill: parent
+                theme: neumoTheme
+                radius: diceWindow.cardRadius
+                fillColor: neumoTheme.baseColor
+                shadowOffset: diceWindow.cardShadowOffset
+                shadowRadius: diceWindow.cardShadowRadius
+                shadowSamples: diceWindow.cardShadowSamples
+            }
         }
         ColumnLayout {
             anchors.fill: parent
-            anchors.margins: 10
-            spacing: 8
-            Label {
+            anchors.margins: 12
+            spacing: 10
+
+            EditorSectionLabel {
                 Layout.fillWidth: true
                 text: pendingColorTitle
-                color: textPrimary
-                font.pixelSize: 14
-                font.weight: Font.DemiBold
             }
+
             RowLayout {
                 Layout.fillWidth: true
                 spacing: 10
-                Rectangle {
+
+                NeumoInsetSurface {
                     Layout.fillWidth: true
-                    Layout.preferredHeight: 42
-                    radius: 8
-                    color: pickerCurrentColor
-                    border.width: 1
-                    border.color: "#666666"
-                    Label {
-                        anchors.centerIn: parent
-                        text: "Текущий"
-                        color: "#202020"
-                        font.pixelSize: 11
-                        font.weight: Font.DemiBold
+                    Layout.preferredHeight: 50
+                    theme: neumoTheme
+                    radius: 14
+                    fillColor: neumoTheme.fieldInsetFillColor
+                    contentPadding: 6
+
+                    Rectangle {
+                        anchors.fill: parent
+                        radius: 10
+                        color: pickerCurrentColor
+                        border.width: 1
+                        border.color: Qt.rgba(1, 1, 1, 0.18)
+
+                        Label {
+                            anchors.centerIn: parent
+                            text: "Текущий"
+                            color: "#202020"
+                            font.pixelSize: 11
+                            font.weight: Font.DemiBold
+                        }
                     }
                 }
-                Rectangle {
+
+                NeumoInsetSurface {
                     Layout.fillWidth: true
-                    Layout.preferredHeight: 42
-                    radius: 8
-                    color: pickerPreviewColor
-                    border.width: 1
-                    border.color: "#666666"
-                    Label {
-                        anchors.centerIn: parent
-                        text: "Новый"
-                        color: "#202020"
-                        font.pixelSize: 11
-                        font.weight: Font.DemiBold
+                    Layout.preferredHeight: 50
+                    theme: neumoTheme
+                    radius: 14
+                    fillColor: neumoTheme.fieldInsetFillColor
+                    contentPadding: 6
+
+                    Rectangle {
+                        anchors.fill: parent
+                        radius: 10
+                        color: pickerPreviewColor
+                        border.width: 1
+                        border.color: Qt.rgba(1, 1, 1, 0.18)
+
+                        Label {
+                            anchors.centerIn: parent
+                            text: "Новый"
+                            color: "#202020"
+                            font.pixelSize: 11
+                            font.weight: Font.DemiBold
+                        }
                     }
                 }
             }
-            Label { text: "Тон"; color: textSecondary; font.pixelSize: 11 }
+
+            EditorFieldLabel { text: "Тон" }
             SliderNumberControl {
                 minValue: 0
                 maxValue: 360
@@ -3227,7 +3361,8 @@ Window {
                     refreshPickerColorFromHSV(true)
                 }
             }
-            Label { text: "Насыщенность"; color: textSecondary; font.pixelSize: 11 }
+
+            EditorFieldLabel { text: "Насыщенность" }
             SliderNumberControl {
                 minValue: 0
                 maxValue: 100
@@ -3239,7 +3374,8 @@ Window {
                     refreshPickerColorFromHSV(true)
                 }
             }
-            Label { text: "Яркость"; color: textSecondary; font.pixelSize: 11 }
+
+            EditorFieldLabel { text: "Яркость" }
             SliderNumberControl {
                 minValue: 0
                 maxValue: 100
@@ -3251,9 +3387,12 @@ Window {
                     refreshPickerColorFromHSV(true)
                 }
             }
-            Label { text: "Код цвета (HEX / RGB(A))"; color: textSecondary; font.pixelSize: 11 }
-            TextField {
+
+            EditorFieldLabel { text: "Код цвета (HEX / RGB(A))" }
+            NeumoTextField {
                 id: pickerHexInput
+                theme: neumoTheme
+                visualStyle: "launcherInline"
                 Layout.fillWidth: true
                 text: pickerHexText
                 placeholderText: "#RRGGBB или rgb(255,255,255)"
@@ -3264,18 +3403,24 @@ Window {
                     applyPickerTypedColor()
                 }
             }
+
             RowLayout {
                 Layout.fillWidth: true
-                spacing: 8
-                AppButton {
+                spacing: 10
+
+                NeumoRaisedActionButton {
                     Layout.fillWidth: true
+                    theme: neumoTheme
+                    compactMode: true
                     text: "Отмена"
                     onClicked: colorPickerPopup.close()
                 }
-                AppButton {
+
+                NeumoRaisedActionButton {
                     Layout.fillWidth: true
+                    theme: neumoTheme
+                    compactMode: true
                     text: "Применить"
-                    accent: true
                     onClicked: {
                         if (pendingColorField && pendingColorField.length > 0) {
                             updateEditorField(pendingColorField, pickerPreviewColor)
