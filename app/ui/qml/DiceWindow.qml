@@ -2586,6 +2586,10 @@ Window {
                                     Layout.alignment: Qt.AlignVCenter
                                     onClicked: openDieEditor("d100")
                                 }
+                                Item {
+                                    Layout.preferredWidth: Math.max(0, diceWindow.cardPadding - d100ActionTile.contentPadding)
+                                    Layout.preferredHeight: 1
+                                }
                             }
                         }
 
