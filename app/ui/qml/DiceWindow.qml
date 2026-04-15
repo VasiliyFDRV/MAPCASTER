@@ -1647,6 +1647,9 @@ Window {
                         if (width <= 0 || height <= 0) {
                             return
                         }
+                        if (control.trackMode === "neutral") {
+                            return
+                        }
 
                         var radius = height / 2
                         ctx.save()
@@ -1674,7 +1677,12 @@ Window {
                 }
 
                 Rectangle {
-                    anchors.fill: sliderTrackFill
+                    anchors.left: sliderTrackFill.left
+                    anchors.verticalCenter: sliderTrackFill.verticalCenter
+                    width: control.trackMode === "neutral"
+                        ? Math.max(sliderTrackFill.height, Math.round(slider.visualPosition * sliderTrackFill.width))
+                        : sliderTrackFill.width
+                    height: sliderTrackFill.height
                     radius: sliderTrackFill.height / 2
                     color: control.trackMode === "neutral"
                         ? Qt.rgba(
