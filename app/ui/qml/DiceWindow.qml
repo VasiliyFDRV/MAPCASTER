@@ -1248,6 +1248,17 @@ Window {
             }
         }
     }
+    function repaintColorPickerTracks() {
+        if (hueSliderControl) {
+            hueSliderControl.requestTrackPaint()
+        }
+        if (saturationSliderControl) {
+            saturationSliderControl.requestTrackPaint()
+        }
+        if (valueSliderControl) {
+            valueSliderControl.requestTrackPaint()
+        }
+    }
     function setPickerFromColor(raw, fallbackColor) {
         var parsed = parseColorInput(raw, fallbackColor || "#FFFFFF")
         var hsv = rgbToHsv(parsed.r, parsed.g, parsed.b)
@@ -1260,6 +1271,7 @@ Window {
         if (pickerHexInput) {
             pickerHexInput.text = parsed.hex
         }
+        repaintColorPickerTracks()
     }
     function applyPickerTypedColor() {
         var parsed = parseColorInput(pickerHexText, pickerPreviewColor)
@@ -1272,6 +1284,7 @@ Window {
         if (pickerHexInput) {
             pickerHexInput.text = parsed.hex
         }
+        repaintColorPickerTracks()
     }
     function openDieColorDialog(field, titleText, fallbackColor) {
         pendingColorField = String(field || "")
@@ -1311,6 +1324,9 @@ Window {
     }
     onResetTokenChanged: resetState()
     onDieEditorWorkingChanged: pushPreviewStyle()
+    onPickerHueChanged: repaintColorPickerTracks()
+    onPickerSaturationChanged: repaintColorPickerTracks()
+    onPickerValueChanged: repaintColorPickerTracks()
     onDieEditorDieKeyChanged: {
         pushPreviewStyle()
         startPreviewRollNow()
@@ -1547,6 +1563,9 @@ Window {
         property real trackSaturation: 100
         property real trackValue: 100
         signal valueCommitted(real value)
+        function requestTrackPaint() {
+            sliderTrackFill.requestPaint()
+        }
         Layout.fillWidth: true
         spacing: 8
 
@@ -3460,6 +3479,7 @@ Window {
 
             EditorFieldLabel { text: "Тон" }
             SliderNumberControl {
+                id: hueSliderControl
                 minValue: 0
                 maxValue: 360
                 step: 1
@@ -3476,6 +3496,7 @@ Window {
 
             EditorFieldLabel { text: "Насыщенность" }
             SliderNumberControl {
+                id: saturationSliderControl
                 minValue: 0
                 maxValue: 100
                 step: 1
@@ -3492,6 +3513,7 @@ Window {
 
             EditorFieldLabel { text: "Яркость" }
             SliderNumberControl {
+                id: valueSliderControl
                 minValue: 0
                 maxValue: 100
                 step: 1
