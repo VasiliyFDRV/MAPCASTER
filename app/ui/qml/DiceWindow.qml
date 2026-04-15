@@ -755,10 +755,10 @@ Window {
         var gap = 8
         var width = Math.max(0, Number(availableWidth || 0))
         if (width <= 0) {
-            return 0
+            return 32
         }
         var s = Math.floor((width - gap * 4) / 5)
-        return Math.max(1, s)
+        return Math.max(32, s)
     }
     function previewKindForDieType(dieType) {
         var key = String(dieType || "d6").toLowerCase()
@@ -3097,12 +3097,11 @@ Window {
                         GridLayout {
                             id: userTemplateGrid
                             Layout.fillWidth: true
+                            Layout.preferredHeight: (slotSize * 2) + rowSpacing
                             columns: 5
                             columnSpacing: 8
                             rowSpacing: 8
-                            property int slotSize: diceWindow.templateSlotSizeForWidth(width)
-                            implicitWidth: width
-                            implicitHeight: (slotSize * 2) + rowSpacing
+                            property int slotSize: diceWindow.templateSlotSizeForWidth(styleEditorContent.width)
 
                             Repeater {
                                 model: 10
@@ -3111,8 +3110,6 @@ Window {
                                     slotIndex: index
                                     slotSize: userTemplateGrid.slotSize
                                     slotStyle: diceWindow.templateStyle("user", index)
-                                    Layout.fillWidth: true
-                                    Layout.fillHeight: true
                                     Layout.minimumWidth: 0
                                     Layout.minimumHeight: 0
                                     Layout.preferredWidth: userTemplateGrid.slotSize
@@ -3126,12 +3123,11 @@ Window {
                         GridLayout {
                             id: damageTemplateGrid
                             Layout.fillWidth: true
+                            Layout.preferredHeight: (slotSize * 2) + rowSpacing
                             columns: 5
                             columnSpacing: 8
                             rowSpacing: 8
-                            property int slotSize: diceWindow.templateSlotSizeForWidth(width)
-                            implicitWidth: width
-                            implicitHeight: (slotSize * 2) + rowSpacing
+                            property int slotSize: diceWindow.templateSlotSizeForWidth(styleEditorContent.width)
 
                             Repeater {
                                 model: 10
@@ -3140,8 +3136,6 @@ Window {
                                     slotIndex: index
                                     slotSize: damageTemplateGrid.slotSize
                                     slotStyle: diceWindow.templateStyle("damage", index)
-                                    Layout.fillWidth: true
-                                    Layout.fillHeight: true
                                     Layout.minimumWidth: 0
                                     Layout.minimumHeight: 0
                                     Layout.preferredWidth: damageTemplateGrid.slotSize
