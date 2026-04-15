@@ -1562,6 +1562,7 @@ Window {
         property real trackHue: 0
         property real trackSaturation: 100
         property real trackValue: 100
+        property color thumbAccentColor: Qt.rgba(1, 1, 1, 0.08)
         signal valueCommitted(real value)
         function requestTrackPaint() {
             sliderTrackFill.requestPaint()
@@ -1718,7 +1719,8 @@ Window {
                     anchors.fill: parent
                     anchors.margins: 3
                     radius: width / 2
-                    color: Qt.rgba(1, 1, 1, slider.hovered ? 0.12 : 0.08)
+                    color: control.thumbAccentColor
+                    opacity: slider.hovered ? 1.0 : 0.92
                 }
             }
         }
@@ -3487,6 +3489,7 @@ Window {
                 trackMode: "hsvHue"
                 trackSaturation: pickerSaturation
                 trackValue: pickerValue
+                thumbAccentColor: pickerPreviewColor
                 value: pickerHue
                 onValueCommitted: {
                     pickerHue = Math.round(value)
@@ -3504,6 +3507,7 @@ Window {
                 trackMode: "hsvSaturation"
                 trackHue: pickerHue
                 trackValue: pickerValue
+                thumbAccentColor: pickerPreviewColor
                 value: pickerSaturation
                 onValueCommitted: {
                     pickerSaturation = Math.round(value)
@@ -3521,6 +3525,7 @@ Window {
                 trackMode: "hsvValue"
                 trackHue: pickerHue
                 trackSaturation: pickerSaturation
+                thumbAccentColor: pickerPreviewColor
                 value: pickerValue
                 onValueCommitted: {
                     pickerValue = Math.round(value)
