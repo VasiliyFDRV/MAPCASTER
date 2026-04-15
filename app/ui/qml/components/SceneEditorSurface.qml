@@ -40,6 +40,7 @@ FocusScope {
     readonly property int sectionPadding: narrowLayout ? 12 : 15
     readonly property int sectionSpacing: narrowLayout ? 10 : 13
     readonly property int sectionOuterGutter: narrowLayout ? 6 : 9
+    readonly property int controlShadowInset: 4
     readonly property int headerTitleSize: narrowLayout ? 20 : 22
     readonly property string gridSizeLabel: "\u0420\u0430\u0437\u043c\u0435\u0440 \u043a\u043b\u0435\u0442\u043a\u0438"
     readonly property string gridLineThicknessLabel: "\u0422\u043e\u043b\u0449\u0438\u043d\u0430 \u043b\u0438\u043d\u0438\u0438"
@@ -189,6 +190,8 @@ FocusScope {
     Flickable {
         id: editorScroll
         anchors.fill: parent
+        anchors.leftMargin: Math.max(0, root.controlShadowInset - root.sectionOuterGutter)
+        anchors.rightMargin: Math.max(0, root.controlShadowInset - root.sectionOuterGutter)
         clip: true
         boundsBehavior: Flickable.StopAtBounds
         flickableDirection: Flickable.VerticalFlick
@@ -200,7 +203,8 @@ FocusScope {
 
         ColumnLayout {
             id: editorContent
-            width: editorScroll.width
+            width: Math.max(0, editorScroll.width - root.controlShadowInset * 2)
+            x: root.controlShadowInset
             spacing: 12
 
             RowLayout {
