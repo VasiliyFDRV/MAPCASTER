@@ -1542,6 +1542,10 @@ Window {
         property real step: 1
         property int decimals: 0
         property real value: 0
+        property string trackMode: "neutral"
+        property real trackHue: 0
+        property real trackSaturation: 100
+        property real trackValue: 100
         signal valueCommitted(real value)
         Layout.fillWidth: true
         spacing: 8
@@ -1589,17 +1593,83 @@ Window {
                         : "#553B3C40"
                 }
 
-                Rectangle {
+                Canvas {
+                    id: sliderTrackFill
                     anchors.left: sliderTrack.left
+                    anchors.right: sliderTrack.right
                     anchors.verticalCenter: sliderTrack.verticalCenter
-                    width: Math.max(height, slider.visualPosition * sliderTrack.width)
                     height: Math.max(4, sliderTrack.height - 4)
-                    radius: height / 2
-                    color: Qt.rgba(
-                        neumoTheme ? neumoTheme.textPrimary.r : 0.94,
-                        neumoTheme ? neumoTheme.textPrimary.g : 0.94,
-                        neumoTheme ? neumoTheme.textPrimary.b : 0.94,
-                        slider.pressed ? 0.22 : 0.14)
+                    antialiasing: false
+
+                    function trackColorAt(t) {
+                        if (control.trackMode === "hsvHue") {
+                            return hsvToRgb(t * 360.0, control.trackSaturation, control.trackValue)
+                        }
+                        if (control.trackMode === "hsvSaturation") {
+                            return hsvToRgb(control.trackHue, t * 100.0, control.trackValue)
+                        }
+                        if (control.trackMode === "hsvValue") {
+                            return hsvToRgb(control.trackHue, control.trackSaturation, t * 100.0)
+                        }
+                        var neutral = neumoTheme ? neumoTheme.textPrimary : Qt.rgba(0.94, 0.94, 0.94, 1.0)
+                        return {
+                            r: Math.round(neutral.r * 255),
+                            g: Math.round(neutral.g * 255),
+                            b: Math.round(neutral.b * 255)
+                        }
+                    }
+
+                    onPaint: {
+                        var ctx = getContext("2d")
+                        ctx.reset()
+                        ctx.clearRect(0, 0, width, height)
+                        if (width <= 0 || height <= 0) {
+                            return
+                        }
+
+                        var radius = height / 2
+                        ctx.save()
+                        ctx.beginPath()
+                        ctx.moveTo(radius, 0)
+                        ctx.lineTo(width - radius, 0)
+                        ctx.arc(width - radius, radius, radius, -Math.PI / 2, Math.PI / 2, false)
+                        ctx.lineTo(radius, height)
+                        ctx.arc(radius, radius, radius, Math.PI / 2, -Math.PI / 2, false)
+                        ctx.closePath()
+                        ctx.clip()
+
+                        var steps = Math.max(1, Math.round(width))
+                        for (var i = 0; i < steps; ++i) {
+                            var t = steps <= 1 ? 0 : (i / (steps - 1))
+                            var rgb = trackColorAt(t)
+                            ctx.fillStyle = "rgb(" + rgb.r + "," + rgb.g + "," + rgb.b + ")"
+                            ctx.fillRect(i, 0, 1, height)
+                        }
+
+                        ctx.fillStyle = "rgba(255,255,255,0.08)"
+                        ctx.fillRect(0, 0, width, height * 0.45)
+                        ctx.restore()
+                    }
+                }
+
+                Rectangle {
+                    anchors.fill: sliderTrackFill
+                    radius: sliderTrackFill.height / 2
+                    color: control.trackMode === "neutral"
+                        ? Qt.rgba(
+                            neumoTheme ? neumoTheme.textPrimary.r : 0.94,
+                            neumoTheme ? neumoTheme.textPrimary.g : 0.94,
+                            neumoTheme ? neumoTheme.textPrimary.b : 0.94,
+                            slider.pressed ? 0.22 : 0.14)
+                        : Qt.rgba(1, 1, 1, slider.pressed ? 0.04 : 0.02)
+                }
+
+                Rectangle {
+                    anchors.fill: sliderTrackFill
+                    radius: sliderTrackFill.height / 2
+                    color: "transparent"
+                    border.width: 1
+                    border.color: Qt.rgba(0, 0, 0, 0.16)
                 }
             }
 
@@ -1701,6 +1771,14 @@ Window {
                 elide: Text.ElideRight
                 verticalAlignment: Text.AlignVCenter
             }
+        }
+
+        Connections {
+            target: control
+            function onTrackModeChanged() { sliderTrackFill.requestPaint() }
+            function onTrackHueChanged() { sliderTrackFill.requestPaint() }
+            function onTrackSaturationChanged() { sliderTrackFill.requestPaint() }
+            function onTrackValueChanged() { sliderTrackFill.requestPaint() }
         }
     }
     component DieGlyph: Item {
@@ -3386,6 +3464,9 @@ Window {
                 maxValue: 360
                 step: 1
                 decimals: 0
+                trackMode: "hsvHue"
+                trackSaturation: pickerSaturation
+                trackValue: pickerValue
                 value: pickerHue
                 onValueCommitted: {
                     pickerHue = Math.round(value)
@@ -3399,6 +3480,9 @@ Window {
                 maxValue: 100
                 step: 1
                 decimals: 0
+                trackMode: "hsvSaturation"
+                trackHue: pickerHue
+                trackValue: pickerValue
                 value: pickerSaturation
                 onValueCommitted: {
                     pickerSaturation = Math.round(value)
@@ -3412,6 +3496,9 @@ Window {
                 maxValue: 100
                 step: 1
                 decimals: 0
+                trackMode: "hsvValue"
+                trackHue: pickerHue
+                trackSaturation: pickerSaturation
                 value: pickerValue
                 onValueCommitted: {
                     pickerValue = Math.round(value)
