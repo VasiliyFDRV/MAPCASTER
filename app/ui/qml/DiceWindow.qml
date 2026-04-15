@@ -190,6 +190,7 @@ Window {
     property string pickerHexText: "#FFFFFF"
     property string pickerPreviewColor: "#FFFFFF"
     property string pickerCurrentColor: "#FFFFFF"
+    property bool colorPickerWindowVisible: false
     function effectiveCount(countValue) {
         return countValue > 0 ? countValue : 1
     }
@@ -1060,8 +1061,8 @@ Window {
         if (mainPreviewHoverTile && mainPreviewHoverDieType === key) {
             startMainPreviewHoverNow()
         }
-        if (colorPickerPopup.visible) {
-            colorPickerPopup.close()
+        if (colorPickerWindowVisible) {
+            colorPickerWindowVisible = false
         }
         diceViewMode = "main"
     }
@@ -1291,7 +1292,7 @@ Window {
         pendingColorTitle = String(titleText || "Выбор цвета")
         var current = dieEditorWorking && pendingColorField.length > 0 ? dieEditorWorking[pendingColorField] : null
         setPickerFromColor(current, fallbackColor || "#FFFFFF")
-        colorPickerPopup.open()
+        colorPickerWindowVisible = true
     }
     function openDieEditor(key) {
         dieEditorDieKey = String(key)
@@ -1299,8 +1300,8 @@ Window {
         diceViewMode = "styleEditor"
     }
     function closeDieEditor() {
-        if (colorPickerPopup.visible) {
-            colorPickerPopup.close()
+        if (colorPickerWindowVisible) {
+            colorPickerWindowVisible = false
         }
         diceViewMode = "main"
     }
@@ -1344,8 +1345,8 @@ Window {
         }
         clearTemplateSnapshotQueue()
         templateSlotContextMenu.close()
-        if (colorPickerPopup.visible) {
-            colorPickerPopup.close()
+        if (colorPickerWindowVisible) {
+            colorPickerWindowVisible = false
         }
     }
     Component.onCompleted: {
@@ -3394,16 +3395,30 @@ Window {
             onTriggered: deleteTemplateContextSlot()
         }
     }
-    Popup {
+    Window {
         id: colorPickerPopup
-        modal: true
-        focus: true
+        transientParent: diceWindow
+        modality: Qt.ApplicationModal
+        flags: Qt.Dialog | Qt.WindowTitleHint | Qt.WindowCloseButtonHint
+        visible: colorPickerWindowVisible
         width: Math.min(420, diceWindow.width - 24)
         height: 468
-        closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
-        anchors.centerIn: Overlay.overlay
-        padding: 0
-        background: Item {
+        minimumWidth: width
+        maximumWidth: width
+        minimumHeight: height
+        maximumHeight: height
+        color: "transparent"
+        title: pendingColorTitle
+        x: diceWindow.x + Math.round((diceWindow.width - width) / 2)
+        y: diceWindow.y + Math.round((diceWindow.height - height) / 2)
+
+        onClosing: function(close) {
+            colorPickerWindowVisible = false
+        }
+
+        Item {
+            anchors.fill: parent
+
             NeumoRaisedSurface {
                 anchors.fill: parent
                 theme: neumoTheme
@@ -3413,164 +3428,165 @@ Window {
                 shadowRadius: diceWindow.cardShadowRadius
                 shadowSamples: diceWindow.cardShadowSamples
             }
-        }
-        ColumnLayout {
-            anchors.fill: parent
-            anchors.margins: 12
-            spacing: 10
 
-            EditorSectionLabel {
-                Layout.fillWidth: true
-                text: pendingColorTitle
-            }
-
-            RowLayout {
-                Layout.fillWidth: true
+            ColumnLayout {
+                anchors.fill: parent
+                anchors.margins: 12
                 spacing: 10
 
-                NeumoInsetSurface {
+                EditorSectionLabel {
                     Layout.fillWidth: true
-                    Layout.preferredHeight: 50
-                    theme: neumoTheme
-                    radius: 14
-                    fillColor: neumoTheme.fieldInsetFillColor
-                    contentPadding: 6
+                    text: pendingColorTitle
+                }
 
-                    Rectangle {
-                        anchors.fill: parent
-                        radius: 10
-                        color: pickerCurrentColor
-                        border.width: 1
-                        border.color: Qt.rgba(1, 1, 1, 0.18)
+                RowLayout {
+                    Layout.fillWidth: true
+                    spacing: 10
 
-                        Label {
-                            anchors.centerIn: parent
-                            text: "Текущий"
-                            color: "#202020"
-                            font.pixelSize: 11
-                            font.weight: Font.DemiBold
+                    NeumoInsetSurface {
+                        Layout.fillWidth: true
+                        Layout.preferredHeight: 50
+                        theme: neumoTheme
+                        radius: 14
+                        fillColor: neumoTheme.fieldInsetFillColor
+                        contentPadding: 6
+
+                        Rectangle {
+                            anchors.fill: parent
+                            radius: 10
+                            color: pickerCurrentColor
+                            border.width: 1
+                            border.color: Qt.rgba(1, 1, 1, 0.18)
+
+                            Label {
+                                anchors.centerIn: parent
+                                text: "Текущий"
+                                color: "#202020"
+                                font.pixelSize: 11
+                                font.weight: Font.DemiBold
+                            }
+                        }
+                    }
+
+                    NeumoInsetSurface {
+                        Layout.fillWidth: true
+                        Layout.preferredHeight: 50
+                        theme: neumoTheme
+                        radius: 14
+                        fillColor: neumoTheme.fieldInsetFillColor
+                        contentPadding: 6
+
+                        Rectangle {
+                            anchors.fill: parent
+                            radius: 10
+                            color: pickerPreviewColor
+                            border.width: 1
+                            border.color: Qt.rgba(1, 1, 1, 0.18)
+
+                            Label {
+                                anchors.centerIn: parent
+                                text: "Новый"
+                                color: "#202020"
+                                font.pixelSize: 11
+                                font.weight: Font.DemiBold
+                            }
                         }
                     }
                 }
 
-                NeumoInsetSurface {
-                    Layout.fillWidth: true
-                    Layout.preferredHeight: 50
-                    theme: neumoTheme
-                    radius: 14
-                    fillColor: neumoTheme.fieldInsetFillColor
-                    contentPadding: 6
-
-                    Rectangle {
-                        anchors.fill: parent
-                        radius: 10
-                        color: pickerPreviewColor
-                        border.width: 1
-                        border.color: Qt.rgba(1, 1, 1, 0.18)
-
-                        Label {
-                            anchors.centerIn: parent
-                            text: "Новый"
-                            color: "#202020"
-                            font.pixelSize: 11
-                            font.weight: Font.DemiBold
-                        }
+                EditorFieldLabel { text: "Тон" }
+                SliderNumberControl {
+                    id: hueSliderControl
+                    minValue: 0
+                    maxValue: 360
+                    step: 1
+                    decimals: 0
+                    trackMode: "hsvHue"
+                    trackSaturation: pickerSaturation
+                    trackValue: pickerValue
+                    thumbAccentColor: pickerPreviewColor
+                    value: pickerHue
+                    onValueCommitted: {
+                        pickerHue = Math.round(value)
+                        refreshPickerColorFromHSV(true)
                     }
                 }
-            }
 
-            EditorFieldLabel { text: "Тон" }
-            SliderNumberControl {
-                id: hueSliderControl
-                minValue: 0
-                maxValue: 360
-                step: 1
-                decimals: 0
-                trackMode: "hsvHue"
-                trackSaturation: pickerSaturation
-                trackValue: pickerValue
-                thumbAccentColor: pickerPreviewColor
-                value: pickerHue
-                onValueCommitted: {
-                    pickerHue = Math.round(value)
-                    refreshPickerColorFromHSV(true)
+                EditorFieldLabel { text: "Насыщенность" }
+                SliderNumberControl {
+                    id: saturationSliderControl
+                    minValue: 0
+                    maxValue: 100
+                    step: 1
+                    decimals: 0
+                    trackMode: "hsvSaturation"
+                    trackHue: pickerHue
+                    trackValue: pickerValue
+                    thumbAccentColor: pickerPreviewColor
+                    value: pickerSaturation
+                    onValueCommitted: {
+                        pickerSaturation = Math.round(value)
+                        refreshPickerColorFromHSV(true)
+                    }
                 }
-            }
 
-            EditorFieldLabel { text: "Насыщенность" }
-            SliderNumberControl {
-                id: saturationSliderControl
-                minValue: 0
-                maxValue: 100
-                step: 1
-                decimals: 0
-                trackMode: "hsvSaturation"
-                trackHue: pickerHue
-                trackValue: pickerValue
-                thumbAccentColor: pickerPreviewColor
-                value: pickerSaturation
-                onValueCommitted: {
-                    pickerSaturation = Math.round(value)
-                    refreshPickerColorFromHSV(true)
+                EditorFieldLabel { text: "Яркость" }
+                SliderNumberControl {
+                    id: valueSliderControl
+                    minValue: 0
+                    maxValue: 100
+                    step: 1
+                    decimals: 0
+                    trackMode: "hsvValue"
+                    trackHue: pickerHue
+                    trackSaturation: pickerSaturation
+                    thumbAccentColor: pickerPreviewColor
+                    value: pickerValue
+                    onValueCommitted: {
+                        pickerValue = Math.round(value)
+                        refreshPickerColorFromHSV(true)
+                    }
                 }
-            }
 
-            EditorFieldLabel { text: "Яркость" }
-            SliderNumberControl {
-                id: valueSliderControl
-                minValue: 0
-                maxValue: 100
-                step: 1
-                decimals: 0
-                trackMode: "hsvValue"
-                trackHue: pickerHue
-                trackSaturation: pickerSaturation
-                thumbAccentColor: pickerPreviewColor
-                value: pickerValue
-                onValueCommitted: {
-                    pickerValue = Math.round(value)
-                    refreshPickerColorFromHSV(true)
-                }
-            }
-
-            EditorFieldLabel { text: "Код цвета (HEX / RGB(A))" }
-            NeumoTextField {
-                id: pickerHexInput
-                theme: neumoTheme
-                visualStyle: "launcherInline"
-                Layout.fillWidth: true
-                text: pickerHexText
-                placeholderText: "#RRGGBB или rgb(255,255,255)"
-                selectByMouse: true
-                onTextEdited: pickerHexText = text
-                onEditingFinished: {
-                    pickerHexText = text
-                    applyPickerTypedColor()
-                }
-            }
-
-            RowLayout {
-                Layout.fillWidth: true
-                spacing: 10
-
-                NeumoRaisedActionButton {
-                    Layout.fillWidth: true
+                EditorFieldLabel { text: "Код цвета (HEX / RGB(A))" }
+                NeumoTextField {
+                    id: pickerHexInput
                     theme: neumoTheme
-                    compactMode: true
-                    text: "Отмена"
-                    onClicked: colorPickerPopup.close()
+                    visualStyle: "launcherInline"
+                    Layout.fillWidth: true
+                    text: pickerHexText
+                    placeholderText: "#RRGGBB или rgb(255,255,255)"
+                    selectByMouse: true
+                    onTextEdited: pickerHexText = text
+                    onEditingFinished: {
+                        pickerHexText = text
+                        applyPickerTypedColor()
+                    }
                 }
 
-                NeumoRaisedActionButton {
+                RowLayout {
                     Layout.fillWidth: true
-                    theme: neumoTheme
-                    compactMode: true
-                    text: "Применить"
-                    onClicked: {
-                        if (pendingColorField && pendingColorField.length > 0) {
-                            updateEditorField(pendingColorField, pickerPreviewColor)
+                    spacing: 10
+
+                    NeumoRaisedActionButton {
+                        Layout.fillWidth: true
+                        theme: neumoTheme
+                        compactMode: true
+                        text: "Отмена"
+                        onClicked: colorPickerWindowVisible = false
+                    }
+
+                    NeumoRaisedActionButton {
+                        Layout.fillWidth: true
+                        theme: neumoTheme
+                        compactMode: true
+                        text: "Применить"
+                        onClicked: {
+                            if (pendingColorField && pendingColorField.length > 0) {
+                                updateEditorField(pendingColorField, pickerPreviewColor)
+                            }
+                            colorPickerWindowVisible = false
                         }
-                        colorPickerPopup.close()
                     }
                 }
             }
