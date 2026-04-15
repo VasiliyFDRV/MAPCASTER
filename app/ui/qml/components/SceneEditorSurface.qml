@@ -40,6 +40,8 @@ FocusScope {
     readonly property int sectionPadding: narrowLayout ? 12 : 15
     readonly property int sectionSpacing: narrowLayout ? 10 : 13
     readonly property int sectionOuterGutter: narrowLayout ? 6 : 9
+    // Large inset editors need a small internal buffer for raised-control shadows.
+    // We compensate for it at the scroll container level so the visual text line stays aligned.
     readonly property int controlShadowInset: 4
     readonly property int headerTitleSize: narrowLayout ? 20 : 22
     readonly property string gridSizeLabel: "\u0420\u0430\u0437\u043c\u0435\u0440 \u043a\u043b\u0435\u0442\u043a\u0438"
@@ -203,6 +205,7 @@ FocusScope {
 
         ColumnLayout {
             id: editorContent
+            // Keep scroll content slightly narrower than the viewport so outer shadows do not clip.
             width: Math.max(0, editorScroll.width - root.controlShadowInset * 2)
             x: root.controlShadowInset
             spacing: 12

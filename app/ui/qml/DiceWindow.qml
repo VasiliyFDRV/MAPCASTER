@@ -73,6 +73,8 @@ Window {
     readonly property int editorFrameRadius: 28
     readonly property int editorFramePadding: 18
     readonly property int editorSectionOuterGutter: narrowLayout ? 6 : 9
+    // Large inset editors need a small internal buffer for raised-control shadows.
+    // We compensate for it at the scroll container level so the visual text line stays aligned.
     readonly property int editorControlShadowInset: 4
     readonly property int resultsCardPadding: narrowLayout ? 14 : 16
     readonly property real cardShadowOffset: narrowLayout ? 3.5 : 4.4
@@ -2936,6 +2938,7 @@ Window {
 
                     ColumnLayout {
                         id: styleEditorContent
+                        // Keep scroll content slightly narrower than the viewport so outer shadows do not clip.
                         width: Math.max(0, (styleEditorScroll.availableWidth > 0 ? styleEditorScroll.availableWidth : styleEditorScroll.width)
                             - diceWindow.editorControlShadowInset * 2)
                         x: diceWindow.editorControlShadowInset
