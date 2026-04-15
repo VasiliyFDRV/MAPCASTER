@@ -70,6 +70,9 @@ Window {
     readonly property int sectionSpacing: narrowLayout ? 10 : 12
     readonly property int cardRadius: narrowLayout ? 16 : 18
     readonly property int cardPadding: narrowLayout ? 10 : 12
+    readonly property int editorFrameRadius: 28
+    readonly property int editorFramePadding: 18
+    readonly property int editorSectionOuterGutter: narrowLayout ? 6 : 9
     readonly property int resultsCardPadding: narrowLayout ? 14 : 16
     readonly property real cardShadowOffset: narrowLayout ? 3.5 : 4.4
     readonly property real cardShadowRadius: narrowLayout ? 8.0 : 9.4
@@ -1535,12 +1538,13 @@ Window {
         property real value: 0
         signal valueCommitted(real value)
         Layout.fillWidth: true
-        spacing: 10
+        spacing: 8
 
         Slider {
             id: slider
             Layout.fillWidth: true
             Layout.minimumWidth: 0
+            Layout.preferredWidth: 10
             implicitHeight: 30
             from: control.minValue
             to: control.maxValue
@@ -1633,7 +1637,9 @@ Window {
             value: control.value
             compactMode: true
             visualStyle: "launcherInline"
-            Layout.preferredWidth: control.decimals > 0 ? 108 : 100
+            Layout.minimumWidth: 70
+            Layout.preferredWidth: 70
+            Layout.maximumWidth: 70
             Layout.alignment: Qt.AlignVCenter
             onValueModified: control.valueCommitted(value)
         }
@@ -1655,7 +1661,7 @@ Window {
         compactMode: true
         radius: 12
         contentPadding: 4
-        implicitWidth: 118
+        implicitWidth: 108
         implicitHeight: 34
 
         RowLayout {
@@ -2811,9 +2817,9 @@ Window {
             anchors.margins: 16
             theme: neumoTheme
             useFrameProfile: true
-            radius: diceWindow.cardRadius
+            radius: diceWindow.editorFrameRadius
             fillColor: neumoTheme.baseColor
-            contentPadding: diceWindow.cardPadding
+            contentPadding: diceWindow.editorFramePadding
 
             ColumnLayout {
                 anchors.fill: parent
@@ -2821,6 +2827,9 @@ Window {
 
                 RowLayout {
                     Layout.fillWidth: true
+                    Layout.leftMargin: diceWindow.editorSectionOuterGutter
+                    Layout.rightMargin: diceWindow.editorSectionOuterGutter
+                    Layout.topMargin: diceWindow.narrowLayout ? 8 : 10
                     spacing: 10
 
                     NeumoIconButton {
@@ -2845,6 +2854,8 @@ Window {
 
                 NeumoInsetSurface {
                     Layout.fillWidth: true
+                    Layout.leftMargin: diceWindow.editorSectionOuterGutter
+                    Layout.rightMargin: diceWindow.editorSectionOuterGutter
                     Layout.preferredHeight: diceWindow.narrowLayout ? 154 : 176
                     theme: neumoTheme
                     radius: diceWindow.innerCardRadius + 2
@@ -2906,6 +2917,8 @@ Window {
                     Layout.fillWidth: true
                     Layout.fillHeight: true
                     Layout.minimumHeight: 0
+                    Layout.leftMargin: diceWindow.editorSectionOuterGutter
+                    Layout.rightMargin: diceWindow.editorSectionOuterGutter
                     clip: true
                     ScrollBar.vertical: NeumoScrollBar {}
                     ScrollBar.horizontal.policy: ScrollBar.AlwaysOff
@@ -3129,6 +3142,8 @@ Window {
 
                 RowLayout {
                     Layout.fillWidth: true
+                    Layout.leftMargin: diceWindow.editorSectionOuterGutter
+                    Layout.rightMargin: diceWindow.editorSectionOuterGutter
                     spacing: 10
 
                     NeumoIconButton {
