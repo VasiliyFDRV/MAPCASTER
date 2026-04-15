@@ -1666,6 +1666,13 @@ Window {
         contentPadding: 4
         implicitWidth: 108
         implicitHeight: 34
+        baseShadowOffset: 3.1
+        baseShadowRadius: 6.8
+        hoverShadowOffset: 3.7
+        hoverShadowRadius: 7.6
+        pressedShadowOffset: 2.5
+        pressedShadowRadius: 5.8
+        shadowSamples: 19
 
         RowLayout {
             anchors.fill: parent
