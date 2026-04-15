@@ -73,6 +73,7 @@ Window {
     readonly property int editorFrameRadius: 28
     readonly property int editorFramePadding: 18
     readonly property int editorSectionOuterGutter: narrowLayout ? 6 : 9
+    readonly property int editorControlShadowInset: 4
     readonly property int resultsCardPadding: narrowLayout ? 14 : 16
     readonly property real cardShadowOffset: narrowLayout ? 3.5 : 4.4
     readonly property real cardShadowRadius: narrowLayout ? 8.0 : 9.4
@@ -2927,15 +2928,17 @@ Window {
                     Layout.fillWidth: true
                     Layout.fillHeight: true
                     Layout.minimumHeight: 0
-                    Layout.leftMargin: diceWindow.editorSectionOuterGutter
-                    Layout.rightMargin: diceWindow.editorSectionOuterGutter
+                    Layout.leftMargin: Math.max(0, diceWindow.editorSectionOuterGutter - diceWindow.editorControlShadowInset)
+                    Layout.rightMargin: Math.max(0, diceWindow.editorSectionOuterGutter - diceWindow.editorControlShadowInset)
                     clip: true
                     ScrollBar.vertical: NeumoScrollBar {}
                     ScrollBar.horizontal.policy: ScrollBar.AlwaysOff
 
                     ColumnLayout {
                         id: styleEditorContent
-                        width: styleEditorScroll.availableWidth > 0 ? styleEditorScroll.availableWidth : styleEditorScroll.width
+                        width: Math.max(0, (styleEditorScroll.availableWidth > 0 ? styleEditorScroll.availableWidth : styleEditorScroll.width)
+                            - diceWindow.editorControlShadowInset * 2)
+                        x: diceWindow.editorControlShadowInset
                         spacing: 8
 
                         EditorSectionLabel { text: "Грани" }
