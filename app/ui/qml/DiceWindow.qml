@@ -2886,7 +2886,7 @@ Window {
                             anchors.fill: parent
                             visible: diceWindow.styleEditorActive
                             enabled: visible
-                            backgroundColor: "#121214"
+                            backgroundColor: "#00000000"
                             url: Qt.resolvedUrl("../web/dice_physics.html")
                             onLoadingChanged: function(req) {
                                 if (req.status === WebEngineView.LoadFailedStatus) {
@@ -3211,7 +3211,7 @@ Window {
         height: 148
         visible: diceWindow.styleEditorActive
         enabled: visible
-        backgroundColor: "#121214"
+        backgroundColor: "#00000000"
         url: Qt.resolvedUrl("../web/dice_physics.html")
         onLoadingChanged: function(req) {
             if (req.status === WebEngineView.LoadFailedStatus) {
