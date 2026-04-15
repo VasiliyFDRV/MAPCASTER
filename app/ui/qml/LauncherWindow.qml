@@ -22,6 +22,7 @@ Window {
 
     property string pendingFileTarget: "map"
     property string pendingColorTarget: "map"
+    property string pendingColorTitle: "Выбор цвета"
     property bool sceneEditorVisible: false
     property int sceneEditorOpenToken: 0
     property var sceneEditorInitialDraft: ({})
@@ -69,6 +70,19 @@ Window {
             return
         }
         openSceneEditor(appController.load_scene_draft_for_adventure(appController.launcherAdventure, sceneName))
+    }
+
+    function colorDialogTitleForTarget(target) {
+        if (target === "map") {
+            return "Выбор цвета карты"
+        }
+        if (target === "background") {
+            return "Выбор цвета фона"
+        }
+        if (target === "grid") {
+            return "Выбор цвета сетки"
+        }
+        return "Выбор цвета"
     }
 
     Rectangle {
@@ -138,8 +152,11 @@ Window {
                         }
                         onColorRequested: function(target, currentValue) {
                             launcherWindow.pendingColorTarget = target
-                            colorPickerDialog.selectedColor = currentValue
-                            colorPickerDialog.open()
+                            launcherWindow.pendingColorTitle = launcherWindow.colorDialogTitleForTarget(target)
+                            colorPickerDialog.openWith(currentValue,
+                                                       launcherWindow.pendingColorTitle,
+                                                       target === "background" ? "#1F1F1F"
+                                                                               : (target === "grid" ? "#000000" : "#2E2E2E"))
                         }
                         onPasteRequested: function(target) {
                             var pastedValue = appController.paste_media_value(target)
@@ -233,11 +250,12 @@ Window {
         }
     }
 
-    ColorDialog {
+    NeumoColorPickerWindow {
         id: colorPickerDialog
-        title: "Выбор цвета"
-        onAccepted: {
-            var value = MediaValueUtils.normalizeColorValue(selectedColor, "#000000")
+        theme: neumoTheme
+        parentWindow: launcherWindow
+        onColorAccepted: function(color) {
+            var value = MediaValueUtils.normalizeColorValue(color, "#000000")
             if (launcherWindow.sceneEditorVisible) {
                 sceneEditorSurface.applyColorSelection(launcherWindow.pendingColorTarget, value)
             }

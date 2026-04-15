@@ -3415,7 +3415,7 @@ Window {
         maximumWidth: width
         minimumHeight: height
         maximumHeight: height
-        color: "transparent"
+        color: neumoTheme.baseColor
         title: pendingColorTitle
         x: diceWindow.x + Math.round((diceWindow.width - width) / 2)
         y: diceWindow.y + Math.round((diceWindow.height - height) / 2)
@@ -3427,15 +3427,6 @@ Window {
         Item {
             anchors.fill: parent
 
-            NeumoRaisedSurface {
-                anchors.fill: parent
-                theme: neumoTheme
-                radius: diceWindow.cardRadius
-                fillColor: neumoTheme.baseColor
-                shadowOffset: diceWindow.cardShadowOffset
-                shadowRadius: diceWindow.cardShadowRadius
-                shadowSamples: diceWindow.cardShadowSamples
-            }
 
             ColumnLayout {
                 anchors.fill: parent
