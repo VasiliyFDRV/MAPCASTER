@@ -1300,14 +1300,14 @@ Window {
         }
         var stylePayload = styleToWebPayload(dieEditorWorking)
         var previewKind = previewKindForDieType(dieEditorDieKey)
-        runPreviewScene(previewWeb, "default", "roll", previewKind, stylePayload, false)
+        runPreviewScene(previewWeb, "default", "idle", previewKind, stylePayload, true)
     }
     function startPreviewRollNow() {
         if (!previewWeb || !previewWeb.visible || !previewWebReady) {
             return
         }
         var previewKind = previewKindForDieType(dieEditorDieKey)
-        runPreviewScene(previewWeb, "default", "roll", previewKind, styleToWebPayload(dieEditorWorking), true)
+        runPreviewScene(previewWeb, "default", "idle", previewKind, styleToWebPayload(dieEditorWorking), true)
     }
     onResetTokenChanged: resetState()
     onDieEditorWorkingChanged: pushPreviewStyle()
@@ -2896,13 +2896,11 @@ Window {
                                 if (req.status === WebEngineView.LoadSucceededStatus) {
                                     previewWebReady = true
                                     diceWindow.pushPreviewStyle()
-                                    diceWindow.startPreviewRollNow()
                                 }
                             }
                             onVisibleChanged: {
                                 if (visible) {
                                     diceWindow.pushPreviewStyle()
-                                    diceWindow.startPreviewRollNow()
                                 }
                             }
                             onJavaScriptConsoleMessage: function(level, message, lineNumber, sourceID) {
@@ -2915,14 +2913,6 @@ Window {
                             visible: !previewWebReady
                         }
                     }
-                }
-
-                Timer {
-                    id: previewRollTimer
-                    interval: 3200
-                    repeat: true
-                    running: diceWindow.styleEditorActive && previewWebReady
-                    onTriggered: diceWindow.startPreviewRollNow()
                 }
 
                 ScrollView {
