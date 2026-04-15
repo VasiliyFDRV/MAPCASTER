@@ -753,9 +753,12 @@ Window {
     }
     function templateSlotSizeForWidth(availableWidth) {
         var gap = 8
-        var width = Math.max(320, Number(availableWidth || 0))
+        var width = Math.max(0, Number(availableWidth || 0))
+        if (width <= 0) {
+            return 0
+        }
         var s = Math.floor((width - gap * 4) / 5)
-        return Math.max(42, Math.min(62, s))
+        return Math.max(1, s)
     }
     function previewKindForDieType(dieType) {
         var key = String(dieType || "d6").toLowerCase()
@@ -3098,6 +3101,8 @@ Window {
                             columnSpacing: 8
                             rowSpacing: 8
                             property int slotSize: diceWindow.templateSlotSizeForWidth(width)
+                            implicitWidth: width
+                            implicitHeight: (slotSize * 2) + rowSpacing
 
                             Repeater {
                                 model: 10
@@ -3106,8 +3111,14 @@ Window {
                                     slotIndex: index
                                     slotSize: userTemplateGrid.slotSize
                                     slotStyle: diceWindow.templateStyle("user", index)
+                                    Layout.fillWidth: true
+                                    Layout.fillHeight: true
+                                    Layout.minimumWidth: 0
+                                    Layout.minimumHeight: 0
                                     Layout.preferredWidth: userTemplateGrid.slotSize
                                     Layout.preferredHeight: userTemplateGrid.slotSize
+                                    Layout.maximumWidth: userTemplateGrid.slotSize
+                                    Layout.maximumHeight: userTemplateGrid.slotSize
                                 }
                             }
                         }
@@ -3119,6 +3130,8 @@ Window {
                             columnSpacing: 8
                             rowSpacing: 8
                             property int slotSize: diceWindow.templateSlotSizeForWidth(width)
+                            implicitWidth: width
+                            implicitHeight: (slotSize * 2) + rowSpacing
 
                             Repeater {
                                 model: 10
@@ -3127,8 +3140,14 @@ Window {
                                     slotIndex: index
                                     slotSize: damageTemplateGrid.slotSize
                                     slotStyle: diceWindow.templateStyle("damage", index)
+                                    Layout.fillWidth: true
+                                    Layout.fillHeight: true
+                                    Layout.minimumWidth: 0
+                                    Layout.minimumHeight: 0
                                     Layout.preferredWidth: damageTemplateGrid.slotSize
                                     Layout.preferredHeight: damageTemplateGrid.slotSize
+                                    Layout.maximumWidth: damageTemplateGrid.slotSize
+                                    Layout.maximumHeight: damageTemplateGrid.slotSize
                                 }
                             }
                         }
