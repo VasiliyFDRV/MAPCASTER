@@ -2869,7 +2869,7 @@ Window {
                     Layout.fillWidth: true
                     Layout.leftMargin: diceWindow.editorSectionOuterGutter
                     Layout.rightMargin: diceWindow.editorSectionOuterGutter
-                    Layout.preferredHeight: diceWindow.narrowLayout ? 154 : 176
+                    Layout.preferredHeight: 110
                     theme: neumoTheme
                     radius: diceWindow.innerCardRadius + 2
                     fillColor: diceWindow.resultsFillColor
