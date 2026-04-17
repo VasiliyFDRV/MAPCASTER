@@ -1562,8 +1562,11 @@ Window {
         shadowSamples: 19
 
         RowLayout {
-            anchors.fill: parent
-            anchors.margins: 4
+            anchors.verticalCenter: parent.verticalCenter
+            anchors.left: parent.left
+            anchors.right: parent.right
+            anchors.leftMargin: 4
+            anchors.rightMargin: 4
             spacing: 8
 
             Rectangle {
