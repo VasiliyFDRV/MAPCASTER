@@ -11,6 +11,7 @@ FocusScope {
     property string modeCode: "create"
     property var initialDraft: ({})
     property int openToken: 0
+    property bool showBackButton: true
 
     property string sceneName: ""
     property string originalName: ""
@@ -218,9 +219,10 @@ FocusScope {
                 spacing: 10
 
                 Item {
-                    Layout.preferredWidth: 30
+                    Layout.preferredWidth: root.showBackButton ? 30 : 0
                     Layout.preferredHeight: 44
                     Layout.alignment: Qt.AlignVCenter
+                    visible: root.showBackButton
 
                     NeumoIconButton {
                         anchors.left: parent.left

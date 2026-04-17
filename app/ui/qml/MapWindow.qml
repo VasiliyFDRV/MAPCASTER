@@ -2842,6 +2842,7 @@ Window {
             id: mapSceneEditorSurface
             anchors.fill: parent
             theme: neumoTheme
+            showBackButton: false
             initialDraft: mapWindow.sceneEditorInitialDraft
             openToken: mapWindow.sceneEditorOpenToken
             onBackRequested: function(dirty) {
