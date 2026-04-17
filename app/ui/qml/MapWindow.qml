@@ -103,6 +103,10 @@ Window {
     property var toolHintOwner: null
     property string pendingMapColorTarget: ""
     property string pendingMapColorTitle: "Выбор цвета"
+    property string sceneEditPendingColorTarget: "map"
+    property string sceneEditPendingColorTitle: "Выбор цвета"
+    property int sceneEditorOpenToken: 0
+    property var sceneEditorInitialDraft: ({})
 
 
     function shouldUseD6PhysicsVisual(payload) {
@@ -1440,62 +1444,9 @@ Window {
         if (!draft || !draft.map || !draft.background || !draft.grid) {
             return
         }
-        sceneEditName.text = draft.name || appController.currentScene
-        sceneEditOriginalName.text = draft.original_name || appController.currentScene
-        sceneEditMapType.currentIndex = draft.map.type === "image" ? 1 : (draft.map.type === "video" ? 2 : 0)
-        sceneEditMapValue.text = draft.map.value || ""
-        sceneEditMapAutoplay.checked = !!draft.map.autoplay
-        sceneEditMapLoop.checked = !!draft.map.loop
-        sceneEditMapMute.checked = !!draft.map.mute
-
-        sceneEditBgType.currentIndex = draft.background.type === "image"
-            ? 1
-            : (draft.background.type === "video" ? 2 : 0)
-        sceneEditBgValue.text = draft.background.value || ""
-        sceneEditBgAutoplay.checked = !!draft.background.autoplay
-        sceneEditBgLoop.checked = !!draft.background.loop
-        sceneEditBgMute.checked = !!draft.background.mute
-
-        sceneEditGridSize.text = Number(draft.grid.cell_size_ft || 5).toFixed(2)
-        sceneEditGridThickness.text = Number(draft.grid.line_thickness_px || 1.5).toFixed(2)
-        sceneEditGridOpacity.text = Number(draft.grid.opacity || 0.45).toFixed(2)
-        sceneEditGridColor.text = draft.grid.color || "#9DA6B0"
+        sceneEditorInitialDraft = JSON.parse(JSON.stringify(draft))
+        sceneEditorOpenToken += 1
         openToolSettings(sceneEditPopup, sourceButton)
-    }
-
-    function collectSceneEditorDraft() {
-        return {
-            "mode": "edit",
-            "name": sceneEditName.text,
-            "original_name": sceneEditOriginalName.text,
-            "map": {
-                "type": sceneEditMapType.currentText,
-                "value": sceneEditMapValue.text,
-                "autoplay": sceneEditMapAutoplay.checked,
-                "loop": sceneEditMapLoop.checked,
-                "mute": sceneEditMapMute.checked
-            },
-            "background": {
-                "type": sceneEditBgType.currentText,
-                "value": sceneEditBgValue.text,
-                "autoplay": sceneEditBgAutoplay.checked,
-                "loop": sceneEditBgLoop.checked,
-                "mute": sceneEditBgMute.checked
-            },
-            "grid": {
-                "cell_size_ft": Number(sceneEditGridSize.text),
-                "line_thickness_px": Number(sceneEditGridThickness.text),
-                "opacity": Number(sceneEditGridOpacity.text),
-                "color": sceneEditGridColor.text
-            }
-        }
-    }
-
-    function applySceneEditorDraft() {
-        var ok = appController.save_scene_draft_for_adventure(appController.activeAdventure, collectSceneEditorDraft())
-        if (ok) {
-            sceneEditPopup.close()
-        }
     }
 
     component ToolButton: NeumoRaisedActionButton {
@@ -2873,6 +2824,10 @@ Window {
         theme: neumoTheme
         parentWindow: mapWindow
         onColorAccepted: function(color) {
+            if (sceneEditPopup.visible && sceneEditPendingColorTarget && sceneEditPendingColorTarget.length > 0) {
+                mapSceneEditorSurface.applyColorSelection(sceneEditPendingColorTarget, color)
+                return
+            }
             setMapToolColor(pendingMapColorTarget, color)
         }
     }
@@ -2883,131 +2838,41 @@ Window {
         y: 70
         width: 420
         height: Math.min(mapWindow.height - 40, 670)
-        contentItem: ScrollView {
-            clip: true
-            ColumnLayout {
-                width: sceneEditPopup.width - 26
-                spacing: 8
-
-                Label {
-                    text: "Р РµРґР°РєС‚РёСЂРѕРІР°РЅРёРµ СЃС†РµРЅС‹"
-                    color: mapWindow.uiTextPrimary
-                    font.pixelSize: 18
-                    font.weight: Font.DemiBold
-                    Layout.fillWidth: true
+        contentItem: SceneEditorSurface {
+            id: mapSceneEditorSurface
+            anchors.fill: parent
+            theme: neumoTheme
+            initialDraft: mapWindow.sceneEditorInitialDraft
+            openToken: mapWindow.sceneEditorOpenToken
+            onBackRequested: function(dirty) {
+                sceneEditPopup.close()
+            }
+            onSaveRequested: function(draft) {
+                var ok = appController.save_scene_draft_for_adventure(appController.activeAdventure, draft)
+                if (ok) {
+                    sceneEditPopup.close()
                 }
-                ToolField {
-                    id: sceneEditName
-                    Layout.fillWidth: true
-                    placeholderText: "РќР°Р·РІР°РЅРёРµ СЃС†РµРЅС‹"
-                }
-                ToolField {
-                    id: sceneEditOriginalName
-                    visible: false
-                }
-
-                Rectangle { Layout.fillWidth: true; Layout.preferredHeight: 1; color: "#4C515C" }
-                Label { text: "РљР°СЂС‚Р°"; color: mapWindow.uiTextPrimary; font.pixelSize: 14 }
-                ComboBox {
-                    id: sceneEditMapType
-                    model: ["color", "image", "video"]
-                    Layout.fillWidth: true
-                }
-                MediaDropTile {
-                    Layout.fillWidth: true
-                    mediaType: sceneEditMapType.currentText
-                    previewValue: sceneEditMapValue.text
-                    fallbackColor: "#2E2E2E"
-                    placeholderText: "РџРµСЂРµС‚Р°С‰РёС‚Рµ С„Р°Р№Р», Ctrl+V РёР»Рё РґРІРѕР№РЅРѕР№ РєР»РёРє"
-                    onDropValue: function(value) {
-                        sceneEditMapValue.text = value
-                        applyDetectedMediaType(value, sceneEditMapType)
-                    }
-                    onPasteRequest: {
-                        var pastedMap = appController.paste_media_value("map")
-                        sceneEditMapValue.text = pastedMap
-                        applyDetectedMediaType(pastedMap, sceneEditMapType)
-                    }
-                    onBrowseRequest: {
-                        sceneEditPendingFileTarget = "map"
-                        sceneEditFileDialog.open()
-                    }
-                }
-                ToolField {
-                    id: sceneEditMapValue
-                    Layout.fillWidth: true
-                    placeholderText: sceneEditMapType.currentText === "color" ? "#2E2E2E" : "РџСѓС‚СЊ / URL"
-                }
-                RowLayout {
-                    Layout.fillWidth: true
-                    CheckBox { id: sceneEditMapAutoplay; text: "РђРІС‚Рѕ"; checked: true }
-                    CheckBox { id: sceneEditMapLoop; text: "Р¦РёРєР»"; checked: true }
-                    CheckBox { id: sceneEditMapMute; text: "Р‘РµР· Р·РІСѓРєР°"; checked: true }
-                }
-
-                Rectangle { Layout.fillWidth: true; Layout.preferredHeight: 1; color: "#4C515C" }
-                Label { text: "Р¤РѕРЅ"; color: mapWindow.uiTextPrimary; font.pixelSize: 14 }
-                ComboBox {
-                    id: sceneEditBgType
-                    model: ["color", "image", "video"]
-                    Layout.fillWidth: true
-                }
-                MediaDropTile {
-                    Layout.fillWidth: true
-                    mediaType: sceneEditBgType.currentText
-                    previewValue: sceneEditBgValue.text
-                    fallbackColor: "#1F1F1F"
-                    placeholderText: "РџРµСЂРµС‚Р°С‰РёС‚Рµ С„Р°Р№Р», Ctrl+V РёР»Рё РґРІРѕР№РЅРѕР№ РєР»РёРє"
-                    onDropValue: function(value) {
-                        sceneEditBgValue.text = value
-                        applyDetectedMediaType(value, sceneEditBgType)
-                    }
-                    onPasteRequest: {
-                        var pastedBg = appController.paste_media_value("background")
-                        sceneEditBgValue.text = pastedBg
-                        applyDetectedMediaType(pastedBg, sceneEditBgType)
-                    }
-                    onBrowseRequest: {
-                        sceneEditPendingFileTarget = "background"
-                        sceneEditFileDialog.open()
-                    }
-                }
-                ToolField {
-                    id: sceneEditBgValue
-                    Layout.fillWidth: true
-                    placeholderText: sceneEditBgType.currentText === "color" ? "#1F1F1F" : "РџСѓС‚СЊ / URL"
-                }
-                RowLayout {
-                    Layout.fillWidth: true
-                    CheckBox { id: sceneEditBgAutoplay; text: "РђРІС‚Рѕ"; checked: true }
-                    CheckBox { id: sceneEditBgLoop; text: "Р¦РёРєР»"; checked: true }
-                    CheckBox { id: sceneEditBgMute; text: "Р‘РµР· Р·РІСѓРєР°"; checked: true }
-                }
-
-                Rectangle { Layout.fillWidth: true; Layout.preferredHeight: 1; color: "#4C515C" }
-                Label { text: "РЎРµС‚РєР°"; color: mapWindow.uiTextPrimary; font.pixelSize: 14 }
-                Label { text: "Р Р°Р·РјРµСЂ РєР»РµС‚РєРё (ft)"; color: mapWindow.uiTextSecondary; font.pixelSize: 12 }
-                ToolField { id: sceneEditGridSize; Layout.fillWidth: true; text: "5.00" }
-                Label { text: "РўРѕР»С‰РёРЅР° Р»РёРЅРёРё (px)"; color: mapWindow.uiTextSecondary; font.pixelSize: 12 }
-                ToolField { id: sceneEditGridThickness; Layout.fillWidth: true; text: "1.50" }
-                Label { text: "РџСЂРѕР·СЂР°С‡РЅРѕСЃС‚СЊ (0..1)"; color: mapWindow.uiTextSecondary; font.pixelSize: 12 }
-                ToolField { id: sceneEditGridOpacity; Layout.fillWidth: true; text: "0.45" }
-                Label { text: "Р¦РІРµС‚"; color: mapWindow.uiTextSecondary; font.pixelSize: 12 }
-                ToolField { id: sceneEditGridColor; Layout.fillWidth: true; text: "#9DA6B0" }
-
-                RowLayout {
-                    Layout.fillWidth: true
-                    ToolButton {
-                        text: "РћС‚РјРµРЅР°"
-                        Layout.fillWidth: true
-                        onClicked: sceneEditPopup.close()
-                    }
-                    ToolButton {
-                        text: "РЎРѕС…СЂР°РЅРёС‚СЊ"
-                        accent: true
-                        Layout.fillWidth: true
-                        onClicked: applySceneEditorDraft()
-                    }
+            }
+            onBrowseRequested: function(target) {
+                sceneEditPendingFileTarget = target
+                sceneEditFileDialog.open()
+            }
+            onColorRequested: function(target, currentValue) {
+                sceneEditPendingColorTarget = target
+                sceneEditPendingColorTitle = target === "map"
+                    ? "Выбор цвета карты"
+                    : (target === "background" ? "Выбор цвета фона"
+                                               : (target === "grid" ? "Выбор цвета сетки"
+                                                                    : "Выбор цвета"))
+                mapToolColorPicker.openWith(currentValue,
+                                            sceneEditPendingColorTitle,
+                                            target === "background" ? "#1F1F1F"
+                                                                    : (target === "grid" ? "#000000" : "#2E2E2E"))
+            }
+            onPasteRequested: function(target) {
+                var pastedValue = appController.paste_media_value(target)
+                if (pastedValue && pastedValue.length > 0) {
+                    mapSceneEditorSurface.applyPastedValue(target, pastedValue)
                 }
             }
         }
@@ -3023,12 +2888,8 @@ Window {
         ]
         onAccepted: {
             var selected = selectedFile.toString()
-            if (sceneEditPendingFileTarget === "background") {
-                sceneEditBgValue.text = selected
-                applyDetectedMediaType(selected, sceneEditBgType)
-            } else {
-                sceneEditMapValue.text = selected
-                applyDetectedMediaType(selected, sceneEditMapType)
+            if (mapSceneEditorSurface) {
+                mapSceneEditorSurface.applyFileSelection(sceneEditPendingFileTarget, selected)
             }
         }
     }
