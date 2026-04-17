@@ -36,6 +36,10 @@ Window {
     property color uiPanelSoft: "#2B2E36"
     property color uiPanelLine: "#464B56"
     property var neumoTheme: NeumoTheme { baseColor: uiBase; textPrimary: uiTextPrimary; textSecondary: uiTextSecondary }
+    readonly property int toolPopupRadius: 20
+    readonly property int toolPopupPadding: 15
+    readonly property int toolPopupSpacing: 13
+    readonly property int toolPopupControlShadowInset: 4
     property string currentTool: "cursor"
     property bool pointerInsideMap: false
     property bool pointerOverPanelUi: false
@@ -1539,6 +1543,13 @@ Window {
         font.weight: Font.DemiBold
     }
 
+    component ToolPopupTitle: Label {
+        color: mapWindow.uiTextPrimary
+        font.pixelSize: 18
+        font.weight: Font.DemiBold
+        elide: Text.ElideRight
+    }
+
     component ToolValueLabel: Label {
         color: mapWindow.uiTextSecondary
         font.pixelSize: 12
@@ -2563,7 +2574,7 @@ Window {
         modal: false
         focus: true
         closePolicy: Popup.CloseOnEscape
-        padding: 0
+        padding: mapWindow.toolPopupPadding
         opacity: 0.0
         scale: 0.96
 
@@ -2584,16 +2595,15 @@ Window {
             NeumoRaisedSurface {
                 anchors.fill: parent
                 theme: neumoTheme
-                radius: 18
+                radius: mapWindow.toolPopupRadius
                 fillColor: neumoTheme.baseColor
-                shadowOffset: 6.0
-                shadowRadius: 12.5
-                shadowSamples: 25
-                contentPadding: 12
+                shadowOffset: 4.4
+                shadowRadius: 9.4
+                shadowSamples: 23
             }
             Rectangle {
                 anchors.fill: parent
-                radius: 18
+                radius: mapWindow.toolPopupRadius
                 color: "transparent"
                 border.width: 1
                 border.color: Qt.rgba(1, 1, 1, 0.08)
@@ -2605,12 +2615,14 @@ Window {
         id: penSettingsPopup
         x: Math.max(8, leftPanel.x + leftPanel.width + 8)
         y: 96
-        width: 276
+        width: 320
         contentItem: ColumnLayout {
-            spacing: 10
-            ToolSectionLabel { text: "Перо" }
-            ToolValueLabel { text: "Цвет" }
-            RowLayout {
+            spacing: mapWindow.toolPopupSpacing
+            ToolPopupTitle { text: "Перо" }
+            ToolValueLabel { Layout.fillWidth: true; text: "Цвет" }
+            Flow {
+                Layout.fillWidth: true
+                width: parent ? parent.width - mapWindow.toolPopupControlShadowInset * 2 : 0
                 spacing: 6
                 Repeater {
                     model: presetColors
@@ -2627,12 +2639,14 @@ Window {
 
                 ToolField {
                     Layout.fillWidth: true
+                    Layout.minimumWidth: 0
                     text: String(penColor)
                     placeholderText: "#FFFFFF"
                     onEditingFinished: penColor = text
                 }
 
                 ToolColorButton {
+                    Layout.preferredWidth: implicitWidth
                     swatchColor: penColor
                     labelText: "Свой"
                     onClicked: openMapToolColorDialog("pen")
@@ -2663,12 +2677,14 @@ Window {
         id: fillSettingsPopup
         x: Math.max(8, leftPanel.x + leftPanel.width + 8)
         y: 180
-        width: 276
+        width: 320
         contentItem: ColumnLayout {
-            spacing: 10
-            ToolSectionLabel { text: "Заливка" }
-            ToolValueLabel { text: "Цвет" }
-            RowLayout {
+            spacing: mapWindow.toolPopupSpacing
+            ToolPopupTitle { text: "Заливка" }
+            ToolValueLabel { Layout.fillWidth: true; text: "Цвет" }
+            Flow {
+                Layout.fillWidth: true
+                width: parent ? parent.width - mapWindow.toolPopupControlShadowInset * 2 : 0
                 spacing: 6
                 Repeater {
                     model: presetColors
@@ -2685,12 +2701,14 @@ Window {
 
                 ToolField {
                     Layout.fillWidth: true
+                    Layout.minimumWidth: 0
                     text: String(fillColor)
                     placeholderText: "#FFFFFF"
                     onEditingFinished: fillColor = text
                 }
 
                 ToolColorButton {
+                    Layout.preferredWidth: implicitWidth
                     swatchColor: fillColor
                     labelText: "Свой"
                     onClicked: openMapToolColorDialog("fill")
@@ -2712,11 +2730,11 @@ Window {
         id: eraserSettingsPopup
         x: Math.max(8, leftPanel.x + leftPanel.width + 8)
         y: 264
-        width: 276
+        width: 320
         contentItem: ColumnLayout {
-            spacing: 10
-            ToolSectionLabel { text: "Ластик" }
-            ToolValueLabel { text: "Размер (ft)" }
+            spacing: mapWindow.toolPopupSpacing
+            ToolPopupTitle { text: "Ластик" }
+            ToolValueLabel { Layout.fillWidth: true; text: "Размер (ft)" }
             ToolSliderStepperControl {
                 minValue: 1.0 / 6.0
                 maxValue: 25.0
@@ -2725,7 +2743,7 @@ Window {
                 decimals: 2
                 onValueCommitted: eraserSizeFt = value
             }
-            ToolValueLabel { text: "Мягкость" }
+            ToolValueLabel { Layout.fillWidth: true; text: "Мягкость" }
             ToolSliderStepperControl {
                 minValue: 0.0
                 maxValue: 1.0
@@ -2741,12 +2759,14 @@ Window {
         id: hexSettingsPopup
         x: Math.max(8, leftPanel.x + leftPanel.width + 8)
         y: 348
-        width: 276
+        width: 320
         contentItem: ColumnLayout {
-            spacing: 10
-            ToolSectionLabel { text: "Выделение гексов" }
-            ToolValueLabel { text: "Цвет" }
-            RowLayout {
+            spacing: mapWindow.toolPopupSpacing
+            ToolPopupTitle { text: "Выделение гексов" }
+            ToolValueLabel { Layout.fillWidth: true; text: "Цвет" }
+            Flow {
+                Layout.fillWidth: true
+                width: parent ? parent.width - mapWindow.toolPopupControlShadowInset * 2 : 0
                 spacing: 6
                 Repeater {
                     model: presetColors
@@ -2763,18 +2783,20 @@ Window {
 
                 ToolField {
                     Layout.fillWidth: true
+                    Layout.minimumWidth: 0
                     text: String(hexColor)
                     placeholderText: "#FFFFFF"
                     onEditingFinished: hexColor = text
                 }
 
                 ToolColorButton {
+                    Layout.preferredWidth: implicitWidth
                     swatchColor: hexColor
                     labelText: "Свой"
                     onClicked: openMapToolColorDialog("hex")
                 }
             }
-            ToolValueLabel { text: "Прозрачность заливки" }
+            ToolValueLabel { Layout.fillWidth: true; text: "Прозрачность заливки" }
             ToolSliderStepperControl {
                 minValue: 0.05
                 maxValue: 1.0
@@ -2783,7 +2805,7 @@ Window {
                 decimals: 2
                 onValueCommitted: hexFillOpacity = value
             }
-            ToolValueLabel { text: "Прозрачность контура" }
+            ToolValueLabel { Layout.fillWidth: true; text: "Прозрачность контура" }
             ToolSliderStepperControl {
                 minValue: 0.05
                 maxValue: 1.0
@@ -2799,10 +2821,10 @@ Window {
         id: cursorSettingsPopup
         x: Math.max(8, leftPanel.x + leftPanel.width + 8)
         y: 80
-        width: 276
+        width: 304
         contentItem: ColumnLayout {
-            spacing: 10
-            ToolSectionLabel { text: "Курсор" }
+            spacing: mapWindow.toolPopupSpacing
+            ToolPopupTitle { text: "Курсор" }
             ToolValueLabel {
                 Layout.fillWidth: true
                 text: "У курсора нет отдельных настроек. Он нужен для нейтрального взаимодействия с картой и постановки точки с волной."
@@ -2814,10 +2836,10 @@ Window {
         id: measureSettingsPopup
         x: Math.max(8, leftPanel.x + leftPanel.width + 8)
         y: 432
-        width: 276
+        width: 304
         contentItem: ColumnLayout {
-            spacing: 10
-            ToolSectionLabel { text: "Измерение" }
+            spacing: mapWindow.toolPopupSpacing
+            ToolPopupTitle { text: "Измерение" }
             ToolValueLabel {
                 Layout.fillWidth: true
                 text: "Масштаб фиксирован: 1 гекс = 5 ft. Зажмите ЛКМ, чтобы провести линию и увидеть расстояние."
@@ -2829,10 +2851,10 @@ Window {
         id: panSettingsPopup
         x: Math.max(8, leftPanel.x + leftPanel.width + 8)
         y: 516
-        width: 276
+        width: 304
         contentItem: ColumnLayout {
-            spacing: 10
-            ToolSectionLabel { text: "Навигация карты" }
+            spacing: mapWindow.toolPopupSpacing
+            ToolPopupTitle { text: "Навигация карты" }
             ToolValueLabel {
                 Layout.fillWidth: true
                 text: "Колесо мыши меняет масштаб, ЛКМ двигает карту. Кнопка ниже возвращает вид к исходной посадке."
