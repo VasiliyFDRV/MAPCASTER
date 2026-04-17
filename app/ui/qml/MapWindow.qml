@@ -6,6 +6,7 @@ import QtQuick.Window
 import QtMultimedia
 import "components"
 import "components/MediaValueUtils.js" as MediaValueUtils
+import "components/neumo"
 
 Window {
     id: mapWindow
@@ -28,11 +29,13 @@ Window {
     property real panStartOffsetX: 0.0
     property real panStartOffsetY: 0.0
     property real hexRadiusPx: Math.max(8, appController.activeGridCellSizeFt * 6)
+    property color uiBase: "#2D2D2D"
     property color uiTextPrimary: "#ECECEF"
     property color uiTextSecondary: "#A9AAB2"
     property color uiPanel: "#23252B"
     property color uiPanelSoft: "#2B2E36"
     property color uiPanelLine: "#464B56"
+    property var neumoTheme: NeumoTheme { baseColor: uiBase; textPrimary: uiTextPrimary; textSecondary: uiTextSecondary }
     property string currentTool: "cursor"
     property bool pointerInsideMap: false
     property bool pointerOverPanelUi: false
@@ -94,6 +97,8 @@ Window {
     property real toolHintX: 12
     property real toolHintY: 12
     property var toolHintOwner: null
+    property string pendingMapColorTarget: ""
+    property string pendingMapColorTitle: "Выбор цвета"
 
 
     function shouldUseD6PhysicsVisual(payload) {
@@ -149,6 +154,67 @@ Window {
             }
         }
         return true
+    }
+
+    function colorDialogTitleForMapTarget(target) {
+        if (target === "pen") {
+            return "Выбор цвета пера"
+        }
+        if (target === "fill") {
+            return "Выбор цвета заливки"
+        }
+        if (target === "hex") {
+            return "Выбор цвета выделения"
+        }
+        return "Выбор цвета"
+    }
+
+    function currentMapToolColor(target) {
+        if (target === "pen") {
+            return String(penColor)
+        }
+        if (target === "fill") {
+            return String(fillColor)
+        }
+        if (target === "hex") {
+            return String(hexColor)
+        }
+        return "#FFFFFF"
+    }
+
+    function fallbackMapToolColor(target) {
+        if (target === "pen") {
+            return "#F4D35E"
+        }
+        if (target === "fill") {
+            return "#263238"
+        }
+        if (target === "hex") {
+            return "#58C4DD"
+        }
+        return "#FFFFFF"
+    }
+
+    function setMapToolColor(target, colorValue) {
+        if (target === "pen") {
+            penColor = colorValue
+            return
+        }
+        if (target === "fill") {
+            fillColor = colorValue
+            return
+        }
+        if (target === "hex") {
+            hexColor = colorValue
+        }
+    }
+
+    function openMapToolColorDialog(target, explicitTitle) {
+        pendingMapColorTarget = String(target || "")
+        pendingMapColorTitle = String(explicitTitle || colorDialogTitleForMapTarget(pendingMapColorTarget))
+        mapToolColorPicker.openWith(currentMapToolColor(pendingMapColorTarget),
+                                    pendingMapColorTitle,
+                                    fallbackMapToolColor(pendingMapColorTarget))
     }
 
     function shouldUseD20PhysicsVisual(payload) {
@@ -1428,70 +1494,241 @@ Window {
         }
     }
 
-    component ToolButton: AbstractButton {
+    component ToolButton: NeumoRaisedActionButton {
         id: control
         property bool accent: false
         property bool highlighted: false
-        hoverEnabled: true
-        focusPolicy: Qt.NoFocus
-        activeFocusOnTab: false
-        implicitHeight: 32
-        font.pixelSize: 13
+        theme: neumoTheme
+        compactMode: true
+        radius: 12
+        contentPadding: 8
+        baseShadowOffset: (accent || highlighted) ? 4.2 : 4.8
+        baseShadowRadius: (accent || highlighted) ? 9.8 : 10.6
+        hoverShadowOffset: (accent || highlighted) ? 5.2 : 5.8
+        hoverShadowRadius: (accent || highlighted) ? 11.2 : 12.0
+        pressedShadowOffset: 3.8
+        pressedShadowRadius: 8.8
 
-        contentItem: Text {
-            text: control.text
-            color: control.enabled
-                ? ((control.accent || control.highlighted) ? "#FCFCFD" : mapWindow.uiTextPrimary)
-                : "#7E818B"
-            horizontalAlignment: Text.AlignHCenter
-            verticalAlignment: Text.AlignVCenter
-            font.pixelSize: control.font.pixelSize
-            font.weight: control.accent ? Font.DemiBold : Font.Medium
-            elide: Text.ElideRight
+        Rectangle {
+            anchors.fill: parent
+            radius: control.radius
+            color: "transparent"
+            border.width: (control.accent || control.highlighted) ? 1 : 0
+            border.color: Qt.rgba(1, 1, 1, 0.14)
+            opacity: control.enabled ? 1.0 : 0.45
         }
 
-        background: Rectangle {
-            property bool activeState: control.accent || control.highlighted
-            radius: 9
-            border.width: 1
-            border.color: (control.accent || control.highlighted) ? "#B8BBC3" : "#4B4F58"
-            opacity: control.enabled ? 1.0 : 0.5
-            gradient: Gradient {
-                GradientStop {
-                    position: 0
-                    color: (control.accent || control.highlighted)
-                        ? (control.down ? "#686D79" : "#7A808D")
-                        : (control.down ? "#2C2F37" : "#353943")
-                }
-                GradientStop {
-                    position: 1
-                    color: (control.accent || control.highlighted)
-                        ? (control.down ? "#5E6370" : "#737985")
-                        : (control.down ? "#252830" : "#2F333D")
-                }
+        Label {
+            anchors.centerIn: parent
+            text: control.text
+            color: control.enabled ? mapWindow.uiTextPrimary : "#7E818B"
+            font.pixelSize: 13
+            font.weight: (control.accent || control.highlighted) ? Font.DemiBold : Font.Medium
+        }
+    }
+
+    component ToolField: NeumoTextField {
+        theme: neumoTheme
+        visualStyle: "launcherInline"
+        selectByMouse: true
+    }
+
+    component ToolSectionLabel: Label {
+        color: mapWindow.uiTextPrimary
+        font.pixelSize: 14
+        font.weight: Font.DemiBold
+    }
+
+    component ToolValueLabel: Label {
+        color: mapWindow.uiTextSecondary
+        font.pixelSize: 12
+        wrapMode: Text.WordWrap
+    }
+
+    component ToolColorChip: Item {
+        id: chip
+        property color chipColor: "#FFFFFF"
+        property bool selected: false
+        signal clicked()
+        implicitWidth: 22
+        implicitHeight: 22
+
+        NeumoRaisedSurface {
+            anchors.fill: parent
+            theme: neumoTheme
+            radius: 7
+            fillColor: neumoTheme.baseColor
+            shadowOffset: chip.selected ? 3.4 : (chipHit.containsMouse ? 4.6 : 4.0)
+            shadowRadius: chip.selected ? 7.6 : (chipHit.containsMouse ? 8.8 : 8.0)
+            shadowSamples: 19
+        }
+
+        Rectangle {
+            anchors.fill: parent
+            anchors.margins: 3
+            radius: 4
+            color: chip.chipColor
+            border.width: chip.selected ? 2 : 1
+            border.color: chip.selected ? Qt.rgba(1, 1, 1, 0.86) : Qt.rgba(1, 1, 1, 0.22)
+        }
+
+        MouseArea {
+            id: chipHit
+            anchors.fill: parent
+            hoverEnabled: true
+            cursorShape: Qt.PointingHandCursor
+            onClicked: chip.clicked()
+        }
+    }
+
+    component ToolColorButton: NeumoRaisedActionButton {
+        id: button
+        property color swatchColor: "#FFFFFF"
+        property string labelText: ""
+        theme: neumoTheme
+        compactMode: true
+        radius: 12
+        contentPadding: 6
+        implicitHeight: 36
+        implicitWidth: 132
+
+        RowLayout {
+            anchors.fill: parent
+            anchors.leftMargin: 10
+            anchors.rightMargin: 10
+            spacing: 8
+
+            Rectangle {
+                Layout.preferredWidth: 18
+                Layout.preferredHeight: 18
+                radius: 5
+                color: button.swatchColor
+                border.width: 1
+                border.color: Qt.rgba(1, 1, 1, 0.24)
             }
-            scale: control.down ? 0.98 : (control.hovered ? 1.015 : 1.0)
-            Behavior on scale {
-                NumberAnimation { duration: 110; easing.type: Easing.OutCubic }
+
+            Label {
+                Layout.fillWidth: true
+                text: button.labelText
+                color: mapWindow.uiTextPrimary
+                font.pixelSize: 12
+                elide: Text.ElideRight
+                verticalAlignment: Text.AlignVCenter
             }
         }
     }
 
-    component ToolField: TextField {
+    component ToolSliderStepperControl: RowLayout {
         id: control
-        color: mapWindow.uiTextPrimary
-        selectedTextColor: "#F6F6F7"
-        selectionColor: "#636875"
-        placeholderTextColor: "#8A8D97"
-        padding: 8
-        background: Rectangle {
-            radius: 9
-            color: "#1E2128"
-            border.width: 1
-            border.color: control.activeFocus ? "#A4A8B3" : "#4A4E59"
-            Behavior on border.color {
-                ColorAnimation { duration: 120 }
+        property real minValue: 0
+        property real maxValue: 100
+        property real step: 1
+        property int decimals: 0
+        property real value: 0
+        signal valueCommitted(real value)
+        Layout.fillWidth: true
+        spacing: 8
+
+        Slider {
+            id: slider
+            Layout.fillWidth: true
+            Layout.minimumWidth: 0
+            Layout.preferredWidth: 10
+            implicitHeight: 30
+            from: control.minValue
+            to: control.maxValue
+            stepSize: control.step
+            value: control.value
+            leftPadding: 0
+            rightPadding: 0
+            topPadding: 0
+            bottomPadding: 0
+            hoverEnabled: true
+
+            onMoved: control.valueCommitted(value)
+            onValueChanged: if (pressed) control.valueCommitted(value)
+
+            background: Item {
+                x: slider.leftPadding
+                y: slider.topPadding + (slider.availableHeight - height) / 2
+                width: slider.availableWidth
+                height: 26
+
+                NeumoInsetSurface {
+                    id: sliderTrack
+                    anchors.left: parent.left
+                    anchors.right: parent.right
+                    anchors.verticalCenter: parent.verticalCenter
+                    height: 12
+                    theme: neumoTheme
+                    radius: 6
+                    fillColor: neumoTheme.fieldInlineFillColor
+                    contentPadding: 0
+                }
+
+                Rectangle {
+                    anchors.left: sliderTrack.left
+                    anchors.verticalCenter: sliderTrack.verticalCenter
+                    width: Math.max(sliderTrack.height - 4, Math.round(slider.visualPosition * (sliderTrack.width - 2)))
+                    height: Math.max(4, sliderTrack.height - 4)
+                    radius: height / 2
+                    color: Qt.rgba(neumoTheme.textPrimary.r,
+                                   neumoTheme.textPrimary.g,
+                                   neumoTheme.textPrimary.b,
+                                   slider.pressed ? 0.22 : 0.14)
+                }
+
+                Rectangle {
+                    anchors.left: sliderTrack.left
+                    anchors.right: sliderTrack.right
+                    anchors.verticalCenter: sliderTrack.verticalCenter
+                    height: Math.max(4, sliderTrack.height - 4)
+                    radius: height / 2
+                    color: "transparent"
+                    border.width: 1
+                    border.color: Qt.rgba(0, 0, 0, 0.16)
+                }
             }
+
+            handle: Item {
+                x: slider.leftPadding + slider.visualPosition * (slider.availableWidth - width)
+                y: slider.topPadding + (slider.availableHeight - height) / 2
+                width: 22
+                height: 22
+
+                NeumoRaisedSurface {
+                    anchors.fill: parent
+                    theme: neumoTheme
+                    radius: width / 2
+                    fillColor: neumoTheme.baseColor
+                    shadowOffset: slider.pressed ? 2.1 : (slider.hovered ? 3.6 : 2.8)
+                    shadowRadius: slider.pressed ? 4.6 : (slider.hovered ? 7.4 : 5.8)
+                    shadowSamples: 17
+                }
+
+                Rectangle {
+                    anchors.fill: parent
+                    anchors.margins: 3
+                    radius: width / 2
+                    color: Qt.rgba(1, 1, 1, slider.hovered ? 0.12 : 0.08)
+                }
+            }
+        }
+
+        NeumoStepperField {
+            theme: neumoTheme
+            from: control.minValue
+            to: control.maxValue
+            stepSize: control.step
+            decimals: control.decimals
+            value: control.value
+            compactMode: true
+            visualStyle: "launcherInline"
+            Layout.minimumWidth: 70
+            Layout.preferredWidth: 70
+            Layout.maximumWidth: 70
+            Layout.alignment: Qt.AlignVCenter
+            onValueModified: control.valueCommitted(value)
         }
     }
 
@@ -1547,16 +1784,33 @@ Window {
 
         }
 
-        background: Rectangle {
-            radius: 12
-            border.width: 1
-            border.color: control.selectedState ? "#A8B3CB" : "#515563"
-            color: control.selectedState
-                ? (control.down ? "#4C5668" : "#5C687E")
-                : (control.down ? "#2A2E35" : (control.hovered ? "#343A45" : "#2A2D35"))
+        background: Item {
             opacity: control.enabled ? 1.0 : 0.45
-            scale: control.down ? 0.94 : (control.hovered ? 1.05 : (control.selectedState ? 1.02 : 1.0))
-            Behavior on color { ColorAnimation { duration: 120 } }
+            scale: control.down ? 0.96 : (control.hovered ? 1.03 : 1.0)
+
+            NeumoRaisedSurface {
+                anchors.fill: parent
+                theme: neumoTheme
+                radius: 14
+                fillColor: control.selectedState
+                    ? Qt.rgba(neumoTheme.textPrimary.r,
+                               neumoTheme.textPrimary.g,
+                               neumoTheme.textPrimary.b,
+                               control.down ? 0.17 : 0.12)
+                    : neumoTheme.baseColor
+                shadowOffset: control.down ? 2.8 : (control.hovered ? 5.2 : 4.5)
+                shadowRadius: control.down ? 6.4 : (control.hovered ? 10.2 : 8.8)
+                shadowSamples: 19
+            }
+
+            Rectangle {
+                anchors.fill: parent
+                radius: 14
+                color: "transparent"
+                border.width: control.selectedState ? 1 : 0
+                border.color: Qt.rgba(1, 1, 1, control.down ? 0.16 : 0.12)
+            }
+
             Behavior on scale {
                 NumberAnimation {
                     duration: 120
@@ -2308,7 +2562,7 @@ Window {
         modal: false
         focus: true
         closePolicy: Popup.CloseOnEscape
-        padding: 12
+        padding: 0
         opacity: 0.0
         scale: 0.96
 
@@ -2325,23 +2579,23 @@ Window {
             }
         }
 
-        background: Rectangle {
-            radius: 12
-            border.color: "#505666"
-            border.width: 1
-            gradient: Gradient {
-                orientation: Gradient.Vertical
-                GradientStop { position: 0.0; color: "#2E323C" }
-                GradientStop { position: 1.0; color: "#252932" }
+        background: Item {
+            NeumoRaisedSurface {
+                anchors.fill: parent
+                theme: neumoTheme
+                radius: 18
+                fillColor: neumoTheme.baseColor
+                shadowOffset: 6.0
+                shadowRadius: 12.5
+                shadowSamples: 25
+                contentPadding: 12
             }
             Rectangle {
                 anchors.fill: parent
-                anchors.margins: -1
-                radius: 13
+                radius: 18
                 color: "transparent"
                 border.width: 1
-                border.color: "#111318"
-                opacity: 0.55
+                border.color: Qt.rgba(1, 1, 1, 0.08)
             }
         }
     }
@@ -2350,50 +2604,56 @@ Window {
         id: penSettingsPopup
         x: Math.max(8, leftPanel.x + leftPanel.width + 8)
         y: 96
-        width: 240
+        width: 276
         contentItem: ColumnLayout {
-            spacing: 8
-            Label { text: "РџРµСЂРѕ"; color: mapWindow.uiTextPrimary; font.pixelSize: 14 }
-            Label { text: "Р¦РІРµС‚"; color: mapWindow.uiTextSecondary; font.pixelSize: 12 }
+            spacing: 10
+            ToolSectionLabel { text: "Перо" }
+            ToolValueLabel { text: "Цвет" }
             RowLayout {
-                spacing: 4
+                spacing: 6
                 Repeater {
                     model: presetColors
-                    delegate: Rectangle {
-                        width: 18
-                        height: 18
-                        radius: 4
-                        color: modelData
-                        border.width: String(penColor).toLowerCase() === String(modelData).toLowerCase() ? 2 : 1
-                        border.color: "#E7E7EB"
-                        MouseArea {
-                            anchors.fill: parent
-                            onClicked: penColor = modelData
-                        }
+                    delegate: ToolColorChip {
+                        chipColor: modelData
+                        selected: String(penColor).toLowerCase() === String(modelData).toLowerCase()
+                        onClicked: penColor = modelData
                     }
                 }
             }
-            ToolField {
+            RowLayout {
                 Layout.fillWidth: true
-                text: String(penColor)
-                placeholderText: "#FFFFFF"
-                onEditingFinished: penColor = text
+                spacing: 8
+
+                ToolField {
+                    Layout.fillWidth: true
+                    text: String(penColor)
+                    placeholderText: "#FFFFFF"
+                    onEditingFinished: penColor = text
+                }
+
+                ToolColorButton {
+                    swatchColor: penColor
+                    labelText: "Свой"
+                    onClicked: openMapToolColorDialog("pen")
+                }
             }
-            Label { text: "Р Р°Р·РјРµСЂ (ft): " + Number(penSizeFt).toFixed(2); color: mapWindow.uiTextSecondary; font.pixelSize: 12 }
-            Slider {
-                Layout.fillWidth: true
-                from: 1.0 / 6.0
-                to: 25.0
+            ToolValueLabel { text: "Размер (ft)" }
+            ToolSliderStepperControl {
+                minValue: 1.0 / 6.0
+                maxValue: 25.0
                 value: penSizeFt
-                onMoved: penSizeFt = value
+                step: 0.25
+                decimals: 2
+                onValueCommitted: penSizeFt = value
             }
-            Label { text: "РџСЂРѕР·СЂР°С‡РЅРѕСЃС‚СЊ: " + Number(penOpacity).toFixed(2); color: mapWindow.uiTextSecondary; font.pixelSize: 12 }
-            Slider {
-                Layout.fillWidth: true
-                from: 0.05
-                to: 1.0
+            ToolValueLabel { text: "Прозрачность" }
+            ToolSliderStepperControl {
+                minValue: 0.05
+                maxValue: 1.0
                 value: penOpacity
-                onMoved: penOpacity = value
+                step: 0.05
+                decimals: 2
+                onValueCommitted: penOpacity = value
             }
         }
     }
@@ -2402,42 +2662,47 @@ Window {
         id: fillSettingsPopup
         x: Math.max(8, leftPanel.x + leftPanel.width + 8)
         y: 180
-        width: 240
+        width: 276
         contentItem: ColumnLayout {
-            spacing: 8
-            Label { text: "Р—Р°Р»РёРІРєР°"; color: mapWindow.uiTextPrimary; font.pixelSize: 14 }
-            Label { text: "Р¦РІРµС‚"; color: mapWindow.uiTextSecondary; font.pixelSize: 12 }
+            spacing: 10
+            ToolSectionLabel { text: "Заливка" }
+            ToolValueLabel { text: "Цвет" }
             RowLayout {
-                spacing: 4
+                spacing: 6
                 Repeater {
                     model: presetColors
-                    delegate: Rectangle {
-                        width: 18
-                        height: 18
-                        radius: 4
-                        color: modelData
-                        border.width: String(fillColor).toLowerCase() === String(modelData).toLowerCase() ? 2 : 1
-                        border.color: "#E7E7EB"
-                        MouseArea {
-                            anchors.fill: parent
-                            onClicked: fillColor = modelData
-                        }
+                    delegate: ToolColorChip {
+                        chipColor: modelData
+                        selected: String(fillColor).toLowerCase() === String(modelData).toLowerCase()
+                        onClicked: fillColor = modelData
                     }
                 }
             }
-            ToolField {
+            RowLayout {
                 Layout.fillWidth: true
-                text: String(fillColor)
-                placeholderText: "#FFFFFF"
-                onEditingFinished: fillColor = text
+                spacing: 8
+
+                ToolField {
+                    Layout.fillWidth: true
+                    text: String(fillColor)
+                    placeholderText: "#FFFFFF"
+                    onEditingFinished: fillColor = text
+                }
+
+                ToolColorButton {
+                    swatchColor: fillColor
+                    labelText: "Свой"
+                    onClicked: openMapToolColorDialog("fill")
+                }
             }
-            Label { text: "РџСЂРѕР·СЂР°С‡РЅРѕСЃС‚СЊ: " + Number(fillOpacity).toFixed(2); color: mapWindow.uiTextSecondary; font.pixelSize: 12 }
-            Slider {
-                Layout.fillWidth: true
-                from: 0.05
-                to: 1.0
+            ToolValueLabel { text: "Прозрачность" }
+            ToolSliderStepperControl {
+                minValue: 0.05
+                maxValue: 1.0
                 value: fillOpacity
-                onMoved: fillOpacity = value
+                step: 0.05
+                decimals: 2
+                onValueCommitted: fillOpacity = value
             }
         }
     }
@@ -2446,25 +2711,27 @@ Window {
         id: eraserSettingsPopup
         x: Math.max(8, leftPanel.x + leftPanel.width + 8)
         y: 264
-        width: 240
+        width: 276
         contentItem: ColumnLayout {
-            spacing: 8
-            Label { text: "Р›Р°СЃС‚РёРє"; color: mapWindow.uiTextPrimary; font.pixelSize: 14 }
-            Label { text: "Р Р°Р·РјРµСЂ (ft): " + Number(eraserSizeFt).toFixed(2); color: mapWindow.uiTextSecondary; font.pixelSize: 12 }
-            Slider {
-                Layout.fillWidth: true
-                from: 1.0 / 6.0
-                to: 25.0
+            spacing: 10
+            ToolSectionLabel { text: "Ластик" }
+            ToolValueLabel { text: "Размер (ft)" }
+            ToolSliderStepperControl {
+                minValue: 1.0 / 6.0
+                maxValue: 25.0
                 value: eraserSizeFt
-                onMoved: eraserSizeFt = value
+                step: 0.25
+                decimals: 2
+                onValueCommitted: eraserSizeFt = value
             }
-            Label { text: "РњСЏРіРєРѕСЃС‚СЊ: " + Number(eraserSoftness).toFixed(2); color: mapWindow.uiTextSecondary; font.pixelSize: 12 }
-            Slider {
-                Layout.fillWidth: true
-                from: 0.0
-                to: 1.0
+            ToolValueLabel { text: "Мягкость" }
+            ToolSliderStepperControl {
+                minValue: 0.0
+                maxValue: 1.0
                 value: eraserSoftness
-                onMoved: eraserSoftness = value
+                step: 0.05
+                decimals: 2
+                onValueCommitted: eraserSoftness = value
             }
         }
     }
@@ -2473,50 +2740,56 @@ Window {
         id: hexSettingsPopup
         x: Math.max(8, leftPanel.x + leftPanel.width + 8)
         y: 348
-        width: 240
+        width: 276
         contentItem: ColumnLayout {
-            spacing: 8
-            Label { text: "Р’С‹РґРµР»РµРЅРёРµ РіРµРєСЃРѕРІ"; color: mapWindow.uiTextPrimary; font.pixelSize: 14 }
-            Label { text: "Р¦РІРµС‚"; color: mapWindow.uiTextSecondary; font.pixelSize: 12 }
+            spacing: 10
+            ToolSectionLabel { text: "Выделение гексов" }
+            ToolValueLabel { text: "Цвет" }
             RowLayout {
-                spacing: 4
+                spacing: 6
                 Repeater {
                     model: presetColors
-                    delegate: Rectangle {
-                        width: 18
-                        height: 18
-                        radius: 4
-                        color: modelData
-                        border.width: String(hexColor).toLowerCase() === String(modelData).toLowerCase() ? 2 : 1
-                        border.color: "#E7E7EB"
-                        MouseArea {
-                            anchors.fill: parent
-                            onClicked: hexColor = modelData
-                        }
+                    delegate: ToolColorChip {
+                        chipColor: modelData
+                        selected: String(hexColor).toLowerCase() === String(modelData).toLowerCase()
+                        onClicked: hexColor = modelData
                     }
                 }
             }
-            ToolField {
+            RowLayout {
                 Layout.fillWidth: true
-                text: String(hexColor)
-                placeholderText: "#FFFFFF"
-                onEditingFinished: hexColor = text
+                spacing: 8
+
+                ToolField {
+                    Layout.fillWidth: true
+                    text: String(hexColor)
+                    placeholderText: "#FFFFFF"
+                    onEditingFinished: hexColor = text
+                }
+
+                ToolColorButton {
+                    swatchColor: hexColor
+                    labelText: "Свой"
+                    onClicked: openMapToolColorDialog("hex")
+                }
             }
-            Label { text: "РџСЂРѕР·СЂР°С‡РЅРѕСЃС‚СЊ Р·Р°Р»РёРІРєРё: " + Number(hexFillOpacity).toFixed(2); color: mapWindow.uiTextSecondary; font.pixelSize: 12 }
-            Slider {
-                Layout.fillWidth: true
-                from: 0.05
-                to: 1.0
+            ToolValueLabel { text: "Прозрачность заливки" }
+            ToolSliderStepperControl {
+                minValue: 0.05
+                maxValue: 1.0
                 value: hexFillOpacity
-                onMoved: hexFillOpacity = value
+                step: 0.05
+                decimals: 2
+                onValueCommitted: hexFillOpacity = value
             }
-            Label { text: "РџСЂРѕР·СЂР°С‡РЅРѕСЃС‚СЊ РєРѕРЅС‚СѓСЂР°: " + Number(hexOutlineOpacity).toFixed(2); color: mapWindow.uiTextSecondary; font.pixelSize: 12 }
-            Slider {
-                Layout.fillWidth: true
-                from: 0.05
-                to: 1.0
+            ToolValueLabel { text: "Прозрачность контура" }
+            ToolSliderStepperControl {
+                minValue: 0.05
+                maxValue: 1.0
                 value: hexOutlineOpacity
-                onMoved: hexOutlineOpacity = value
+                step: 0.05
+                decimals: 2
+                onValueCommitted: hexOutlineOpacity = value
             }
         }
     }
@@ -2525,11 +2798,14 @@ Window {
         id: cursorSettingsPopup
         x: Math.max(8, leftPanel.x + leftPanel.width + 8)
         y: 80
-        width: 200
-        contentItem: Label {
-            text: "Р”Р»СЏ РєСѓСЂСЃРѕСЂР° РЅРµС‚ РЅР°СЃС‚СЂРѕРµРє."
-            color: mapWindow.uiTextPrimary
-            wrapMode: Text.WordWrap
+        width: 276
+        contentItem: ColumnLayout {
+            spacing: 10
+            ToolSectionLabel { text: "Курсор" }
+            ToolValueLabel {
+                Layout.fillWidth: true
+                text: "У курсора нет отдельных настроек. Он нужен для нейтрального взаимодействия с картой и постановки точки с волной."
+            }
         }
     }
 
@@ -2537,11 +2813,14 @@ Window {
         id: measureSettingsPopup
         x: Math.max(8, leftPanel.x + leftPanel.width + 8)
         y: 432
-        width: 220
-        contentItem: Label {
-            text: "РњР°СЃС€С‚Р°Р± С„РёРєСЃРёСЂРѕРІР°РЅ: 1 РіРµРєСЃ = 5 ft."
-            color: mapWindow.uiTextPrimary
-            wrapMode: Text.WordWrap
+        width: 276
+        contentItem: ColumnLayout {
+            spacing: 10
+            ToolSectionLabel { text: "Измерение" }
+            ToolValueLabel {
+                Layout.fillWidth: true
+                text: "Масштаб фиксирован: 1 гекс = 5 ft. Зажмите ЛКМ, чтобы провести линию и увидеть расстояние."
+            }
         }
     }
 
@@ -2549,26 +2828,29 @@ Window {
         id: panSettingsPopup
         x: Math.max(8, leftPanel.x + leftPanel.width + 8)
         y: 516
-        width: 220
+        width: 276
         contentItem: ColumnLayout {
-            spacing: 8
-            Label {
-                text: "РќР°РІРёРіР°С†РёСЏ РєР°СЂС‚С‹"
-                color: mapWindow.uiTextPrimary
-                font.pixelSize: 14
-            }
-            Label {
-                text: "РљРѕР»РµСЃРѕ РјС‹С€Рё вЂ” РјР°СЃС€С‚Р°Р±, Р›РљРњ вЂ” РїРµСЂРµРјРµС‰РµРЅРёРµ."
-                color: mapWindow.uiTextSecondary
-                wrapMode: Text.WordWrap
+            spacing: 10
+            ToolSectionLabel { text: "Навигация карты" }
+            ToolValueLabel {
                 Layout.fillWidth: true
+                text: "Колесо мыши меняет масштаб, ЛКМ двигает карту. Кнопка ниже возвращает вид к исходной посадке."
             }
             ToolButton {
-                text: "РЎР±СЂРѕСЃРёС‚СЊ РІРёРґ"
+                text: "Сбросить вид"
                 accent: true
                 Layout.fillWidth: true
                 onClicked: resetMapView()
             }
+        }
+    }
+
+    NeumoColorPickerWindow {
+        id: mapToolColorPicker
+        theme: neumoTheme
+        parentWindow: mapWindow
+        onColorAccepted: function(color) {
+            setMapToolColor(pendingMapColorTarget, color)
         }
     }
 
@@ -2728,25 +3010,23 @@ Window {
         }
     }
 
-    Rectangle {
+    NeumoRaisedSurface {
         id: leftPanel
         z: 260
-        width: panelBodyWidth + panelHandleWidth + 10
-        height: parent.height
-        color: mapWindow.uiPanel
-        border.color: mapWindow.uiPanelLine
-        border.width: 1
+        theme: neumoTheme
+        width: panelBodyWidth + panelHandleWidth + 18
+        height: Math.min(parent.height - 24, 760)
         x: panelExpanded
-            ? 0
-            : (shouldShowPanelPeek() ? -(width - panelHandleWidth) : -width)
-        opacity: 0.98
+            ? 12
+            : (shouldShowPanelPeek() ? -(width - panelHandleWidth - 8) : -width)
+        y: 12
+        radius: 24
+        fillColor: neumoTheme.baseColor
+        shadowOffset: 6.2
+        shadowRadius: 12.8
+        shadowSamples: 25
+        opacity: 0.985
         clip: true
-
-        gradient: Gradient {
-            orientation: Gradient.Vertical
-            GradientStop { position: 0.0; color: mapWindow.uiPanelSoft }
-            GradientStop { position: 1.0; color: mapWindow.uiPanel }
-        }
 
         Behavior on x {
             NumberAnimation {
@@ -2765,7 +3045,7 @@ Window {
             id: panelPeekEdge
             width: panelHandleWidth
             height: 220
-            radius: 14
+            radius: 16
             anchors.right: parent.right
             anchors.verticalCenter: parent.verticalCenter
             color: "transparent"
@@ -2781,8 +3061,8 @@ Window {
                         width: 8
                         height: 8
                         radius: 4
-                        color: "#E8E8E8"
-                        opacity: 0.9
+                        color: neumoTheme.textPrimary
+                        opacity: 0.8
                     }
                 }
             }
@@ -2811,18 +3091,18 @@ Window {
 
         ColumnLayout {
             anchors.fill: parent
-            anchors.leftMargin: 6
-            anchors.topMargin: 12
-            anchors.bottomMargin: 12
-            anchors.rightMargin: panelHandleWidth + 6
-            spacing: 8
+            anchors.leftMargin: 10
+            anchors.topMargin: 14
+            anchors.bottomMargin: 14
+            anchors.rightMargin: panelHandleWidth + 10
+            spacing: 10
 
             IconSquareButton {
                 id: cursorToolButton
                 Layout.alignment: Qt.AlignHCenter
                 iconSource: "icons/cursor.svg"
                 selectedState: currentTool === "cursor"
-                hintText: "РљСѓСЂСЃРѕСЂ. Р”РІРѕР№РЅРѕР№ РєР»РёРє Р›РљРњ вЂ” РЅР°СЃС‚СЂРѕР№РєРё."
+                hintText: "Курсор. Двойной клик ЛКМ открывает описание инструмента."
                 onClicked: handleToolButtonClick("cursor", cursorSettingsPopup, cursorToolButton)
             }
 
@@ -2831,7 +3111,7 @@ Window {
                 Layout.alignment: Qt.AlignHCenter
                 iconSource: "icons/pen.svg"
                 selectedState: currentTool === "pen"
-                hintText: "РџРµСЂРѕ. Р”РІРѕР№РЅРѕР№ РєР»РёРє Р›РљРњ вЂ” РЅР°СЃС‚СЂРѕР№РєРё."
+                hintText: "Перо. Двойной клик ЛКМ открывает настройки."
                 onClicked: handleToolButtonClick("pen", penSettingsPopup, penToolButton)
             }
 
@@ -2840,7 +3120,7 @@ Window {
                 Layout.alignment: Qt.AlignHCenter
                 iconSource: "icons/fill.svg"
                 selectedState: currentTool === "fill"
-                hintText: "Р—Р°Р»РёРІРєР°. Р”РІРѕР№РЅРѕР№ РєР»РёРє Р›РљРњ вЂ” РЅР°СЃС‚СЂРѕР№РєРё."
+                hintText: "Заливка. Двойной клик ЛКМ открывает настройки."
                 onClicked: handleToolButtonClick("fill", fillSettingsPopup, fillToolButton)
             }
 
@@ -2849,7 +3129,7 @@ Window {
                 Layout.alignment: Qt.AlignHCenter
                 iconSource: "icons/eraser.svg"
                 selectedState: currentTool === "eraser"
-                hintText: "Р›Р°СЃС‚РёРє. Р”РІРѕР№РЅРѕР№ РєР»РёРє Р›РљРњ вЂ” РЅР°СЃС‚СЂРѕР№РєРё."
+                hintText: "Ластик. Двойной клик ЛКМ открывает настройки."
                 onClicked: handleToolButtonClick("eraser", eraserSettingsPopup, eraserToolButton)
             }
 
@@ -2858,7 +3138,7 @@ Window {
                 Layout.alignment: Qt.AlignHCenter
                 iconSource: "icons/hex.svg"
                 selectedState: currentTool === "hex_select"
-                hintText: "Р’С‹Р±РѕСЂ РіРµРєСЃРѕРІ. Р”РІРѕР№РЅРѕР№ РєР»РёРє Р›РљРњ вЂ” РЅР°СЃС‚СЂРѕР№РєРё."
+                hintText: "Выбор гексов. Двойной клик ЛКМ открывает настройки."
                 onClicked: handleToolButtonClick("hex_select", hexSettingsPopup, hexToolButton)
             }
 
@@ -2867,7 +3147,7 @@ Window {
                 Layout.alignment: Qt.AlignHCenter
                 iconSource: "icons/measure.svg"
                 selectedState: currentTool === "measure"
-                hintText: "РР·РјРµСЂРµРЅРёРµ. Р”РІРѕР№РЅРѕР№ РєР»РёРє Р›РљРњ вЂ” РЅР°СЃС‚СЂРѕР№РєРё."
+                hintText: "Измерение. Двойной клик ЛКМ открывает описание масштаба."
                 onClicked: handleToolButtonClick("measure", measureSettingsPopup, measureToolButton)
             }
 
@@ -2876,7 +3156,7 @@ Window {
                 Layout.alignment: Qt.AlignHCenter
                 iconSource: "icons/pan.svg"
                 selectedState: currentTool === "pan_zoom"
-                hintText: "РќР°РІРёРіР°С†РёСЏ РєР°СЂС‚С‹. Р”РІРѕР№РЅРѕР№ РєР»РёРє Р›РљРњ вЂ” РЅР°СЃС‚СЂРѕР№РєРё."
+                hintText: "Навигация карты. Двойной клик ЛКМ открывает настройки вида."
                 onClicked: handleToolButtonClick("pan_zoom", panSettingsPopup, panToolButton)
             }
 
@@ -2884,7 +3164,7 @@ Window {
                 id: fullscreenToolButton
                 Layout.alignment: Qt.AlignHCenter
                 iconSource: "icons/fullscreen.svg"
-                hintText: "РџРѕР»РЅРѕСЌРєСЂР°РЅРЅС‹Р№ СЂРµР¶РёРј."
+                hintText: "Полноэкранный режим."
                 onClicked: toggleFullscreenMode()
             }
 
@@ -2892,7 +3172,7 @@ Window {
                 id: sceneEditToolButton
                 Layout.alignment: Qt.AlignHCenter
                 iconSource: "icons/scene_edit.svg"
-                hintText: "Р РµРґР°РєС‚РёСЂРѕРІР°С‚СЊ СЃС†РµРЅСѓ."
+                hintText: "Редактировать сцену."
                 onClicked: openSceneEditor(sceneEditToolButton)
             }
 
@@ -2900,8 +3180,10 @@ Window {
                 Layout.alignment: Qt.AlignHCenter
                 width: 22
                 height: 1
-                color: "#4A4E59"
-                opacity: 0.8
+                color: Qt.rgba(neumoTheme.textPrimary.r,
+                               neumoTheme.textPrimary.g,
+                               neumoTheme.textPrimary.b,
+                               0.22)
             }
 
             Item { Layout.fillHeight: true }
@@ -2910,14 +3192,14 @@ Window {
                 iconSource: "icons/undo.svg"
                 Layout.alignment: Qt.AlignHCenter
                 enabled: appController.canUndoSceneAction
-                hintText: "РћС‚РјРµРЅРёС‚СЊ РїРѕСЃР»РµРґРЅРµРµ РґРµР№СЃС‚РІРёРµ."
+                hintText: "Отменить последнее действие."
                 onClicked: appController.request_undo()
             }
 
             IconSquareButton {
                 iconSource: "icons/clear.svg"
                 Layout.alignment: Qt.AlignHCenter
-                hintText: "РћС‡РёСЃС‚РёС‚СЊ РІСЃРµ СЃР»РѕРё."
+                hintText: "Очистить все слои."
                 onClicked: {
                     clearAllVisualLayersLocal()
                     appController.clear_all_visual_layers()
@@ -2927,14 +3209,14 @@ Window {
             IconSquareButton {
                 iconSource: "icons/save.svg"
                 Layout.alignment: Qt.AlignHCenter
-                hintText: "РЎРѕС…СЂР°РЅРёС‚СЊ СЃС†РµРЅСѓ."
+                hintText: "Сохранить сцену."
                 onClicked: appController.request_manual_save()
             }
 
             IconSquareButton {
                 iconSource: "icons/back.svg"
                 Layout.alignment: Qt.AlignHCenter
-                hintText: "РќР°Р·Р°Рґ РІ Р»Р°СѓРЅС‡РµСЂ."
+                hintText: "Назад в лаунчер."
                 onClicked: appController.request_back()
             }
         }
@@ -2953,21 +3235,35 @@ Window {
         anchors.fill: parent
     }
 
-    Rectangle {
+    Item {
         id: toolHintBubble
         z: 240
         visible: toolHintVisible && toolHintText.length > 0
         x: Math.max(8, Math.min(mapWindow.width - width - 8, toolHintX))
         y: Math.max(8, Math.min(mapWindow.height - height - 8, toolHintY))
-        radius: 10
-        color: "#242932"
-        border.width: 1
-        border.color: "#596173"
         opacity: 0.985
         implicitWidth: Math.min(320, toolHintLabel.implicitWidth + 20)
         implicitHeight: toolHintLabel.implicitHeight + 12
         width: implicitWidth
         height: implicitHeight
+
+        NeumoRaisedSurface {
+            anchors.fill: parent
+            theme: neumoTheme
+            radius: 12
+            fillColor: neumoTheme.baseColor
+            shadowOffset: 4.8
+            shadowRadius: 10.0
+            shadowSamples: 19
+        }
+
+        Rectangle {
+            anchors.fill: parent
+            radius: 12
+            color: "transparent"
+            border.width: 1
+            border.color: Qt.rgba(1, 1, 1, 0.08)
+        }
 
         Text {
             id: toolHintLabel
