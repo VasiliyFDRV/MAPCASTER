@@ -46,10 +46,19 @@ Item {
     property real listDragVisualY: 0
     property real listDragVisualWidth: 0
     property real listDragVisualHeight: 0
+    property var activeInlineEditorItem: null
 
     signal createSceneRequested()
     signal editSceneRequested(string sceneName)
     signal settingsRequested()
+
+    TapHandler {
+        acceptedButtons: Qt.LeftButton
+        enabled: root.inlineEditActive
+        onTapped: function(eventPoint) {
+            root.finishInlineEditFromOutside(eventPoint.position)
+        }
+    }
 
     function activateExplorerItem(itemName, scenesMode) {
         if (!itemName) {
@@ -79,6 +88,38 @@ Item {
             return trimmedName
         }
         return String(sceneInlineOriginalName || "").trim()
+    }
+
+    function pointInsideItem(item, point) {
+        if (!item || !item.visible) {
+            return false
+        }
+        var localPoint = item.mapFromItem(root, point.x, point.y)
+        return localPoint.x >= 0 && localPoint.y >= 0 && localPoint.x <= item.width && localPoint.y <= item.height
+    }
+
+    function finishInlineEditFromOutside(point) {
+        if (!inlineEditActive) {
+            return
+        }
+        if (pointInsideItem(activeInlineEditorItem, point)) {
+            return
+        }
+        if (sceneInlineActive) {
+            if (String(sceneInlineDraftName || "").trim().length === 0) {
+                cancelSceneInlineEdit()
+            } else {
+                commitSceneInlineEdit()
+            }
+            return
+        }
+        if (adventureInlineActive) {
+            if (String(adventureInlineDraftName || "").trim().length === 0) {
+                cancelAdventureInlineEdit()
+            } else {
+                commitAdventureInlineEdit()
+            }
+        }
     }
 
     function refreshSceneInlineModel() {
@@ -738,6 +779,7 @@ Item {
                                 }
 
                                 NeumoInsetSurface {
+                                    id: inlineEditorSurface
                                     theme: root.theme
                                     anchors.fill: parent
                                     anchors.margins: 1
@@ -745,6 +787,19 @@ Item {
                                     fillColor: root.bgBase
                                     contentPadding: 0
                                     visible: explorerDelegate.isInlineEditor
+
+                                    onVisibleChanged: {
+                                        if (visible) {
+                                            root.activeInlineEditorItem = inlineEditorSurface
+                                        } else if (root.activeInlineEditorItem === inlineEditorSurface) {
+                                            root.activeInlineEditorItem = null
+                                        }
+                                    }
+                                    Component.onDestruction: {
+                                        if (root.activeInlineEditorItem === inlineEditorSurface) {
+                                            root.activeInlineEditorItem = null
+                                        }
+                                    }
 
                                     RowLayout {
                                         anchors.fill: parent
@@ -781,15 +836,6 @@ Item {
                                                     root.commitSceneInlineEdit()
                                                 } else {
                                                     root.commitAdventureInlineEdit()
-                                                }
-                                            }
-                                            onActiveFocusChanged: {
-                                                if (!activeFocus && explorerDelegate.isInlineEditor) {
-                                                    if (explorerDelegate.isSceneInline) {
-                                                        root.commitSceneInlineEdit()
-                                                    } else {
-                                                        root.commitAdventureInlineEdit()
-                                                    }
                                                 }
                                             }
                                             Keys.onEscapePressed: function(event) {
