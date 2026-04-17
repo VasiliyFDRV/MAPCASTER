@@ -1567,6 +1567,7 @@ Window {
             spacing: 8
 
             Rectangle {
+                Layout.alignment: Qt.AlignVCenter
                 Layout.preferredWidth: 22
                 Layout.preferredHeight: 22
                 radius: 7
@@ -1576,6 +1577,7 @@ Window {
             }
 
             Label {
+                Layout.alignment: Qt.AlignVCenter
                 Layout.fillWidth: true
                 Layout.minimumWidth: 0
                 text: button.labelText.length > 0 ? button.labelText : String(button.swatchColor).toUpperCase()
