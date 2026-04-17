@@ -3014,11 +3014,12 @@ Window {
         id: leftPanel
         z: 260
         width: panelBodyWidth + panelHandleWidth + 18
-        height: parent.height - 24
+        implicitHeight: toolColumn.implicitHeight + 28
+        height: implicitHeight
         x: panelExpanded
             ? 12
             : (shouldShowPanelPeek() ? -(width - panelHandleWidth - 8) : -width)
-        y: 12
+        y: Math.round((parent.height - height) / 2)
         opacity: 0.985
         clip: true
 
@@ -3109,17 +3110,16 @@ Window {
             }
         }
 
-        ColumnLayout {
-            anchors.fill: parent
-            anchors.leftMargin: 10
-            anchors.topMargin: 14
-            anchors.bottomMargin: 14
-            anchors.rightMargin: panelHandleWidth + 10
+        Column {
+            id: toolColumn
+            anchors.verticalCenter: parent.verticalCenter
+            anchors.horizontalCenter: parent.horizontalCenter
+            anchors.horizontalCenterOffset: -(panelHandleWidth / 2)
             spacing: 10
 
             IconSquareButton {
                 id: cursorToolButton
-                Layout.alignment: Qt.AlignHCenter
+                anchors.horizontalCenter: parent.horizontalCenter
                 iconSource: "icons/cursor.svg"
                 selectedState: currentTool === "cursor"
                 hintText: "Курсор. Двойной клик ЛКМ открывает описание инструмента."
@@ -3128,7 +3128,7 @@ Window {
 
             IconSquareButton {
                 id: penToolButton
-                Layout.alignment: Qt.AlignHCenter
+                anchors.horizontalCenter: parent.horizontalCenter
                 iconSource: "icons/pen.svg"
                 selectedState: currentTool === "pen"
                 hintText: "Перо. Двойной клик ЛКМ открывает настройки."
@@ -3137,7 +3137,7 @@ Window {
 
             IconSquareButton {
                 id: fillToolButton
-                Layout.alignment: Qt.AlignHCenter
+                anchors.horizontalCenter: parent.horizontalCenter
                 iconSource: "icons/fill.svg"
                 selectedState: currentTool === "fill"
                 hintText: "Заливка. Двойной клик ЛКМ открывает настройки."
@@ -3146,7 +3146,7 @@ Window {
 
             IconSquareButton {
                 id: eraserToolButton
-                Layout.alignment: Qt.AlignHCenter
+                anchors.horizontalCenter: parent.horizontalCenter
                 iconSource: "icons/eraser.svg"
                 selectedState: currentTool === "eraser"
                 hintText: "Ластик. Двойной клик ЛКМ открывает настройки."
@@ -3155,7 +3155,7 @@ Window {
 
             IconSquareButton {
                 id: hexToolButton
-                Layout.alignment: Qt.AlignHCenter
+                anchors.horizontalCenter: parent.horizontalCenter
                 iconSource: "icons/hex.svg"
                 selectedState: currentTool === "hex_select"
                 hintText: "Выбор гексов. Двойной клик ЛКМ открывает настройки."
@@ -3164,7 +3164,7 @@ Window {
 
             IconSquareButton {
                 id: measureToolButton
-                Layout.alignment: Qt.AlignHCenter
+                anchors.horizontalCenter: parent.horizontalCenter
                 iconSource: "icons/measure.svg"
                 selectedState: currentTool === "measure"
                 hintText: "Измерение. Двойной клик ЛКМ открывает описание масштаба."
@@ -3173,7 +3173,7 @@ Window {
 
             IconSquareButton {
                 id: panToolButton
-                Layout.alignment: Qt.AlignHCenter
+                anchors.horizontalCenter: parent.horizontalCenter
                 iconSource: "icons/pan.svg"
                 selectedState: currentTool === "pan_zoom"
                 hintText: "Навигация карты. Двойной клик ЛКМ открывает настройки вида."
@@ -3182,7 +3182,7 @@ Window {
 
             IconSquareButton {
                 id: fullscreenToolButton
-                Layout.alignment: Qt.AlignHCenter
+                anchors.horizontalCenter: parent.horizontalCenter
                 iconSource: "icons/fullscreen.svg"
                 hintText: "Полноэкранный режим."
                 onClicked: toggleFullscreenMode()
@@ -3190,35 +3190,23 @@ Window {
 
             IconSquareButton {
                 id: sceneEditToolButton
-                Layout.alignment: Qt.AlignHCenter
+                anchors.horizontalCenter: parent.horizontalCenter
                 iconSource: "icons/scene_edit.svg"
                 hintText: "Редактировать сцену."
                 onClicked: openSceneEditor(sceneEditToolButton)
             }
 
-            Rectangle {
-                Layout.alignment: Qt.AlignHCenter
-                width: 22
-                height: 1
-                color: Qt.rgba(neumoTheme.textPrimary.r,
-                               neumoTheme.textPrimary.g,
-                               neumoTheme.textPrimary.b,
-                               0.22)
-            }
-
-            Item { Layout.fillHeight: true }
-
             IconSquareButton {
+                anchors.horizontalCenter: parent.horizontalCenter
                 iconSource: "icons/undo.svg"
-                Layout.alignment: Qt.AlignHCenter
                 enabled: appController.canUndoSceneAction
                 hintText: "Отменить последнее действие."
                 onClicked: appController.request_undo()
             }
 
             IconSquareButton {
+                anchors.horizontalCenter: parent.horizontalCenter
                 iconSource: "icons/clear.svg"
-                Layout.alignment: Qt.AlignHCenter
                 hintText: "Очистить все слои."
                 onClicked: {
                     clearAllVisualLayersLocal()
@@ -3227,17 +3215,10 @@ Window {
             }
 
             IconSquareButton {
+                anchors.horizontalCenter: parent.horizontalCenter
                 iconSource: "icons/save.svg"
-                Layout.alignment: Qt.AlignHCenter
                 hintText: "Сохранить сцену."
                 onClicked: appController.request_manual_save()
-            }
-
-            IconSquareButton {
-                iconSource: "icons/back.svg"
-                Layout.alignment: Qt.AlignHCenter
-                hintText: "Назад в лаунчер."
-                onClicked: appController.request_back()
             }
         }
     }
