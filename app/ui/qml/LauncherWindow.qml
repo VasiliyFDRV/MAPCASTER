@@ -47,17 +47,6 @@ Window {
         sceneEditorInitialDraft = ({})
     }
 
-    function requestCloseSceneEditor(forceClose) {
-        if (!sceneEditorVisible) {
-            return
-        }
-        if (forceClose || !sceneEditorSurface.dirty) {
-            closeSceneEditor()
-            return
-        }
-        sceneEditorDiscardDialog.open()
-    }
-
     function openCreateSceneDialog() {
         if (appController.launcherAdventure.length === 0) {
             return
@@ -137,9 +126,7 @@ Window {
                         theme: neumoTheme
                         initialDraft: launcherWindow.sceneEditorInitialDraft
                         openToken: launcherWindow.sceneEditorOpenToken
-                        onBackRequested: function(dirty) {
-                            launcherWindow.requestCloseSceneEditor(!dirty)
-                        }
+                        onBackRequested: launcherWindow.closeSceneEditor()
                         onSaveRequested: function(draft) {
                             var ok = appController.save_scene_draft_for_adventure(appController.launcherAdventure, draft)
                             if (ok) {
@@ -174,66 +161,6 @@ Window {
         appController.refresh_library()
     }
 
-    Dialog {
-        id: sceneEditorDiscardDialog
-        modal: true
-        x: Math.round((launcherWindow.width - width) / 2)
-        y: Math.round((launcherWindow.height - height) / 2)
-        width: 360
-        standardButtons: Dialog.NoButton
-        closePolicy: Popup.CloseOnEscape
-
-        background: Rectangle {
-            radius: 18
-            color: "#262626"
-            border.width: 1
-            border.color: "#5C5C5C"
-        }
-
-        contentItem: ColumnLayout {
-            spacing: 12
-
-            Label {
-                text: "\u0415\u0441\u0442\u044c \u043d\u0435\u0441\u043e\u0445\u0440\u0430\u043d\u0435\u043d\u043d\u044b\u0435 \u0438\u0437\u043c\u0435\u043d\u0435\u043d\u0438\u044f"
-                color: launcherWindow.textPrimary
-                font.pixelSize: 18
-                font.weight: Font.DemiBold
-                Layout.fillWidth: true
-                wrapMode: Text.WordWrap
-            }
-
-            Label {
-                text: "\u0417\u0430\u043a\u0440\u044b\u0442\u044c \u0440\u0435\u0434\u0430\u043a\u0442\u043e\u0440 \u0438 \u043f\u043e\u0442\u0435\u0440\u044f\u0442\u044c \u0432\u0432\u0435\u0434\u0435\u043d\u043d\u044b\u0435 \u043f\u0440\u0430\u0432\u043a\u0438?"
-                color: launcherWindow.textSecondary
-                font.pixelSize: 13
-                Layout.fillWidth: true
-                wrapMode: Text.WordWrap
-            }
-
-            RowLayout {
-                Layout.fillWidth: true
-                spacing: 8
-
-                NeumoDialogButton {
-                    theme: neumoTheme
-                    text: "\u0412\u0435\u0440\u043d\u0443\u0442\u044c\u0441\u044f"
-                    Layout.fillWidth: true
-                    onClicked: sceneEditorDiscardDialog.close()
-                }
-
-                NeumoDialogButton {
-                    theme: neumoTheme
-                    text: "\u0417\u0430\u043a\u0440\u044b\u0442\u044c \u0431\u0435\u0437 \u0441\u043e\u0445\u0440\u0430\u043d\u0435\u043d\u0438\u044f"
-                    accent: true
-                    Layout.fillWidth: true
-                    onClicked: {
-                        sceneEditorDiscardDialog.close()
-                        launcherWindow.closeSceneEditor()
-                    }
-                }
-            }
-        }
-    }
     FileDialog {
         id: mediaFileDialog
         title: "Выберите медиафайл"
