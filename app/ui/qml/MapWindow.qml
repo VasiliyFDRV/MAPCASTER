@@ -3143,7 +3143,8 @@ Window {
 
     Item {
         id: toolHintBubble
-        z: 280
+        parent: Overlay.overlay
+        z: 1000
         visible: toolHintVisible && toolHintText.length > 0
         x: Math.max(8, Math.min(mapWindow.width - width - 8, toolHintX))
         y: Math.max(8, Math.min(mapWindow.height - height - 8, toolHintY))
