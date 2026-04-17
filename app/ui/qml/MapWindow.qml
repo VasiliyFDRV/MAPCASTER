@@ -2524,7 +2524,7 @@ Window {
         id: control
         modal: false
         focus: true
-        closePolicy: Popup.CloseOnEscape
+        closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
         padding: mapWindow.toolPopupPadding
         opacity: 0.0
         scale: 0.96
@@ -2838,6 +2838,7 @@ Window {
         y: 70
         width: 420
         height: Math.min(mapWindow.height - 40, 670)
+        closePolicy: Popup.CloseOnEscape
         contentItem: SceneEditorSurface {
             id: mapSceneEditorSurface
             anchors.fill: parent
