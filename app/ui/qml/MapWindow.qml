@@ -3071,7 +3071,9 @@ Window {
             opacity: 1.0
 
             Column {
-                anchors.centerIn: parent
+                anchors.horizontalCenter: parent.horizontalCenter
+                anchors.horizontalCenterOffset: panelExpanded ? -4 : 0
+                anchors.verticalCenter: parent.verticalCenter
                 spacing: 8
                 Repeater {
                     model: 3
