@@ -3010,23 +3010,19 @@ Window {
         }
     }
 
-    NeumoRaisedSurface {
+    Item {
         id: leftPanel
         z: 260
-        theme: neumoTheme
         width: panelBodyWidth + panelHandleWidth + 18
-        height: Math.min(parent.height - 24, 760)
+        height: parent.height - 24
         x: panelExpanded
             ? 12
             : (shouldShowPanelPeek() ? -(width - panelHandleWidth - 8) : -width)
         y: 12
-        radius: 24
-        fillColor: neumoTheme.baseColor
-        shadowOffset: 6.2
-        shadowRadius: 12.8
-        shadowSamples: 25
         opacity: 0.985
         clip: true
+
+        readonly property real panelRadius: 13
 
         Behavior on x {
             NumberAnimation {
@@ -3042,10 +3038,31 @@ Window {
         }
 
         Rectangle {
+            id: leftPanelBase
+            anchors.fill: parent
+            radius: leftPanel.panelRadius
+            color: neumoTheme.baseColor
+            border.width: 1
+            border.color: Qt.rgba(1, 1, 1, 0.05)
+        }
+
+        NeumoInsetBevel {
+            anchors.fill: leftPanelBase
+            radius: leftPanel.panelRadius
+            darkColor: Qt.rgba(0, 0, 0, 0.32)
+            lightColor: Qt.rgba(1, 1, 1, 0.10)
+            darkOffset: -3.2
+            lightOffset: 3.2
+            darkRadius: 6.5
+            lightRadius: 5.5
+            active: true
+        }
+
+        Rectangle {
             id: panelPeekEdge
             width: panelHandleWidth
             height: 220
-            radius: 16
+            radius: 12
             anchors.right: parent.right
             anchors.verticalCenter: parent.verticalCenter
             color: "transparent"
