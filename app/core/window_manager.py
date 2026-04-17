@@ -167,13 +167,16 @@ class WindowManager:
     def _on_scene_open_requested(self, event_name: str, payload: dict[str, object]) -> None:
         adventure = str(payload.get("adventure", "")).strip()
         scene = str(payload.get("scene", "")).strip()
+        background_enabled = bool(payload.get("background_enabled", True))
         if not adventure or not scene:
             return
-        self._ensure_window("map")
-        self._ensure_window("background")
+        self._open_or_recreate_window("map")
+        if background_enabled or self._is_window_alive(self._windows.get("background")):
+            self._open_or_recreate_window("background")
         self._set_window_title("launcher", f"DnD Maps - Лаунчер - {adventure}")
         self._set_window_title("map", f"DnD Maps - Карта - {adventure}/{scene}")
-        self._set_window_title("background", f"DnD Maps - Фон - {adventure}/{scene}")
+        if background_enabled or self._is_window_alive(self._windows.get("background")):
+            self._set_window_title("background", f"DnD Maps - Фон - {adventure}/{scene}")
 
     def _on_scene_saved(self, event_name: str, payload: dict[str, object]) -> None:
         adventure = str(payload.get("adventure", "")).strip()

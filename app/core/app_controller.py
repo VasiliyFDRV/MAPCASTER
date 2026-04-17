@@ -1648,7 +1648,11 @@ class AppController(QObject):
 
         self._event_bus.publish(
             "scene.open_requested",
-            {"adventure": adventure_name, "scene": scene_name},
+            {
+                "adventure": adventure_name,
+                "scene": scene_name,
+                "background_enabled": bool(scene_data.get("background", {}).get("enabled", True)),
+            },
         )
         self._set_status(f"Открыта сцена: {adventure_name}/{scene_name}")
 

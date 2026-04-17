@@ -26,6 +26,12 @@ Window {
 
     Rectangle {
         anchors.fill: parent
+        visible: !appController.activeBackgroundEnabled
+        color: "#000000"
+    }
+
+    Rectangle {
+        anchors.fill: parent
         visible: opacity > 0
         opacity: appController.activeBackgroundEnabled && appController.activeBackgroundMediaType === "color" ? 1.0 : 0.0
         color: appController.activeBackgroundFillColor
