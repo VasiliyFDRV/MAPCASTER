@@ -1738,11 +1738,12 @@ Window {
         property url iconSource: ""
         property bool selectedState: false
         property string hintText: ""
+        property real sizeScale: 1.0
         hoverEnabled: true
         focusPolicy: Qt.NoFocus
         activeFocusOnTab: false
-        implicitWidth: 52
-        implicitHeight: 52
+        implicitWidth: 52 * sizeScale
+        implicitHeight: 52 * sizeScale
 
         function syncToolHint() {
             if (control.hovered && control.hintText.length > 0) {
@@ -1761,8 +1762,8 @@ Window {
         contentItem: Item {
             Image {
                 anchors.centerIn: parent
-                width: 22
-                height: 22
+                width: 22 * control.sizeScale
+                height: 22 * control.sizeScale
                 source: control.iconSource
                 fillMode: Image.PreserveAspectFit
                 visible: control.iconSource.toString().length > 0
@@ -1778,7 +1779,7 @@ Window {
                 horizontalAlignment: Text.AlignHCenter
                 verticalAlignment: Text.AlignVCenter
                 font.family: "Segoe UI Symbol"
-                font.pixelSize: 15
+                font.pixelSize: 15 * control.sizeScale
                 font.weight: Font.DemiBold
             }
 
@@ -1791,21 +1792,21 @@ Window {
             NeumoRaisedSurface {
                 anchors.fill: parent
                 theme: neumoTheme
-                radius: 14
+                radius: 14 * control.sizeScale
                 fillColor: control.selectedState
                     ? Qt.rgba(neumoTheme.textPrimary.r,
                                neumoTheme.textPrimary.g,
                                neumoTheme.textPrimary.b,
                                control.down ? 0.17 : 0.12)
                     : neumoTheme.baseColor
-                shadowOffset: control.down ? 2.8 : (control.hovered ? 5.2 : 4.5)
-                shadowRadius: control.down ? 6.4 : (control.hovered ? 10.2 : 8.8)
+                shadowOffset: (control.down ? 2.8 : (control.hovered ? 5.2 : 4.5)) * control.sizeScale
+                shadowRadius: (control.down ? 6.4 : (control.hovered ? 10.2 : 8.8)) * control.sizeScale
                 shadowSamples: 19
             }
 
             Rectangle {
                 anchors.fill: parent
-                radius: 14
+                radius: 14 * control.sizeScale
                 color: "transparent"
                 border.width: control.selectedState ? 1 : 0
                 border.color: Qt.rgba(1, 1, 1, control.down ? 0.16 : 0.12)
@@ -3014,6 +3015,14 @@ Window {
         id: leftPanel
         z: 260
         width: panelBodyWidth + panelHandleWidth + 18
+        readonly property int toolButtonCount: 12
+        readonly property real railMaxButtonSize: 52
+        readonly property real railMinButtonScale: 0.5
+        readonly property real railBaseSpacing: 10
+        readonly property real railAvailableHeight: Math.max(1, mapWindow.height - 28)
+        readonly property real railBaseContentHeight: (toolButtonCount * railMaxButtonSize) + ((toolButtonCount - 1) * railBaseSpacing)
+        readonly property real railScale: Math.max(railMinButtonScale,
+                                                   Math.min(1.0, railAvailableHeight / railBaseContentHeight))
         implicitHeight: toolColumn.implicitHeight + 28
         height: implicitHeight
         x: panelExpanded
@@ -3115,11 +3124,12 @@ Window {
             anchors.verticalCenter: parent.verticalCenter
             anchors.horizontalCenter: parent.horizontalCenter
             anchors.horizontalCenterOffset: -(panelHandleWidth / 2)
-            spacing: 10
+            spacing: leftPanel.railBaseSpacing * leftPanel.railScale
 
             IconSquareButton {
                 id: cursorToolButton
                 anchors.horizontalCenter: parent.horizontalCenter
+                sizeScale: leftPanel.railScale
                 iconSource: "icons/cursor.svg"
                 selectedState: currentTool === "cursor"
                 hintText: "Курсор. Двойной клик ЛКМ открывает описание инструмента."
@@ -3129,6 +3139,7 @@ Window {
             IconSquareButton {
                 id: penToolButton
                 anchors.horizontalCenter: parent.horizontalCenter
+                sizeScale: leftPanel.railScale
                 iconSource: "icons/pen.svg"
                 selectedState: currentTool === "pen"
                 hintText: "Перо. Двойной клик ЛКМ открывает настройки."
@@ -3138,6 +3149,7 @@ Window {
             IconSquareButton {
                 id: fillToolButton
                 anchors.horizontalCenter: parent.horizontalCenter
+                sizeScale: leftPanel.railScale
                 iconSource: "icons/fill.svg"
                 selectedState: currentTool === "fill"
                 hintText: "Заливка. Двойной клик ЛКМ открывает настройки."
@@ -3147,6 +3159,7 @@ Window {
             IconSquareButton {
                 id: eraserToolButton
                 anchors.horizontalCenter: parent.horizontalCenter
+                sizeScale: leftPanel.railScale
                 iconSource: "icons/eraser.svg"
                 selectedState: currentTool === "eraser"
                 hintText: "Ластик. Двойной клик ЛКМ открывает настройки."
@@ -3156,6 +3169,7 @@ Window {
             IconSquareButton {
                 id: hexToolButton
                 anchors.horizontalCenter: parent.horizontalCenter
+                sizeScale: leftPanel.railScale
                 iconSource: "icons/hex.svg"
                 selectedState: currentTool === "hex_select"
                 hintText: "Выбор гексов. Двойной клик ЛКМ открывает настройки."
@@ -3165,6 +3179,7 @@ Window {
             IconSquareButton {
                 id: measureToolButton
                 anchors.horizontalCenter: parent.horizontalCenter
+                sizeScale: leftPanel.railScale
                 iconSource: "icons/measure.svg"
                 selectedState: currentTool === "measure"
                 hintText: "Измерение. Двойной клик ЛКМ открывает описание масштаба."
@@ -3174,6 +3189,7 @@ Window {
             IconSquareButton {
                 id: panToolButton
                 anchors.horizontalCenter: parent.horizontalCenter
+                sizeScale: leftPanel.railScale
                 iconSource: "icons/pan.svg"
                 selectedState: currentTool === "pan_zoom"
                 hintText: "Навигация карты. Двойной клик ЛКМ открывает настройки вида."
@@ -3183,6 +3199,7 @@ Window {
             IconSquareButton {
                 id: fullscreenToolButton
                 anchors.horizontalCenter: parent.horizontalCenter
+                sizeScale: leftPanel.railScale
                 iconSource: "icons/fullscreen.svg"
                 hintText: "Полноэкранный режим."
                 onClicked: toggleFullscreenMode()
@@ -3191,6 +3208,7 @@ Window {
             IconSquareButton {
                 id: sceneEditToolButton
                 anchors.horizontalCenter: parent.horizontalCenter
+                sizeScale: leftPanel.railScale
                 iconSource: "icons/scene_edit.svg"
                 hintText: "Редактировать сцену."
                 onClicked: openSceneEditor(sceneEditToolButton)
@@ -3198,6 +3216,7 @@ Window {
 
             IconSquareButton {
                 anchors.horizontalCenter: parent.horizontalCenter
+                sizeScale: leftPanel.railScale
                 iconSource: "icons/undo.svg"
                 enabled: appController.canUndoSceneAction
                 hintText: "Отменить последнее действие."
@@ -3206,6 +3225,7 @@ Window {
 
             IconSquareButton {
                 anchors.horizontalCenter: parent.horizontalCenter
+                sizeScale: leftPanel.railScale
                 iconSource: "icons/clear.svg"
                 hintText: "Очистить все слои."
                 onClicked: {
@@ -3216,6 +3236,7 @@ Window {
 
             IconSquareButton {
                 anchors.horizontalCenter: parent.horizontalCenter
+                sizeScale: leftPanel.railScale
                 iconSource: "icons/save.svg"
                 hintText: "Сохранить сцену."
                 onClicked: appController.request_manual_save()
