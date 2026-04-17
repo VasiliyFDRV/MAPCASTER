@@ -5,6 +5,7 @@ import QtMultimedia
 
 Window {
     id: backgroundWindow
+    objectName: "backgroundWindow"
     width: 1280
     height: 720
     visible: true

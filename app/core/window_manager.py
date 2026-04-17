@@ -53,26 +53,61 @@ class WindowManager:
         self._windows["dice"] = None
         self._set_map_window_open_state(False)
 
+    def _find_existing_window(self, object_name: str) -> object | None:
+        app = QGuiApplication.instance()
+        if app is None or not hasattr(app, "topLevelWindows"):
+            return None
+        try:
+            for window in app.topLevelWindows():
+                try:
+                    if window is not None and hasattr(window, "objectName") and window.objectName() == object_name:
+                        return window
+                except RuntimeError:
+                    continue
+        except RuntimeError:
+            return None
+        return None
+
+    def _attach_map_window_signals(self, window: object | None) -> None:
+        if window is None:
+            return
+        try:
+            already_bound = bool(window.property("_mapLifecycleBound")) if hasattr(window, "property") else False
+        except RuntimeError:
+            return
+        if already_bound:
+            return
+        try:
+            if hasattr(window, "destroyed"):
+                window.destroyed.connect(self._on_map_destroyed)
+            if hasattr(window, "visibleChanged"):
+                window.visibleChanged.connect(self._on_map_visible_changed)
+            if hasattr(window, "setProperty"):
+                window.setProperty("_mapLifecycleBound", True)
+        except RuntimeError:
+            return
+
     def _ensure_window(self, key: str) -> None:
         if key == "map":
             qml_name = "MapWindow.qml"
+            object_name = "mapWindow"
         elif key == "background":
             qml_name = "BackgroundWindow.qml"
+            object_name = "backgroundWindow"
         elif key == "launcher":
             qml_name = "LauncherWindow.qml"
+            object_name = "launcherWindow"
         elif key == "dice":
             qml_name = "DiceWindow.qml"
+            object_name = "diceWindow"
         else:
             return
         if self._windows.get(key) is None:
-            self._windows[key] = self._create_window(qml_name)
+            existing_window = self._find_existing_window(object_name)
+            self._windows[key] = existing_window if existing_window is not None else self._create_window(qml_name)
             if key == "map":
                 self._set_map_window_open_state(True)
-                window = self._windows.get("map")
-                if window is not None and hasattr(window, "destroyed"):
-                    window.destroyed.connect(self._on_map_destroyed)
-                if window is not None and hasattr(window, "visibleChanged"):
-                    window.visibleChanged.connect(self._on_map_visible_changed)
+                self._attach_map_window_signals(self._windows.get("map"))
 
     def _create_window(self, qml_name: str) -> object:
         qml_path = self._qml_root / qml_name
@@ -104,6 +139,19 @@ class WindowManager:
     def _open_or_recreate_window(self, key: str) -> object | None:
         window = self._windows.get(key)
         if not self._is_window_alive(window):
+            object_name = {
+                "map": "mapWindow",
+                "background": "backgroundWindow",
+                "launcher": "launcherWindow",
+                "dice": "diceWindow",
+            }.get(key, "")
+            existing_window = self._find_existing_window(object_name) if object_name else None
+            if existing_window is not None:
+                self._windows[key] = existing_window
+                if key == "map":
+                    self._set_map_window_open_state(True)
+                    self._attach_map_window_signals(existing_window)
+                return existing_window
             self._windows[key] = None
             self._ensure_window(key)
             window = self._windows.get(key)
