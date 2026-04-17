@@ -3022,7 +3022,7 @@ Window {
         opacity: 0.985
         clip: true
 
-        readonly property real panelRadius: 7
+        readonly property real panelRadius: neumoTheme ? neumoTheme.insetRadius : 20
 
         Behavior on x {
             NumberAnimation {
