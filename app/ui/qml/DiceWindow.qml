@@ -3,6 +3,7 @@ import QtQuick.Controls
 import QtQuick.Layouts
 import QtQuick.Window
 import QtWebEngine
+import Qt5Compat.GraphicalEffects
 import "components"
 import "components/DicePreviewUtils.js" as DicePreviewUtils
 import "components/neumo"
@@ -1393,6 +1394,13 @@ Window {
     component AppButton: AbstractButton {
         id: control
         property bool accent: false
+        property real baseShadowOffset: 4.8
+        property real baseShadowRadius: 10.6
+        property real hoverShadowOffset: 5.6
+        property real hoverShadowRadius: 11.8
+        property real pressedShadowOffset: 4.0
+        property real pressedShadowRadius: 8.8
+        property int shadowSamples: 23
         hoverEnabled: true
         focusPolicy: Qt.NoFocus
         activeFocusOnTab: false
@@ -1409,34 +1417,66 @@ Window {
             font.weight: control.accent ? Font.DemiBold : Font.Medium
             elide: Text.ElideRight
         }
-        background: Rectangle {
-            radius: 12
-            border.width: 1
-            border.color: control.accent ? "#B4B4B4" : "#505050"
+        background: Item {
             opacity: control.enabled ? 1.0 : 0.5
-            gradient: Gradient {
-                GradientStop {
-                    position: 0
-                    color: control.accent
-                        ? (control.pressed ? "#727272" : (control.hovered ? "#858585" : "#7D7D7D"))
-                        : (control.pressed ? "#323232" : (control.hovered ? "#3B3B3B" : "#363636"))
+
+            Rectangle {
+                id: face
+                anchors.fill: parent
+                radius: 12
+                border.width: 1
+                border.color: control.accent ? "#B4B4B4" : "#505050"
+                scale: control.pressed ? 0.985 : (control.hovered ? 1.025 : 1.0)
+                transformOrigin: Item.Center
+                gradient: Gradient {
+                    GradientStop {
+                        position: 0
+                        color: control.accent
+                            ? (control.hovered ? "#858585" : "#7D7D7D")
+                            : (control.hovered ? "#3B3B3B" : "#363636")
+                    }
+                    GradientStop {
+                        position: 1
+                        color: control.accent
+                            ? (control.hovered ? "#747474" : "#6E6E6E")
+                            : (control.hovered ? "#323232" : "#2D2D2D")
+                    }
                 }
-                GradientStop {
-                    position: 1
-                    color: control.accent
-                        ? (control.pressed ? "#666666" : (control.hovered ? "#747474" : "#6E6E6E"))
-                        : (control.pressed ? "#292929" : (control.hovered ? "#323232" : "#2D2D2D"))
+
+                Behavior on scale {
+                    NumberAnimation { duration: 120; easing.type: Easing.OutCubic }
+                }
+                Behavior on border.color {
+                    ColorAnimation { duration: 120 }
                 }
             }
-            scale: control.pressed ? 0.97 : (control.hovered ? 1.025 : 1.0)
-            Behavior on scale {
-                NumberAnimation { duration: 120; easing.type: Easing.OutCubic }
+
+            DropShadow {
+                anchors.fill: face
+                source: face
+                transparentBorder: true
+                horizontalOffset: control.pressed ? control.pressedShadowOffset : (control.hovered ? control.hoverShadowOffset : control.baseShadowOffset)
+                verticalOffset: control.pressed ? control.pressedShadowOffset : (control.hovered ? control.hoverShadowOffset : control.baseShadowOffset)
+                radius: control.pressed ? control.pressedShadowRadius : (control.hovered ? control.hoverShadowRadius : control.baseShadowRadius)
+                samples: control.shadowSamples
+                color: control.hovered ? "#FC151618" : "#B8151618"
+                z: -1
             }
+
+            DropShadow {
+                anchors.fill: face
+                source: face
+                transparentBorder: true
+                horizontalOffset: control.pressed ? -control.pressedShadowOffset : -(control.hovered ? control.hoverShadowOffset : control.baseShadowOffset)
+                verticalOffset: control.pressed ? -control.pressedShadowOffset : -(control.hovered ? control.hoverShadowOffset : control.baseShadowOffset)
+                radius: control.pressed ? control.pressedShadowRadius : (control.hovered ? control.hoverShadowRadius : control.baseShadowRadius)
+                samples: control.shadowSamples
+                color: control.hovered ? "#AD55565C" : "#703B3C40"
+                z: -2
+            }
+
             Behavior on opacity {
                 NumberAnimation { duration: 120 }
-            }
-            Behavior on border.color {
-                ColorAnimation { duration: 120 }
             }
         }
     }
@@ -1445,6 +1485,13 @@ Window {
         property string arrowText: "?"
         property color activeColor: "#3F7A4A"
         property bool active: false
+        property real baseShadowOffset: 2.9
+        property real baseShadowRadius: 6.3
+        property real hoverShadowOffset: 3.4
+        property real hoverShadowRadius: 7.1
+        property real pressedShadowOffset: 2.3
+        property real pressedShadowRadius: 5.0
+        property int shadowSamples: 17
         implicitWidth: 26
         implicitHeight: 20
         hoverEnabled: true
@@ -1458,25 +1505,58 @@ Window {
             font.pixelSize: 10
             font.weight: Font.DemiBold
         }
-        background: Rectangle {
-            radius: 7
-            border.width: 1
-            border.color: control.active ? "#C4C4C4" : "#5B5B5B"
-            gradient: Gradient {
-                GradientStop {
-                    position: 0
-                    color: control.active
-                        ? Qt.lighter(control.activeColor, control.pressed ? 0.92 : (control.hovered ? 1.03 : 1.0))
-                        : (control.pressed ? "#353535" : (control.hovered ? "#3D3D3D" : "#333333"))
+        background: Item {
+            Rectangle {
+                id: face
+                anchors.fill: parent
+                radius: 7
+                border.width: 1
+                border.color: control.active ? "#C4C4C4" : "#5B5B5B"
+                scale: control.pressed ? 0.985 : (control.hovered ? 1.02 : 1.0)
+                transformOrigin: Item.Center
+                gradient: Gradient {
+                    GradientStop {
+                        position: 0
+                        color: control.active
+                            ? Qt.lighter(control.activeColor, control.hovered ? 1.03 : 1.0)
+                            : (control.hovered ? "#3D3D3D" : "#333333")
+                    }
+                    GradientStop {
+                        position: 1
+                        color: control.active
+                            ? Qt.darker(control.activeColor, 1.05)
+                            : (control.hovered ? "#343434" : "#2A2A2A")
+                    }
                 }
-                GradientStop {
-                    position: 1
-                    color: control.active
-                        ? Qt.darker(control.activeColor, control.pressed ? 1.15 : 1.05)
-                        : (control.pressed ? "#2C2C2C" : (control.hovered ? "#343434" : "#2A2A2A"))
+                Behavior on scale {
+                    NumberAnimation { duration: 110; easing.type: Easing.OutCubic }
                 }
+                Behavior on border.color { ColorAnimation { duration: 120 } }
             }
-            Behavior on border.color { ColorAnimation { duration: 120 } }
+
+            DropShadow {
+                anchors.fill: face
+                source: face
+                transparentBorder: true
+                horizontalOffset: control.pressed ? control.pressedShadowOffset : (control.hovered ? control.hoverShadowOffset : control.baseShadowOffset)
+                verticalOffset: control.pressed ? control.pressedShadowOffset : (control.hovered ? control.hoverShadowOffset : control.baseShadowOffset)
+                radius: control.pressed ? control.pressedShadowRadius : (control.hovered ? control.hoverShadowRadius : control.baseShadowRadius)
+                samples: control.shadowSamples
+                color: control.hovered ? "#F0151618" : "#99151618"
+                z: -1
+            }
+
+            DropShadow {
+                anchors.fill: face
+                source: face
+                transparentBorder: true
+                horizontalOffset: control.pressed ? -control.pressedShadowOffset : -(control.hovered ? control.hoverShadowOffset : control.baseShadowOffset)
+                verticalOffset: control.pressed ? -control.pressedShadowOffset : -(control.hovered ? control.hoverShadowOffset : control.baseShadowOffset)
+                radius: control.pressed ? control.pressedShadowRadius : (control.hovered ? control.hoverShadowRadius : control.baseShadowRadius)
+                samples: control.shadowSamples
+                color: control.hovered ? "#9955565C" : "#8A3B3C40"
+                z: -2
+            }
         }
     }
     component NumberInput: SpinBox {

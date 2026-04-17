@@ -49,6 +49,9 @@ Item {
     property color iconHoverColor: iconColor
     property real idleSurfaceOpacity: 1.0
     property real activeSurfaceOpacity: 1.0
+    property real pressedScale: 0.985
+    property real pressedOuterOffset: largeButton ? 4.6 : (mediumButton ? 3.2 : 1.7)
+    property real pressedOuterRadius: largeButton ? 10.4 : (mediumButton ? 7.2 : 3.9)
     property real tipX: 0
     property real tipY: 0
     property bool hovered: hitArea.containsMouse && iconRoot.enabled && !hitArea.pressed
@@ -73,7 +76,7 @@ Item {
         id: surfaceRoot
         anchors.fill: parent
         opacity: (iconRoot.hovered || hitArea.pressed) ? iconRoot.activeSurfaceOpacity : iconRoot.idleSurfaceOpacity
-        scale: iconRoot.hovered ? 1.045 : 1.0
+        scale: hitArea.pressed ? iconRoot.pressedScale : (iconRoot.hovered ? 1.045 : 1.0)
         transformOrigin: Item.Center
 
         Behavior on opacity {
@@ -97,12 +100,11 @@ Item {
             anchors.fill: bg
             source: bg
             transparentBorder: true
-            horizontalOffset: iconRoot.outerOffset
-            verticalOffset: iconRoot.outerOffset
-            radius: iconRoot.outerRadius
+            horizontalOffset: hitArea.pressed ? iconRoot.pressedOuterOffset : iconRoot.outerOffset
+            verticalOffset: hitArea.pressed ? iconRoot.pressedOuterOffset : iconRoot.outerOffset
+            radius: hitArea.pressed ? iconRoot.pressedOuterRadius : iconRoot.outerRadius
             samples: iconRoot.outerSamples
             color: iconRoot.hovered ? iconRoot.outerDarkColorHover : iconRoot.outerDarkColor
-            visible: !hitArea.pressed
             z: -1
         }
 
@@ -110,25 +112,12 @@ Item {
             anchors.fill: bg
             source: bg
             transparentBorder: true
-            horizontalOffset: -iconRoot.outerOffset
-            verticalOffset: -iconRoot.outerOffset
-            radius: iconRoot.outerRadius
+            horizontalOffset: hitArea.pressed ? -iconRoot.pressedOuterOffset : -iconRoot.outerOffset
+            verticalOffset: hitArea.pressed ? -iconRoot.pressedOuterOffset : -iconRoot.outerOffset
+            radius: hitArea.pressed ? iconRoot.pressedOuterRadius : iconRoot.outerRadius
             samples: iconRoot.outerSamples
             color: iconRoot.hovered ? iconRoot.outerLightColorHover : iconRoot.outerLightColor
-            visible: !hitArea.pressed
             z: -2
-        }
-
-        NeumoInsetBevel {
-            anchors.fill: bg
-            radius: bg.radius
-            darkColor: iconRoot.innerDarkColor
-            lightColor: iconRoot.innerLightColor
-            darkOffset: iconRoot.innerOffset
-            lightOffset: -iconRoot.innerOffset
-            darkRadius: iconRoot.innerRadius
-            lightRadius: iconRoot.innerRadius
-            active: hitArea.pressed
         }
     }
 
