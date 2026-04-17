@@ -163,6 +163,7 @@ class FilesystemRepository:
         if old_name == new_name:
             return old_name
 
+        stored_order = list(self.load_adventure(safe_adventure).get("scene_order", []))
         old_path = self._scene_path(safe_adventure, old_name)
         new_path = self._scene_path(safe_adventure, new_name, must_exist=False)
         if new_path.exists():
@@ -181,8 +182,11 @@ class FilesystemRepository:
         scene_payload["name"] = new_name
         write_json(new_path / "scene.json", scene_payload)
 
-        order = self.list_scenes(safe_adventure)
-        order = [new_name if item == old_name else item for item in order]
+        if old_name in stored_order:
+            order = [new_name if item == old_name else item for item in stored_order]
+        else:
+            order = [item for item in self.list_scenes(safe_adventure) if item != new_name]
+            order.append(new_name)
         self.set_scene_order(safe_adventure, order)
         return new_name
 
@@ -346,6 +350,5 @@ class FilesystemRepository:
 
     def _now_iso(self) -> str:
         return datetime.now(timezone.utc).isoformat()
-
 
 
