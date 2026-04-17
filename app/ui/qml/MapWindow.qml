@@ -3061,7 +3061,7 @@ Window {
 
         Rectangle {
             id: panelPeekEdge
-            width: panelHandleWidth
+            width: panelExpanded ? panelHandleWidth : (panelHandleWidth + 8)
             height: 220
             radius: 12
             anchors.right: parent.right
