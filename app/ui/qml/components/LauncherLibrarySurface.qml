@@ -50,6 +50,37 @@ Item {
     signal createSceneRequested()
     signal editSceneRequested(string sceneName)
     signal settingsRequested()
+
+    function activateExplorerItem(itemName, scenesMode) {
+        if (!itemName) {
+            return
+        }
+        if (scenesMode) {
+            appController.open_scene(itemName)
+        } else {
+            appController.enter_launcher_adventure(itemName)
+        }
+    }
+
+    function resolvedAdventureInlineName() {
+        var trimmedName = String(adventureInlineDraftName || "").trim()
+        if (trimmedName.length > 0) {
+            return trimmedName
+        }
+        if (adventureInlineOriginalName.length > 0) {
+            return adventureInlineOriginalName
+        }
+        return "Новое приключение"
+    }
+
+    function resolvedSceneInlineName() {
+        var trimmedName = String(sceneInlineDraftName || "").trim()
+        if (trimmedName.length > 0) {
+            return trimmedName
+        }
+        return String(sceneInlineOriginalName || "").trim()
+    }
+
     function refreshSceneInlineModel() {
         var items = []
         var source = appController.scenesModel || []
@@ -105,7 +136,7 @@ Item {
         if (sceneInlineMode === "none") {
             return
         }
-        var trimmedName = String(sceneInlineDraftName || "").trim()
+        var trimmedName = resolvedSceneInlineName()
         if (trimmedName === sceneInlineOriginalName) {
             cancelSceneInlineEdit()
             return
@@ -206,7 +237,7 @@ Item {
         if (adventureInlineMode === "none") {
             return
         }
-        var trimmedName = String(adventureInlineDraftName || "").trim()
+        var trimmedName = resolvedAdventureInlineName()
         if (adventureInlineMode === "rename" && trimmedName === adventureInlineOriginalName) {
             cancelAdventureInlineEdit()
             return
@@ -628,8 +659,10 @@ Item {
                                         Item {
                                             Layout.fillWidth: true
                                             Layout.fillHeight: true
+                                            property real renameHitWidth: Math.min(width, itemLabel.implicitWidth + 6)
 
                                             Label {
+                                                id: itemLabel
                                                 anchors.fill: parent
                                                 text: explorerDelegate.itemName
                                                 color: "#C9C9C9"
@@ -646,10 +679,14 @@ Item {
                                                 onClicked: singleClickTimer.restart()
                                                 onDoubleClicked: {
                                                     singleClickTimer.stop()
-                                                    if (explorerDelegate.scenesMode) {
-                                                        root.beginRenameSceneInline(explorerDelegate.itemName)
+                                                    if (mouse.x <= parent.renameHitWidth) {
+                                                        if (explorerDelegate.scenesMode) {
+                                                            root.beginRenameSceneInline(explorerDelegate.itemName)
+                                                        } else {
+                                                            root.beginRenameAdventureInline(explorerDelegate.itemName)
+                                                        }
                                                     } else {
-                                                        root.beginRenameAdventureInline(explorerDelegate.itemName)
+                                                        root.activateExplorerItem(explorerDelegate.itemName, explorerDelegate.scenesMode)
                                                     }
                                                 }
                                             }
@@ -659,11 +696,7 @@ Item {
                                                 interval: 180
                                                 repeat: false
                                                 onTriggered: {
-                                                    if (explorerDelegate.scenesMode) {
-                                                        appController.open_scene(explorerDelegate.itemName)
-                                                    } else {
-                                                        appController.enter_launcher_adventure(explorerDelegate.itemName)
-                                                    }
+                                                    root.activateExplorerItem(explorerDelegate.itemName, explorerDelegate.scenesMode)
                                                 }
                                             }
                                         }
@@ -752,7 +785,11 @@ Item {
                                             }
                                             onActiveFocusChanged: {
                                                 if (!activeFocus && explorerDelegate.isInlineEditor) {
-                                                    inlineFocusRestoreTimer.restart()
+                                                    if (explorerDelegate.isSceneInline) {
+                                                        root.commitSceneInlineEdit()
+                                                    } else {
+                                                        root.commitAdventureInlineEdit()
+                                                    }
                                                 }
                                             }
                                             Keys.onEscapePressed: function(event) {
@@ -761,17 +798,6 @@ Item {
                                                     root.cancelSceneInlineEdit()
                                                 } else {
                                                     root.cancelAdventureInlineEdit()
-                                                }
-                                            }
-
-                                            Timer {
-                                                id: inlineFocusRestoreTimer
-                                                interval: 0
-                                                repeat: false
-                                                onTriggered: {
-                                                    if (explorerDelegate.isInlineEditor) {
-                                                        inlineAdventureField.forceActiveFocus()
-                                                    }
                                                 }
                                             }
                                         }
