@@ -3022,7 +3022,7 @@ Window {
         opacity: 0.985
         clip: true
 
-        readonly property real panelRadius: 13
+        readonly property real panelRadius: 7
 
         Behavior on x {
             NumberAnimation {
@@ -3048,13 +3048,14 @@ Window {
 
         NeumoInsetBevel {
             anchors.fill: leftPanelBase
+            anchors.margins: 1
             radius: leftPanel.panelRadius
-            darkColor: Qt.rgba(0, 0, 0, 0.32)
-            lightColor: Qt.rgba(1, 1, 1, 0.10)
-            darkOffset: -3.2
-            lightOffset: 3.2
-            darkRadius: 6.5
-            lightRadius: 5.5
+            darkColor: Qt.rgba(0, 0, 0, 0.46)
+            lightColor: Qt.rgba(1, 1, 1, 0.18)
+            darkOffset: -1.9
+            lightOffset: 1.9
+            darkRadius: 3.8
+            lightRadius: 3.2
             active: true
         }
 
