@@ -136,6 +136,14 @@ class WindowManager:
         except RuntimeError:
             return False
 
+    def _is_window_visible(self, window: object | None) -> bool:
+        if window is None or not hasattr(window, "isVisible"):
+            return False
+        try:
+            return bool(window.isVisible())
+        except RuntimeError:
+            return False
+
     def _open_or_recreate_window(self, key: str) -> object | None:
         window = self._windows.get(key)
         if not self._is_window_alive(window):
@@ -218,12 +226,18 @@ class WindowManager:
         background_enabled = bool(payload.get("background_enabled", True))
         if not adventure or not scene:
             return
-        self._open_or_recreate_window("map")
-        if background_enabled or self._is_window_alive(self._windows.get("background")):
-            self._open_or_recreate_window("background")
+        map_window = self._open_or_recreate_window("map")
+        if map_window is not None:
+            self._activate_window(map_window)
+        background_window = self._windows.get("background")
+        keep_background_open = self._is_window_visible(background_window)
+        if background_enabled or keep_background_open:
+            background_window = self._open_or_recreate_window("background")
+            if background_window is not None:
+                self._activate_window(background_window)
         self._set_window_title("launcher", f"DnD Maps - Лаунчер - {adventure}")
         self._set_window_title("map", f"DnD Maps - Карта - {adventure}/{scene}")
-        if background_enabled or self._is_window_alive(self._windows.get("background")):
+        if background_enabled or keep_background_open:
             self._set_window_title("background", f"DnD Maps - Фон - {adventure}/{scene}")
 
     def _on_scene_saved(self, event_name: str, payload: dict[str, object]) -> None:
