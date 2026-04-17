@@ -9,7 +9,7 @@ Window {
     height: 720
     visible: true
     color: "#111215"
-    title: "DnD Maps - Р¤РѕРЅ"
+    title: "DnD Maps - Фон"
 
     function toggleFullscreenMode() {
         visibility = visibility === Window.FullScreen ? Window.Windowed : Window.FullScreen
@@ -59,7 +59,7 @@ Window {
         onErrorOccurred: function(error, errorString) {
             if (error !== MediaPlayer.NoError) {
                 stop()
-                console.warn("РћС€РёР±РєР° С„РѕРЅРѕРІРѕРіРѕ РІРёРґРµРѕ:", errorString)
+                console.warn("Ошибка фонового видео:", errorString)
             }
         }
         onMediaStatusChanged: {
@@ -122,7 +122,7 @@ Window {
         anchors.leftMargin: 14
         anchors.topMargin: 10
         color: "#DADCE2"
-        text: appController.currentScene.length > 0 ? ("РЎС†РµРЅР°: " + appController.currentScene) : "РЎС†РµРЅР°: РїРѕ СѓРјРѕР»С‡Р°РЅРёСЋ"
+        text: appController.currentScene.length > 0 ? ("Сцена: " + appController.currentScene) : "Сцена: по умолчанию"
         font.pixelSize: 13
         opacity: 0.72
     }

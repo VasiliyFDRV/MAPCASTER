@@ -1550,30 +1550,38 @@ Window {
         theme: neumoTheme
         compactMode: true
         radius: 12
-        contentPadding: 6
-        implicitHeight: 36
-        implicitWidth: 132
+        contentPadding: 4
+        implicitWidth: 108
+        implicitHeight: 34
+        baseShadowOffset: 3.1
+        baseShadowRadius: 6.8
+        hoverShadowOffset: 3.7
+        hoverShadowRadius: 7.6
+        pressedShadowOffset: 2.5
+        pressedShadowRadius: 5.8
+        shadowSamples: 19
 
         RowLayout {
             anchors.fill: parent
-            anchors.leftMargin: 10
-            anchors.rightMargin: 10
+            anchors.margins: 4
             spacing: 8
 
             Rectangle {
-                Layout.preferredWidth: 18
-                Layout.preferredHeight: 18
-                radius: 5
+                Layout.preferredWidth: 22
+                Layout.preferredHeight: 22
+                radius: 7
                 color: button.swatchColor
                 border.width: 1
-                border.color: Qt.rgba(1, 1, 1, 0.24)
+                border.color: Qt.rgba(1, 1, 1, 0.18)
             }
 
             Label {
                 Layout.fillWidth: true
-                text: button.labelText
+                Layout.minimumWidth: 0
+                text: button.labelText.length > 0 ? button.labelText : String(button.swatchColor).toUpperCase()
                 color: mapWindow.uiTextPrimary
-                font.pixelSize: 12
+                font.pixelSize: 11
+                font.weight: Font.Medium
                 elide: Text.ElideRight
                 verticalAlignment: Text.AlignVCenter
             }
@@ -2570,7 +2578,16 @@ Window {
         contentItem: ColumnLayout {
             spacing: mapWindow.toolPopupSpacing
             ToolPopupTitle { text: "Перо" }
-            ToolValueLabel { Layout.fillWidth: true; text: "Цвет" }
+            RowLayout {
+                Layout.fillWidth: true
+                spacing: 8
+                ToolValueLabel { Layout.fillWidth: true; text: "Цвет" }
+                ToolColorButton {
+                    Layout.preferredWidth: implicitWidth
+                    swatchColor: penColor
+                    onClicked: openMapToolColorDialog("pen")
+                }
+            }
             Flow {
                 Layout.fillWidth: true
                 width: parent ? parent.width - mapWindow.toolPopupControlShadowInset * 2 : 0
@@ -2582,25 +2599,6 @@ Window {
                         selected: String(penColor).toLowerCase() === String(modelData).toLowerCase()
                         onClicked: penColor = modelData
                     }
-                }
-            }
-            RowLayout {
-                Layout.fillWidth: true
-                spacing: 8
-
-                ToolField {
-                    Layout.fillWidth: true
-                    Layout.minimumWidth: 0
-                    text: String(penColor)
-                    placeholderText: "#FFFFFF"
-                    onEditingFinished: penColor = text
-                }
-
-                ToolColorButton {
-                    Layout.preferredWidth: implicitWidth
-                    swatchColor: penColor
-                    labelText: "Свой"
-                    onClicked: openMapToolColorDialog("pen")
                 }
             }
             ToolValueLabel { text: "Размер (ft)" }
@@ -2632,7 +2630,16 @@ Window {
         contentItem: ColumnLayout {
             spacing: mapWindow.toolPopupSpacing
             ToolPopupTitle { text: "Заливка" }
-            ToolValueLabel { Layout.fillWidth: true; text: "Цвет" }
+            RowLayout {
+                Layout.fillWidth: true
+                spacing: 8
+                ToolValueLabel { Layout.fillWidth: true; text: "Цвет" }
+                ToolColorButton {
+                    Layout.preferredWidth: implicitWidth
+                    swatchColor: fillColor
+                    onClicked: openMapToolColorDialog("fill")
+                }
+            }
             Flow {
                 Layout.fillWidth: true
                 width: parent ? parent.width - mapWindow.toolPopupControlShadowInset * 2 : 0
@@ -2644,25 +2651,6 @@ Window {
                         selected: String(fillColor).toLowerCase() === String(modelData).toLowerCase()
                         onClicked: fillColor = modelData
                     }
-                }
-            }
-            RowLayout {
-                Layout.fillWidth: true
-                spacing: 8
-
-                ToolField {
-                    Layout.fillWidth: true
-                    Layout.minimumWidth: 0
-                    text: String(fillColor)
-                    placeholderText: "#FFFFFF"
-                    onEditingFinished: fillColor = text
-                }
-
-                ToolColorButton {
-                    Layout.preferredWidth: implicitWidth
-                    swatchColor: fillColor
-                    labelText: "Свой"
-                    onClicked: openMapToolColorDialog("fill")
                 }
             }
             ToolValueLabel { text: "Прозрачность" }
@@ -2714,7 +2702,16 @@ Window {
         contentItem: ColumnLayout {
             spacing: mapWindow.toolPopupSpacing
             ToolPopupTitle { text: "Выделение гексов" }
-            ToolValueLabel { Layout.fillWidth: true; text: "Цвет" }
+            RowLayout {
+                Layout.fillWidth: true
+                spacing: 8
+                ToolValueLabel { Layout.fillWidth: true; text: "Цвет" }
+                ToolColorButton {
+                    Layout.preferredWidth: implicitWidth
+                    swatchColor: hexColor
+                    onClicked: openMapToolColorDialog("hex")
+                }
+            }
             Flow {
                 Layout.fillWidth: true
                 width: parent ? parent.width - mapWindow.toolPopupControlShadowInset * 2 : 0
@@ -2726,25 +2723,6 @@ Window {
                         selected: String(hexColor).toLowerCase() === String(modelData).toLowerCase()
                         onClicked: hexColor = modelData
                     }
-                }
-            }
-            RowLayout {
-                Layout.fillWidth: true
-                spacing: 8
-
-                ToolField {
-                    Layout.fillWidth: true
-                    Layout.minimumWidth: 0
-                    text: String(hexColor)
-                    placeholderText: "#FFFFFF"
-                    onEditingFinished: hexColor = text
-                }
-
-                ToolColorButton {
-                    Layout.preferredWidth: implicitWidth
-                    swatchColor: hexColor
-                    labelText: "Свой"
-                    onClicked: openMapToolColorDialog("hex")
                 }
             }
             ToolValueLabel { Layout.fillWidth: true; text: "Прозрачность заливки" }
