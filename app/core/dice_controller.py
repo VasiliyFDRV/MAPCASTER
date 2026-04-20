@@ -969,51 +969,9 @@ class DiceController(QObject):
             return
 
         if requested_mode == "physics_map" and not self._map_window_open:
-            requested_mode = "physics_map"
-            completed_mode = "physics_fallback_random"
-            result: dict[str, Any]
-            if kind == "d20":
-                result = self._dice_service.roll_d20(
-                    int(req_payload.get("count", 0)),
-                    str(req_payload.get("mode", "normal")),
-                    int(req_payload.get("bonus", 0)),
-                )
-            elif kind == "standard":
-                result = self._dice_service.roll_standard(
-                    int(req_payload.get("d4", 0)),
-                    int(req_payload.get("d6", 0)),
-                    int(req_payload.get("d8", 0)),
-                    int(req_payload.get("d10", 0)),
-                    int(req_payload.get("d12", 0)),
-                    int(req_payload.get("bonus", 0)),
-                )
-            elif kind == "d100":
-                result = self._dice_service.roll_d100()
-            elif kind == "all":
-                result = self._dice_service.roll_all(
-                    int(req_payload.get("d20_count", 0)),
-                    str(req_payload.get("d20_mode", "normal")),
-                    int(req_payload.get("d20_bonus", 0)),
-                    int(req_payload.get("d4", 0)),
-                    int(req_payload.get("d6", 0)),
-                    int(req_payload.get("d8", 0)),
-                    int(req_payload.get("d10", 0)),
-                    int(req_payload.get("d12", 0)),
-                    int(req_payload.get("standard_bonus", 0)),
-                )
-            else:
-                return
-            self._event_bus.publish(
-                "dice.roll_completed",
-                {
-                    "request_id": request_id,
-                    "kind": kind,
-                    "mode": completed_mode,
-                    "requested_mode": requested_mode,
-                    "result": result,
-                },
+            self._debug(
+                f"physics_map requested while map flag is false; proceeding with visual pipeline request_id={request_id} kind={kind}"
             )
-            return
 
         if kind == "d100" and request_id > 0:
             self._pending_physics_d100[request_id] = {
