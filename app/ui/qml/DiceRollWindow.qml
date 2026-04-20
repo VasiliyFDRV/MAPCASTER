@@ -32,13 +32,11 @@ Window {
         if (!neumoTheme) {
             return Qt.rgba(59 / 255, 60 / 255, 64 / 255, 0.4)
         }
-        var deltaR = neumoTheme.shadowLightBase.r - neumoTheme.baseColor.r
-        var deltaG = neumoTheme.shadowLightBase.g - neumoTheme.baseColor.g
-        var deltaB = neumoTheme.shadowLightBase.b - neumoTheme.baseColor.b
-        var r = Math.min(1, resultsFillColor.r + deltaR)
-        var g = Math.min(1, resultsFillColor.g + deltaG)
-        var b = Math.min(1, resultsFillColor.b + deltaB)
-        return Qt.rgba(r, g, b, neumoTheme.insetLightAlpha / 1.5)
+        return Qt.rgba(
+            neumoTheme.shadowLightBase.r,
+            neumoTheme.shadowLightBase.g,
+            neumoTheme.shadowLightBase.b,
+            neumoTheme.insetLightAlpha / 1.6)
     }
 
     property var neumoTheme: NeumoTheme {
@@ -56,7 +54,6 @@ Window {
         anchors.fill: parent
         anchors.margins: 12
         theme: neumoTheme
-        useFrameProfile: true
         radius: cardRadius
         fillColor: resultsFillColor
         insetDarkColor: resultsInsetDarkColor
