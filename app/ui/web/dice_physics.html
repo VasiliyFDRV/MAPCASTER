@@ -349,7 +349,7 @@
       transform: translate(-50%, -50%);
       transform-style: preserve-3d;
       pointer-events: none;
-      z-index: 0;
+      z-index: -1;
       opacity: 0;
     }
 
@@ -1396,7 +1396,7 @@
           outlineDice.appendChild(face);
           outlineFaceEls.push(face);
         }
-        state.wrap.insertBefore(outlineDice, state.dice);
+        state.dice.insertBefore(outlineDice, state.dice.firstChild || null);
         state.outlineDice = outlineDice;
         state.outlineFaceEls = outlineFaceEls;
         return outlineDice;
@@ -1425,7 +1425,7 @@
         }
         outlineDice.style.opacity = String(accent.opacity);
         outlineDice.style.transform =
-          `translate(-50%, -50%) scale(${accent.scale}) rotateZ(${state.rz}deg) rotateY(${state.ry}deg) rotateX(${state.rx}deg)`;
+          `translate(-50%, -50%) scale(${accent.scale})`;
         for (let i = 0; i < outlineFaceEls.length; i += 1) {
           const face = outlineFaceEls[i];
           if (!face) continue;
