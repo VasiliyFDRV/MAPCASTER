@@ -1195,11 +1195,14 @@
           return {
             faceShadows: [],
             filterExtras: [],
+            diceFilterExtras: [
+              `drop-shadow(0 0 ${(2.2 + p * 1.0).toFixed(2)}px ${colorWithAlpha('#38aa60', 0.22 + p * 0.12)})`
+            ],
             labelColor: '#2f8b4b',
             labelStroke: '0px transparent',
             labelShadow: appendCommaSeparated('none', [
-              `0 0 ${(3.2 + p * 1.0).toFixed(2)}px ${colorWithAlpha('#2f8b4b', 0.10 + p * 0.07)}`,
-              `0 0 ${(5.8 + p * 1.6).toFixed(2)}px ${colorWithAlpha('#60ffa4', 0.03 + p * 0.04)}`
+              `0 0 ${(2.6 + p * 0.8).toFixed(2)}px ${colorWithAlpha('#2f8b4b', 0.06 + p * 0.05)}`,
+              `0 0 ${(4.8 + p * 1.2).toFixed(2)}px ${colorWithAlpha('#60ffa4', 0.015 + p * 0.02)}`
             ])
           };
         }
@@ -1207,11 +1210,14 @@
           return {
             faceShadows: [],
             filterExtras: [],
+            diceFilterExtras: [
+              `drop-shadow(0 0 ${(2.2 + p * 1.0).toFixed(2)}px ${colorWithAlpha('#9c2f2f', 0.22 + p * 0.12)})`
+            ],
             labelColor: '#a33c3c',
             labelStroke: '0px transparent',
             labelShadow: appendCommaSeparated('none', [
-              `0 0 ${(3.2 + p * 1.0).toFixed(2)}px ${colorWithAlpha('#a33c3c', 0.10 + p * 0.07)}`,
-              `0 0 ${(5.8 + p * 1.6).toFixed(2)}px ${colorWithAlpha('#ff7676', 0.03 + p * 0.04)}`
+              `0 0 ${(2.6 + p * 0.8).toFixed(2)}px ${colorWithAlpha('#a33c3c', 0.06 + p * 0.05)}`,
+              `0 0 ${(4.8 + p * 1.2).toFixed(2)}px ${colorWithAlpha('#ff7676', 0.015 + p * 0.02)}`
             ])
           };
         }
@@ -1219,11 +1225,14 @@
           return {
             faceShadows: [],
             filterExtras: [],
+            diceFilterExtras: [
+              `drop-shadow(0 0 ${(2.4 + p * 1.2).toFixed(2)}px ${colorWithAlpha('#ffd55c', 0.24 + p * 0.10)})`
+            ],
             labelColor: '#ffffcc',
             labelStroke: '0px transparent',
             labelShadow: appendCommaSeparated('none', [
-              `0 0 ${(3.4 + p * 1.2).toFixed(2)}px ${colorWithAlpha('#ffffcc', 0.14 + p * 0.08)}`,
-              `0 0 ${(6.2 + p * 1.8).toFixed(2)}px ${colorWithAlpha('#ffff99', 0.05 + p * 0.04)}`
+              `0 0 ${(2.8 + p * 0.9).toFixed(2)}px ${colorWithAlpha('#ffffcc', 0.08 + p * 0.05)}`,
+              `0 0 ${(5.0 + p * 1.4).toFixed(2)}px ${colorWithAlpha('#ffff99', 0.02 + p * 0.03)}`
             ])
           };
         }
@@ -1231,11 +1240,14 @@
           return {
             faceShadows: [],
             filterExtras: [],
+            diceFilterExtras: [
+              `drop-shadow(0 0 ${(2.4 + p * 1.2).toFixed(2)}px ${colorWithAlpha('#982434', 0.24 + p * 0.10)})`
+            ],
             labelColor: '#ffb5b5',
             labelStroke: '0px transparent',
             labelShadow: appendCommaSeparated('none', [
-              `0 0 ${(3.4 + p * 1.2).toFixed(2)}px ${colorWithAlpha('#ffb5b5', 0.14 + p * 0.08)}`,
-              `0 0 ${(6.2 + p * 1.8).toFixed(2)}px ${colorWithAlpha('#d64e4e', 0.05 + p * 0.04)}`
+              `0 0 ${(2.8 + p * 0.9).toFixed(2)}px ${colorWithAlpha('#ffb5b5', 0.08 + p * 0.05)}`,
+              `0 0 ${(5.0 + p * 1.4).toFixed(2)}px ${colorWithAlpha('#d64e4e', 0.02 + p * 0.03)}`
             ])
           };
         }
@@ -1278,6 +1290,13 @@
         }
         face.style.boxShadow = appendCommaSeparated(face.style.boxShadow, accent.faceShadows);
         face.style.filter = appendSpaceSeparated(face.style.filter, accent.filterExtras);
+      }
+
+      function applyD20AccentToDice(state, accent) {
+        if (!state || !state.dice || !accent) {
+          return;
+        }
+        state.dice.style.filter = appendSpaceSeparated(state.dice.style.filter, accent.diceFilterExtras || []);
       }
 
       function applyD20AccentToLabels(face, accent) {
@@ -1558,6 +1577,7 @@
           const accent = buildD20AccentPalette(outcomeKey, outcomePulse);
           const targetFaceEl = findD20ResultFaceEl(state);
           if (accent && targetFaceEl) {
+            applyD20AccentToDice(state, accent);
             applyD20AccentToFace(targetFaceEl, accent);
             applyD20AccentToLabels(targetFaceEl, accent);
           }
@@ -1567,6 +1587,7 @@
           const accent = buildD20AccentPalette(critKey, critPulse);
           const targetFaceEl = findD20ResultFaceEl(state);
           if (accent && targetFaceEl) {
+            applyD20AccentToDice(state, accent);
             applyD20AccentToFace(targetFaceEl, accent);
             applyD20AccentToLabels(targetFaceEl, accent);
           }
