@@ -893,7 +893,8 @@ class DiceController(QObject):
         kind = str(payload.get("kind", "")).strip()
         req_payload = payload.get("payload") or {}
         request_id = int(payload.get("request_id") or 0)
-        roll_visibility_mode = int(payload.get("roll_visibility_mode") or 1)
+        roll_visibility_mode_value = payload.get("roll_visibility_mode")
+        roll_visibility_mode = 1 if roll_visibility_mode_value is None else int(roll_visibility_mode_value)
         requested_mode = self._dice_service.resolve_mode(roll_visibility_mode)
         visual_target = self._mode_target(requested_mode)
         self._debug(

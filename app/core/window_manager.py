@@ -319,7 +319,8 @@ class WindowManager:
         self._windows[key] = None
 
     def _on_roll_visibility_mode_changed(self, event_name: str, payload: dict[str, object]) -> None:
-        mode = int(payload.get("mode") or 1)
+        mode_value = payload.get("mode")
+        mode = 1 if mode_value is None else int(mode_value)
         if mode == 2:
             window = self._open_or_recreate_window("roll_window")
             if window is not None:
