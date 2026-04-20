@@ -719,10 +719,11 @@
           .sort((a, b) => Number(a.rollId || 0) - Number(b.rollId || 0));
 
         for (let i = 0; i < d20States.length; i += 1) {
-          const wrap = d20States[i] && d20States[i].wrap;
-          if (!wrap) continue;
-          wrap.classList.remove('d20-picked-adv');
-          wrap.classList.remove('d20-picked-dis');
+          const d20State = d20States[i];
+          if (!d20State) continue;
+          d20State.d20OutcomeHighlight = '';
+          d20State.d20OutcomePulseUntil = 0;
+          syncD20WrapDebugClasses(d20State);
         }
 
         if (mode !== 'advantage' && mode !== 'disadvantage') {
@@ -739,10 +740,12 @@
           }
           const firstWins = mode === 'advantage' ? (fv >= sv) : (fv <= sv);
           const winner = firstWins ? first : second;
-          if (!winner || !winner.wrap) {
+          if (!winner) {
             continue;
           }
-          winner.wrap.classList.add(mode === 'advantage' ? 'd20-picked-adv' : 'd20-picked-dis');
+          winner.d20OutcomeHighlight = mode === 'advantage' ? 'adv-winner' : 'dis-winner';
+          winner.d20OutcomePulseUntil = performance.now() + 220;
+          syncD20WrapDebugClasses(winner);
         }
       }
 
@@ -1154,6 +1157,168 @@
         return `rgba(238, 238, 238, ${a.toFixed(3)})`;
       }
 
+      function appendCommaSeparated(baseValue, additions) {
+        const parts = [];
+        const base = String(baseValue || '').trim();
+        if (base && base.toLowerCase() !== 'none') {
+          parts.push(base);
+        }
+        const list = Array.isArray(additions) ? additions : [];
+        for (let i = 0; i < list.length; i += 1) {
+          const item = String(list[i] || '').trim();
+          if (item && item.toLowerCase() !== 'none') {
+            parts.push(item);
+          }
+        }
+        return parts.length > 0 ? parts.join(', ') : 'none';
+      }
+
+      function appendSpaceSeparated(baseValue, additions) {
+        const parts = [];
+        const base = String(baseValue || '').trim();
+        if (base && base.toLowerCase() !== 'none') {
+          parts.push(base);
+        }
+        const list = Array.isArray(additions) ? additions : [];
+        for (let i = 0; i < list.length; i += 1) {
+          const item = String(list[i] || '').trim();
+          if (item && item.toLowerCase() !== 'none') {
+            parts.push(item);
+          }
+        }
+        return parts.length > 0 ? parts.join(' ') : 'none';
+      }
+
+      function buildD20AccentPalette(kind, pulse) {
+        const p = clamp(Number(pulse || 0), 0, 1);
+        if (kind === 'adv-winner') {
+          return {
+            faceShadows: [
+              `inset 0 0 0 ${(1.15 + p * 0.55).toFixed(2)}px ${colorWithAlpha('#38aa60', 0.92 + p * 0.08)}`,
+              `inset 0 0 ${(11 + p * 8).toFixed(2)}px ${colorWithAlpha('#2d9454', 0.22 + p * 0.22)}`,
+              `0 0 ${(8 + p * 10).toFixed(2)}px ${colorWithAlpha('#60ffa4', 0.18 + p * 0.30)}`
+            ],
+            filterExtras: [
+              `drop-shadow(0 0 ${(4 + p * 5).toFixed(2)}px ${colorWithAlpha('#60ffa4', 0.14 + p * 0.20)})`
+            ],
+            labelColor: '#2f8b4b',
+            labelStroke: '0px transparent',
+            labelShadow: appendCommaSeparated('none', [
+              `0 0 ${(4.5 + p * 3.5).toFixed(2)}px ${colorWithAlpha('#2f8b4b', 0.30 + p * 0.24)}`
+            ])
+          };
+        }
+        if (kind === 'dis-winner') {
+          return {
+            faceShadows: [
+              `inset 0 0 0 ${(1.15 + p * 0.55).toFixed(2)}px ${colorWithAlpha('#9c2f2f', 0.92 + p * 0.08)}`,
+              `inset 0 0 ${(11 + p * 8).toFixed(2)}px ${colorWithAlpha('#822222', 0.22 + p * 0.22)}`,
+              `0 0 ${(8 + p * 10).toFixed(2)}px ${colorWithAlpha('#ff7676', 0.16 + p * 0.28)}`
+            ],
+            filterExtras: [
+              `drop-shadow(0 0 ${(4 + p * 5).toFixed(2)}px ${colorWithAlpha('#ff7676', 0.14 + p * 0.20)})`
+            ],
+            labelColor: '#a33c3c',
+            labelStroke: '0px transparent',
+            labelShadow: appendCommaSeparated('none', [
+              `0 0 ${(4.5 + p * 3.5).toFixed(2)}px ${colorWithAlpha('#a33c3c', 0.30 + p * 0.24)}`
+            ])
+          };
+        }
+        if (kind === 'crit-success') {
+          return {
+            faceShadows: [
+              `inset 0 0 0 ${(1.05 + p * 0.60).toFixed(2)}px ${colorWithAlpha('#ffdb5e', 0.94)}`,
+              `inset 0 0 ${(12 + p * 8).toFixed(2)}px ${colorWithAlpha('#ffc436', 0.26 + p * 0.22)}`,
+              `0 0 ${(10 + p * 10).toFixed(2)}px ${colorWithAlpha('#ffd55c', 0.22 + p * 0.18)}`
+            ],
+            filterExtras: [
+              `drop-shadow(0 0 ${(5 + p * 4).toFixed(2)}px ${colorWithAlpha('#ffd55c', 0.18 + p * 0.12)})`
+            ],
+            labelColor: '#ffffcc',
+            labelStroke: `1px ${colorWithAlpha('#6e4210', 0.98)}`,
+            labelShadow: appendCommaSeparated('none', [
+              `0 0 2px ${colorWithAlpha('#9a5a10', 0.95)}`,
+              `0 0 ${(6 + p * 3).toFixed(2)}px ${colorWithAlpha('#ffffcc', 0.74)}`,
+              `0 0 ${(11 + p * 4).toFixed(2)}px ${colorWithAlpha('#ffff99', 0.58 + p * 0.08)}`
+            ])
+          };
+        }
+        if (kind === 'crit-fail') {
+          return {
+            faceShadows: [
+              `inset 0 0 0 ${(1.05 + p * 0.60).toFixed(2)}px ${colorWithAlpha('#982434', 0.94)}`,
+              `inset 0 0 ${(12 + p * 8).toFixed(2)}px ${colorWithAlpha('#741625', 0.28 + p * 0.20)}`,
+              `0 0 ${(10 + p * 10).toFixed(2)}px ${colorWithAlpha('#922230', 0.22 + p * 0.18)}`
+            ],
+            filterExtras: [
+              `drop-shadow(0 0 ${(5 + p * 4).toFixed(2)}px ${colorWithAlpha('#c73d55', 0.16 + p * 0.14)})`
+            ],
+            labelColor: '#ffb5b5',
+            labelStroke: `1px ${colorWithAlpha('#5a1f1f', 0.98)}`,
+            labelShadow: appendCommaSeparated('none', [
+              `0 0 2px ${colorWithAlpha('#7b1c1c', 0.95)}`,
+              `0 0 ${(6 + p * 3).toFixed(2)}px ${colorWithAlpha('#ffb5b5', 0.72)}`,
+              `0 0 ${(10 + p * 4).toFixed(2)}px ${colorWithAlpha('#d64e4e', 0.52 + p * 0.08)}`
+            ])
+          };
+        }
+        return null;
+      }
+
+      function syncD20WrapDebugClasses(state) {
+        if (!state || !state.wrap || !state.wrap.classList) {
+          return;
+        }
+        const wrap = state.wrap;
+        wrap.classList.toggle('d20-picked-adv', String(state.d20OutcomeHighlight || '') === 'adv-winner');
+        wrap.classList.toggle('d20-picked-dis', String(state.d20OutcomeHighlight || '') === 'dis-winner');
+        wrap.classList.toggle('d20-crit-success', String(state.d20CritState || '') === 'crit-success');
+        wrap.classList.toggle('d20-crit-fail', String(state.d20CritState || '') === 'crit-fail');
+      }
+
+      function findD20ResultFaceEl(state) {
+        if (!state || String(state.modelKind || '') !== 'd20') {
+          return null;
+        }
+        const face = Number(state.resultFace || 0);
+        if (face <= 0) {
+          return null;
+        }
+        const cls = 'f' + String(face);
+        const faceEls = Array.isArray(state.faceEls) ? state.faceEls : [];
+        for (let i = 0; i < faceEls.length; i += 1) {
+          const el = faceEls[i];
+          if (el && el.classList && el.classList.contains(cls)) {
+            return el;
+          }
+        }
+        return state.wrap ? state.wrap.querySelector('.d20-face.' + cls) : null;
+      }
+
+      function applyD20AccentToFace(face, accent) {
+        if (!face || !accent) {
+          return;
+        }
+        face.style.boxShadow = appendCommaSeparated(face.style.boxShadow, accent.faceShadows);
+        face.style.filter = appendSpaceSeparated(face.style.filter, accent.filterExtras);
+      }
+
+      function applyD20AccentToLabels(face, accent) {
+        if (!face || !accent) {
+          return;
+        }
+        const labels = face.querySelectorAll('.d20-label');
+        for (let i = 0; i < labels.length; i += 1) {
+          const label = labels[i];
+          if (!label) continue;
+          label.style.color = accent.labelColor;
+          label.style.webkitTextStroke = accent.labelStroke;
+          label.style.paintOrder = accent.labelStroke && accent.labelStroke !== '0px transparent' ? 'stroke fill' : 'fill';
+          label.style.textShadow = appendCommaSeparated(label.style.textShadow, [accent.labelShadow]);
+        }
+      }
+
       function buildFaceBackground(cxPct, cyPct) {
         const faceColor = normalizeColor(styleOverrides.faceColor, "#c9c9c9");
         const centerColor = normalizeColor(styleOverrides.gradientCenterColor, faceColor);
@@ -1392,6 +1557,46 @@
             if (!mark) continue;
             mark.style.color = textColor;
             mark.style.textShadow = glowShadow;
+          }
+        }
+      }
+
+      function applyD20OutcomeStyle(state, nowMs) {
+        if (!state || String(state.modelKind || '') !== 'd20') {
+          return;
+        }
+
+        const outcomeKey = String(state.d20OutcomeHighlight || '');
+        const critKey = String(state.d20CritState || '');
+        if (!outcomeKey && !critKey) {
+          return;
+        }
+
+        const now = Number.isFinite(nowMs) ? Number(nowMs) : performance.now();
+        const outcomePulseUntil = Number(state.d20OutcomePulseUntil || 0);
+        const critPulseUntil = Number(state.d20CritPulseUntil || 0);
+        const outcomePulse = outcomeKey ? clamp((outcomePulseUntil - now) / 220, 0, 1) : 0;
+        const critPulse = critKey ? (0.5 + 0.5 * Math.sin(now / 170)) : 0;
+
+        if (outcomeKey) {
+          const accent = buildD20AccentPalette(outcomeKey, outcomePulse);
+          if (accent) {
+            const faces = Array.isArray(state.faceEls) ? state.faceEls : [];
+            for (let i = 0; i < faces.length; i += 1) {
+              const face = faces[i];
+              if (!face) continue;
+              applyD20AccentToFace(face, accent);
+              applyD20AccentToLabels(face, accent);
+            }
+          }
+        }
+
+        if (critKey) {
+          const accent = buildD20AccentPalette(critKey, critPulse);
+          const targetFaceEl = findD20ResultFaceEl(state);
+          if (accent && targetFaceEl) {
+            applyD20AccentToFace(targetFaceEl, accent);
+            applyD20AccentToLabels(targetFaceEl, accent);
           }
         }
       }
@@ -2527,41 +2732,16 @@
         if (!state || String(state.modelKind || '') !== 'd20') {
           return;
         }
-        const wrap = state.wrap;
-        if (!wrap) {
-          return;
-        }
-
-        const faceEls = Array.isArray(state.faceEls) ? state.faceEls : [];
-        for (let i = 0; i < faceEls.length; i += 1) {
-          const el = faceEls[i];
-          if (!el || !el.classList) continue;
-          el.classList.remove('d20-crit-success-face');
-          el.classList.remove('d20-crit-fail-face');
-        }
-
         const face = Number(state.resultFace || 0);
+        state.d20CritState = '';
+        state.d20CritPulseUntil = 0;
         if (face !== 20 && face !== 1) {
+          syncD20WrapDebugClasses(state);
           return;
         }
-
-        let targetFaceEl = null;
-        const cls = 'f' + String(face);
-        for (let i = 0; i < faceEls.length; i += 1) {
-          const el = faceEls[i];
-          if (el && el.classList && el.classList.contains(cls)) {
-            targetFaceEl = el;
-            break;
-          }
-        }
-        if (!targetFaceEl && wrap) {
-          targetFaceEl = wrap.querySelector('.d20-face.' + cls);
-        }
-        if (!targetFaceEl || !targetFaceEl.classList) {
-          return;
-        }
-
-        targetFaceEl.classList.add(face === 20 ? 'd20-crit-success-face' : 'd20-crit-fail-face');
+        state.d20CritState = face === 20 ? 'crit-success' : 'crit-fail';
+        state.d20CritPulseUntil = performance.now() + 1200;
+        syncD20WrapDebugClasses(state);
       }
 
       function applyLighting(state) {
@@ -3039,7 +3219,7 @@
         state.rz = isPolyAlign(state) ? getAlignTargetRz(state, target) : state.alignStartRz;
       }
 
-      function render(state) {
+      function render(state, nowMs) {
         const zNorm = clamp(state.z / 260, 0, 1);
         const cx = state.px;
         const cy = state.py - state.z * 0.55;
@@ -3058,6 +3238,7 @@
         state.shadow.style.opacity = '0';
 
         applyLighting(state);
+        applyD20OutcomeStyle(state, nowMs);
       }
 
       window.clearAllDice = function clearAllDice() {
@@ -3550,6 +3731,10 @@
           resultFace: 0,
           resultEmitted: false,
           resultMeasureAtMs: 0,
+          d20OutcomeHighlight: '',
+          d20OutcomePulseUntil: 0,
+          d20CritState: '',
+          d20CritPulseUntil: 0,
           rollId: rollId,
           wrap: nodes.wrap,
           dice: nodes.dice,
@@ -3616,7 +3801,7 @@
 
         let lastTs = performance.now();
 
-        render(state);
+        render(state, performance.now());
 
         function frame(ts) {
           const dt = Math.min(0.033, (ts - lastTs) / 1000);
@@ -3636,7 +3821,7 @@
             } else if (state.phase === 'preview_idle') {
               state.ry = normalizeAngle(state.ry + 18 * dt);
             }
-            render(state);
+            render(state, ts);
             raf = requestAnimationFrame(frame);
             return;
           }
@@ -3861,7 +4046,7 @@
             }
           }
 
-          render(state);
+          render(state, ts);
           raf = requestAnimationFrame(frame);
         }
 
