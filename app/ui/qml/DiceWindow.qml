@@ -235,6 +235,7 @@ Window {
 
     function cycleRollVisibilityMode() {
         rollVisibilityMode = (rollVisibilityMode + 1) % 3
+        diceController.set_roll_visibility_mode(rollVisibilityMode)
         eventBus.publish("dice.roll_visibility_mode_changed", {
             "mode": rollVisibilityMode
         })
@@ -1363,6 +1364,7 @@ Window {
         resetState()
         loadDieStylesFromSettings()
         loadDieStyleTemplatesFromSettings()
+        diceController.set_roll_visibility_mode(rollVisibilityMode)
         eventBus.publish("dice.roll_visibility_mode_changed", {
             "mode": rollVisibilityMode
         })

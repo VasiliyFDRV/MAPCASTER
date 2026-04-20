@@ -19,6 +19,7 @@ class DiceController(QObject):
         self._dice_service = dice_service
         self._event_bus = event_bus
         self._map_window_open = False
+        self._roll_visibility_mode = 1
         self._request_seq = 0
         self._pending_physics_standard: dict[int, dict[str, Any]] = {}
         self._pending_physics_d20: dict[int, dict[str, Any]] = {}
@@ -36,6 +37,14 @@ class DiceController(QObject):
     @Slot(bool)
     def set_map_window_open(self, is_open: bool) -> None:
         self._map_window_open = bool(is_open)
+
+    @Slot(int)
+    def set_roll_visibility_mode(self, mode: int) -> None:
+        try:
+            value = int(mode)
+        except (TypeError, ValueError):
+            value = 1
+        self._roll_visibility_mode = value if value in {0, 1, 2} else 1
 
     @Slot(result=bool)
     def is_map_window_open(self) -> bool:
@@ -774,7 +783,11 @@ class DiceController(QObject):
         if len(self._pending_physics_d20) > 0:
             self._debug("clear visuals ignored while d20 physics roll is pending")
             return False
-        self._event_bus.publish("dice.visual.clear_requested", {"source": "ui_interaction"})
+        payload: dict[str, Any] = {"source": "ui_interaction"}
+        requested_mode = self._dice_service.resolve_mode(self._roll_visibility_mode)
+        if self._is_visual_mode(requested_mode):
+            payload["target"] = self._mode_target(requested_mode)
+        self._event_bus.publish("dice.visual.clear_requested", payload)
         return True
 
     @Slot(int, str, int, int, int, int, int, int, int, int)
