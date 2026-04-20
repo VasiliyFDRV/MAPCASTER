@@ -9,7 +9,7 @@ Window {
     width: 350
     height: 350
     visible: true
-    color: resultsFillColor
+    color: neumoTheme.baseColor
     title: "DnD Maps - Броски"
 
     property color textPrimary: "#EFEFF2"
@@ -47,7 +47,7 @@ Window {
 
     Rectangle {
         anchors.fill: parent
-        color: resultsFillColor
+        color: neumoTheme.baseColor
     }
 
     NeumoInsetSurface {
