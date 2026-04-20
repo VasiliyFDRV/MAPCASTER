@@ -1198,8 +1198,8 @@
             labelColor: '#2f8b4b',
             labelStroke: '0px transparent',
             labelShadow: appendCommaSeparated('none', [
-              `0 0 ${(4.5 + p * 2.0).toFixed(2)}px ${colorWithAlpha('#2f8b4b', 0.18 + p * 0.12)}`,
-              `0 0 ${(8.0 + p * 3.0).toFixed(2)}px ${colorWithAlpha('#60ffa4', 0.08 + p * 0.08)}`
+              `0 0 ${(3.2 + p * 1.0).toFixed(2)}px ${colorWithAlpha('#2f8b4b', 0.10 + p * 0.07)}`,
+              `0 0 ${(5.8 + p * 1.6).toFixed(2)}px ${colorWithAlpha('#60ffa4', 0.03 + p * 0.04)}`
             ])
           };
         }
@@ -1210,8 +1210,8 @@
             labelColor: '#a33c3c',
             labelStroke: '0px transparent',
             labelShadow: appendCommaSeparated('none', [
-              `0 0 ${(4.5 + p * 2.0).toFixed(2)}px ${colorWithAlpha('#a33c3c', 0.18 + p * 0.12)}`,
-              `0 0 ${(8.0 + p * 3.0).toFixed(2)}px ${colorWithAlpha('#ff7676', 0.08 + p * 0.08)}`
+              `0 0 ${(3.2 + p * 1.0).toFixed(2)}px ${colorWithAlpha('#a33c3c', 0.10 + p * 0.07)}`,
+              `0 0 ${(5.8 + p * 1.6).toFixed(2)}px ${colorWithAlpha('#ff7676', 0.03 + p * 0.04)}`
             ])
           };
         }
@@ -1220,11 +1220,10 @@
             faceShadows: [],
             filterExtras: [],
             labelColor: '#ffffcc',
-            labelStroke: `1px ${colorWithAlpha('#6e4210', 0.98)}`,
+            labelStroke: '0px transparent',
             labelShadow: appendCommaSeparated('none', [
-              `0 0 2px ${colorWithAlpha('#9a5a10', 0.95)}`,
-              `0 0 ${(5.5 + p * 2.0).toFixed(2)}px ${colorWithAlpha('#ffffcc', 0.42 + p * 0.12)}`,
-              `0 0 ${(9.0 + p * 3.0).toFixed(2)}px ${colorWithAlpha('#ffff99', 0.20 + p * 0.08)}`
+              `0 0 ${(3.4 + p * 1.2).toFixed(2)}px ${colorWithAlpha('#ffffcc', 0.14 + p * 0.08)}`,
+              `0 0 ${(6.2 + p * 1.8).toFixed(2)}px ${colorWithAlpha('#ffff99', 0.05 + p * 0.04)}`
             ])
           };
         }
@@ -1233,11 +1232,10 @@
             faceShadows: [],
             filterExtras: [],
             labelColor: '#ffb5b5',
-            labelStroke: `1px ${colorWithAlpha('#5a1f1f', 0.98)}`,
+            labelStroke: '0px transparent',
             labelShadow: appendCommaSeparated('none', [
-              `0 0 2px ${colorWithAlpha('#7b1c1c', 0.95)}`,
-              `0 0 ${(5.5 + p * 2.0).toFixed(2)}px ${colorWithAlpha('#ffb5b5', 0.40 + p * 0.12)}`,
-              `0 0 ${(9.0 + p * 3.0).toFixed(2)}px ${colorWithAlpha('#d64e4e', 0.18 + p * 0.08)}`
+              `0 0 ${(3.4 + p * 1.2).toFixed(2)}px ${colorWithAlpha('#ffb5b5', 0.14 + p * 0.08)}`,
+              `0 0 ${(6.2 + p * 1.8).toFixed(2)}px ${colorWithAlpha('#d64e4e', 0.05 + p * 0.04)}`
             ])
           };
         }
@@ -1558,14 +1556,10 @@
 
         if (outcomeKey) {
           const accent = buildD20AccentPalette(outcomeKey, outcomePulse);
-          if (accent) {
-            const faces = Array.isArray(state.faceEls) ? state.faceEls : [];
-            for (let i = 0; i < faces.length; i += 1) {
-              const face = faces[i];
-              if (!face) continue;
-              applyD20AccentToFace(face, accent);
-              applyD20AccentToLabels(face, accent);
-            }
+          const targetFaceEl = findD20ResultFaceEl(state);
+          if (accent && targetFaceEl) {
+            applyD20AccentToFace(targetFaceEl, accent);
+            applyD20AccentToLabels(targetFaceEl, accent);
           }
         }
 
