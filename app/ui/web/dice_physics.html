@@ -1078,7 +1078,6 @@
           }
         }
 
-        scene.appendChild(shadow);
         scene.appendChild(wrap);
         const nodes = { wrap, dice, shadow, faceEls, coreEl, spec };
 
@@ -3056,13 +3055,7 @@
         state.dice.style.transform =
           `translate(-50%, -50%) rotateZ(${state.rz}deg) rotateY(${state.ry}deg) rotateX(${state.rx}deg)`;
 
-        const shadowBreath = previewIdle ? 1.02 : 1.0;
-        const shadowScale = state.previewMode
-          ? (0.64 * previewScale * previewFitScale * previewViewportScale * shadowBreath)
-          : (0.70 + (1 - zNorm) * 0.18);
-        const shadowOpacity = (state.previewMode ? (previewIdle ? 0.18 : 0.14) : clamp((1 - zNorm) * 0.28, 0, 0.24)) * state.alpha;
-        state.shadow.style.opacity = String(shadowOpacity);
-        state.shadow.style.transform = `translate(${state.px}px, ${state.py}px) translate(-50%, -50%) scale(${shadowScale})`;
+        state.shadow.style.opacity = '0';
 
         applyLighting(state);
       }
@@ -3878,4 +3871,3 @@
   </script>
 </body>
 </html>
-
