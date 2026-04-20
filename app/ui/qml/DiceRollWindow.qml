@@ -9,6 +9,7 @@ Window {
     width: 350
     height: 350
     visible: true
+    flags: Qt.Window | Qt.WindowStaysOnTopHint
     color: neumoTheme.baseColor
     title: "DnD Maps - Броски"
 
