@@ -8,8 +8,13 @@ class DiceService:
     """Pure dice rolling logic isolated from UI and windows."""
 
 
-    def resolve_mode(self, map_window_open: bool) -> str:
-        return "physics" if map_window_open else "random"
+    def resolve_mode(self, roll_visibility_mode: int) -> str:
+        mode = int(roll_visibility_mode)
+        if mode == 0:
+            return "random_hidden"
+        if mode == 2:
+            return "physics_window"
+        return "physics_map"
 
     @staticmethod
     def _clamp_int(value: int, min_value: int, max_value: int) -> int:

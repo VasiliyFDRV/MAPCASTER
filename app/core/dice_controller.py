@@ -41,6 +41,12 @@ class DiceController(QObject):
     def is_map_window_open(self) -> bool:
         return self._map_window_open
 
+    def _mode_target(self, requested_mode: str) -> str:
+        return "roll_window" if str(requested_mode) == "physics_window" else "map"
+
+    def _is_visual_mode(self, requested_mode: str) -> bool:
+        return str(requested_mode) in {"physics_map", "physics_window"}
+
     def _next_request_id(self) -> int:
         self._request_seq += 1
         return self._request_seq
@@ -78,6 +84,7 @@ class DiceController(QObject):
             d10_count = max(0, int(expected_by_sides.get(10, 0)))
             d12_count = max(0, int(expected_by_sides.get(12, 0)))
             bonus = int(pending.get("bonus", 0))
+            requested_mode = str(pending.get("requested_mode", "physics_map"))
             fallback = self._dice_service.roll_standard(d4_count, d6_count, d8_count, d10_count, d12_count, bonus)
             self._debug(
                 f"physics-timeout fallback request_id={req_id} d4={d4_count} d6={d6_count} d8={d8_count} d10={d10_count} d12={d12_count} total={fallback.get('total')} raw={fallback.get('raw_total')}"
@@ -88,7 +95,7 @@ class DiceController(QObject):
                     "request_id": req_id,
                     "kind": "standard",
                     "mode": "physics_fallback_random",
-                    "requested_mode": "physics",
+                    "requested_mode": requested_mode,
                     "result": fallback,
                 },
             )
@@ -126,6 +133,7 @@ class DiceController(QObject):
                 timer.deleteLater()
                 return
 
+            requested_mode = str(pending.get("requested_mode", "physics_map"))
             fallback = self._dice_service.roll_d20(
                 int(pending.get("count", 0)),
                 str(pending.get("mode", "normal")),
@@ -140,7 +148,7 @@ class DiceController(QObject):
                     "request_id": req_id,
                     "kind": "d20",
                     "mode": "physics_fallback_random",
-                    "requested_mode": "physics",
+                    "requested_mode": requested_mode,
                     "result": fallback,
                 },
             )
@@ -166,6 +174,7 @@ class DiceController(QObject):
                 timer.deleteLater()
                 return
 
+            requested_mode = str(pending.get("requested_mode", "physics_map"))
             fallback = self._dice_service.roll_d100()
             self._debug(
                 f"physics-timeout fallback d100 request_id={req_id} total={fallback.get('total')}"
@@ -176,7 +185,7 @@ class DiceController(QObject):
                     "request_id": req_id,
                     "kind": "d100",
                     "mode": "physics_fallback_random",
-                    "requested_mode": "physics",
+                    "requested_mode": requested_mode,
                     "result": fallback,
                 },
             )
@@ -237,6 +246,7 @@ class DiceController(QObject):
         d10_count: int,
         d12_count: int,
         bonus: int,
+        requested_mode: str,
     ) -> tuple[int, bool, dict[str, Any]]:
         c4 = max(0, int(d4_count))
         c6 = max(0, int(d6_count))
@@ -280,6 +290,7 @@ class DiceController(QObject):
                 "values_by_sides": {4: [], 6: [], 8: [], 10: [], 12: []},
                 "expected_total": 0,
                 "bonus": b,
+                "requested_mode": str(requested_mode or "physics_map"),
             }
         expected_by_sides = dict(pending.get("expected_by_sides") or {})
         expected_by_sides[4] = int(expected_by_sides.get(4, 0)) + c4
@@ -296,6 +307,7 @@ class DiceController(QObject):
             + int(expected_by_sides.get(12, 0))
         )
         pending["bonus"] = b
+        pending["requested_mode"] = str(requested_mode or pending.get("requested_mode", "physics_map"))
         pending.setdefault("values_by_sides", {4: [], 6: [], 8: [], 10: [], 12: []})
 
         self._pending_physics_standard[master_request_id] = pending
@@ -309,6 +321,7 @@ class DiceController(QObject):
         count: int,
         mode: str,
         bonus: int,
+        requested_mode: str,
     ) -> tuple[int, bool, dict[str, Any]]:
         c = max(1, int(count))
         m = str(mode)
@@ -351,11 +364,13 @@ class DiceController(QObject):
                 "bonus": b,
                 "expected_total": 0,
                 "values": [],
+                "requested_mode": str(requested_mode or "physics_map"),
             }
         pending["count"] = int(pending.get("count", 0)) + c
         pending["mode"] = m
         pending["bonus"] = b
         pending["expected_total"] = int(pending.get("expected_total", 0)) + add_expected
+        pending["requested_mode"] = str(requested_mode or pending.get("requested_mode", "physics_map"))
         pending.setdefault("values", [])
 
         self._pending_physics_d20[master_request_id] = pending
@@ -444,7 +459,7 @@ class DiceController(QObject):
                 "request_id": req_id,
                 "kind": "standard",
                 "mode": "physics",
-                "requested_mode": "physics",
+                "requested_mode": str(pending.get("requested_mode", "physics_map")),
                 "result": result,
             },
         )
@@ -548,7 +563,7 @@ class DiceController(QObject):
                 "request_id": req_id,
                 "kind": "d20",
                 "mode": "physics",
-                "requested_mode": "physics",
+                "requested_mode": str(pending.get("requested_mode", "physics_map")),
                 "result": result,
             },
         )
@@ -683,18 +698,19 @@ class DiceController(QObject):
                 "request_id": req_id,
                 "kind": "d100",
                 "mode": "physics",
-                "requested_mode": "physics",
+                "requested_mode": str(pending.get("requested_mode", "physics_map")),
                 "result": result,
             },
         )
 
-    @Slot(int, str, int)
-    def request_roll_d20(self, count: int, mode: str, bonus: int) -> None:
+    @Slot(int, str, int, int)
+    def request_roll_d20(self, count: int, mode: str, bonus: int, roll_visibility_mode: int) -> None:
         self._event_bus.publish(
             "dice.roll_requested",
             {
                 "request_id": self._next_request_id(),
                 "kind": "d20",
+                "roll_visibility_mode": int(roll_visibility_mode),
                 "payload": {
                     "count": int(count),
                     "mode": str(mode),
@@ -703,7 +719,7 @@ class DiceController(QObject):
             },
         )
 
-    @Slot(int, int, int, int, int, int)
+    @Slot(int, int, int, int, int, int, int)
     def request_roll_standard(
         self,
         d4: int,
@@ -712,12 +728,14 @@ class DiceController(QObject):
         d10: int,
         d12: int,
         bonus: int,
+        roll_visibility_mode: int,
     ) -> None:
         self._event_bus.publish(
             "dice.roll_requested",
             {
                 "request_id": self._next_request_id(),
                 "kind": "standard",
+                "roll_visibility_mode": int(roll_visibility_mode),
                 "payload": {
                     "d4": int(d4),
                     "d6": int(d6),
@@ -729,13 +747,14 @@ class DiceController(QObject):
             },
         )
 
-    @Slot()
-    def request_roll_d100(self) -> None:
+    @Slot(int)
+    def request_roll_d100(self, roll_visibility_mode: int) -> None:
         self._event_bus.publish(
             "dice.roll_requested",
             {
                 "request_id": self._next_request_id(),
                 "kind": "d100",
+                "roll_visibility_mode": int(roll_visibility_mode),
                 "payload": {},
             },
         )
@@ -758,7 +777,7 @@ class DiceController(QObject):
         self._event_bus.publish("dice.visual.clear_requested", {"source": "ui_interaction"})
         return True
 
-    @Slot(int, str, int, int, int, int, int, int, int)
+    @Slot(int, str, int, int, int, int, int, int, int, int)
     def request_roll_all(
         self,
         d20_count: int,
@@ -770,12 +789,14 @@ class DiceController(QObject):
         d10: int,
         d12: int,
         standard_bonus: int,
+        roll_visibility_mode: int,
     ) -> None:
         self._event_bus.publish(
             "dice.roll_requested",
             {
                 "request_id": self._next_request_id(),
                 "kind": "all",
+                "roll_visibility_mode": int(roll_visibility_mode),
                 "payload": {
                     "d20_count": int(d20_count),
                     "d20_mode": str(d20_mode),
@@ -872,8 +893,9 @@ class DiceController(QObject):
         kind = str(payload.get("kind", "")).strip()
         req_payload = payload.get("payload") or {}
         request_id = int(payload.get("request_id") or 0)
-
-        requested_mode = self._dice_service.resolve_mode(self._map_window_open)
+        roll_visibility_mode = int(payload.get("roll_visibility_mode") or 1)
+        requested_mode = self._dice_service.resolve_mode(roll_visibility_mode)
+        visual_target = self._mode_target(requested_mode)
         self._debug(
             f"roll_requested kind={kind} request_id={request_id} requested_mode={requested_mode} payload={req_payload}"
         )
@@ -893,8 +915,111 @@ class DiceController(QObject):
 
         visual_dice = self._build_visual_dice_list(kind, req_payload)
 
+        if requested_mode == "physics_window":
+            self._event_bus.publish("dice.roll_window.ensure_open", {"source": "dice_controller"})
+
+        if requested_mode == "random_hidden":
+            result: dict[str, Any]
+            if kind == "d20":
+                result = self._dice_service.roll_d20(
+                    int(req_payload.get("count", 0)),
+                    str(req_payload.get("mode", "normal")),
+                    int(req_payload.get("bonus", 0)),
+                )
+            elif kind == "standard":
+                result = self._dice_service.roll_standard(
+                    int(req_payload.get("d4", 0)),
+                    int(req_payload.get("d6", 0)),
+                    int(req_payload.get("d8", 0)),
+                    int(req_payload.get("d10", 0)),
+                    int(req_payload.get("d12", 0)),
+                    int(req_payload.get("bonus", 0)),
+                )
+            elif kind == "d100":
+                result = self._dice_service.roll_d100()
+            elif kind == "all":
+                result = self._dice_service.roll_all(
+                    int(req_payload.get("d20_count", 0)),
+                    str(req_payload.get("d20_mode", "normal")),
+                    int(req_payload.get("d20_bonus", 0)),
+                    int(req_payload.get("d4", 0)),
+                    int(req_payload.get("d6", 0)),
+                    int(req_payload.get("d8", 0)),
+                    int(req_payload.get("d10", 0)),
+                    int(req_payload.get("d12", 0)),
+                    int(req_payload.get("standard_bonus", 0)),
+                )
+            else:
+                return
+
+            self._debug(
+                f"publish roll_completed request_id={request_id} kind={kind} mode={completed_mode} "
+                f"total={result.get('total') if isinstance(result, dict) else '-'}"
+            )
+            self._event_bus.publish(
+                "dice.roll_completed",
+                {
+                    "request_id": request_id,
+                    "kind": kind,
+                    "mode": completed_mode,
+                    "requested_mode": requested_mode,
+                    "result": result,
+                },
+            )
+            return
+
+        if requested_mode == "physics_map" and not self._map_window_open:
+            requested_mode = "physics_map"
+            completed_mode = "physics_fallback_random"
+            result: dict[str, Any]
+            if kind == "d20":
+                result = self._dice_service.roll_d20(
+                    int(req_payload.get("count", 0)),
+                    str(req_payload.get("mode", "normal")),
+                    int(req_payload.get("bonus", 0)),
+                )
+            elif kind == "standard":
+                result = self._dice_service.roll_standard(
+                    int(req_payload.get("d4", 0)),
+                    int(req_payload.get("d6", 0)),
+                    int(req_payload.get("d8", 0)),
+                    int(req_payload.get("d10", 0)),
+                    int(req_payload.get("d12", 0)),
+                    int(req_payload.get("bonus", 0)),
+                )
+            elif kind == "d100":
+                result = self._dice_service.roll_d100()
+            elif kind == "all":
+                result = self._dice_service.roll_all(
+                    int(req_payload.get("d20_count", 0)),
+                    str(req_payload.get("d20_mode", "normal")),
+                    int(req_payload.get("d20_bonus", 0)),
+                    int(req_payload.get("d4", 0)),
+                    int(req_payload.get("d6", 0)),
+                    int(req_payload.get("d8", 0)),
+                    int(req_payload.get("d10", 0)),
+                    int(req_payload.get("d12", 0)),
+                    int(req_payload.get("standard_bonus", 0)),
+                )
+            else:
+                return
+            self._event_bus.publish(
+                "dice.roll_completed",
+                {
+                    "request_id": request_id,
+                    "kind": kind,
+                    "mode": completed_mode,
+                    "requested_mode": requested_mode,
+                    "result": result,
+                },
+            )
+            return
+
         if kind == "d100" and request_id > 0:
-            self._pending_physics_d100[request_id] = {"request_id": request_id}
+            self._pending_physics_d100[request_id] = {
+                "request_id": request_id,
+                "requested_mode": requested_mode,
+            }
             self._start_physics_d100_fallback_timer(request_id)
             self._debug(f"d100 physics request_id={request_id} awaiting tens+ones")
             self._event_bus.publish(
@@ -904,6 +1029,7 @@ class DiceController(QObject):
                     "kind": "d100",
                     "dice": [10, 10],
                     "requested_mode": requested_mode,
+                    "target": visual_target,
                     "append": False,
                 },
             )
@@ -918,6 +1044,7 @@ class DiceController(QObject):
                 count,
                 mode,
                 bonus,
+                requested_mode,
             )
             multiplier = 2 if str(pending.get("mode", "normal")) in {"advantage", "disadvantage"} else 1
             add_total = count * multiplier
@@ -933,6 +1060,7 @@ class DiceController(QObject):
                     "kind": "d20",
                     "dice": [20] * add_total,
                     "requested_mode": requested_mode,
+                    "target": visual_target,
                     "d20_mode": str(pending.get("mode", "normal")),
                     "append": append,
                 },
@@ -955,6 +1083,7 @@ class DiceController(QObject):
                     d10_count,
                     d12_count,
                     bonus,
+                    requested_mode,
                 )
                 self._debug(
                     f"standard physics batch request_id={master_request_id} append={append} "
@@ -972,6 +1101,7 @@ class DiceController(QObject):
                         "kind": "standard",
                         "dice": [4] * d4_count + [6] * d6_count + [8] * d8_count + [10] * d10_count + [12] * d12_count,
                         "requested_mode": requested_mode,
+                        "target": visual_target,
                         "append": append,
                     },
                 )
@@ -985,11 +1115,12 @@ class DiceController(QObject):
                     "kind": kind,
                     "dice": visual_dice,
                     "requested_mode": requested_mode,
+                    "target": visual_target,
                     "append": False,
                 },
             )
 
-        if requested_mode == "physics" and kind not in {"standard", "d100", "d20"}:
+        if self._is_visual_mode(requested_mode) and kind not in {"standard", "d100", "d20"}:
             completed_mode = "physics_fallback_random"
 
         result: dict[str, Any]
@@ -1059,7 +1190,7 @@ class DiceController(QObject):
         kind = str(payload.get("kind", "")).strip()
         mode = str(payload.get("mode", "")).strip()
         requested_mode = str(payload.get("requested_mode", "")).strip()
-        is_physics_roll = mode in {"physics", "physics_fallback_random"} or requested_mode == "physics"
+        is_physics_roll = mode in {"physics", "physics_fallback_random"} or self._is_visual_mode(requested_mode)
         should_sync = is_physics_roll and kind in {"standard", "d20", "d100"}
 
         if not should_sync:

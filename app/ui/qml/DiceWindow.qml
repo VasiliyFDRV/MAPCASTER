@@ -235,6 +235,14 @@ Window {
 
     function cycleRollVisibilityMode() {
         rollVisibilityMode = (rollVisibilityMode + 1) % 3
+        eventBus.publish("dice.roll_visibility_mode_changed", {
+            "mode": rollVisibilityMode
+        })
+    }
+
+    function isVisualRollMode(modeValue) {
+        var mode = Number(modeValue)
+        return mode === 1 || mode === 2
     }
 
     function rollVisibilityIconSource() {
@@ -450,7 +458,7 @@ Window {
 
     function rollD20Only() {
         clearResults()
-        diceController.request_roll_d20(effectiveCount(d20Count), d20Mode, d20Bonus)
+        diceController.request_roll_d20(effectiveCount(d20Count), d20Mode, d20Bonus, rollVisibilityMode)
     }
     function rollStandardOnly() {
         if (!canRollStandard()) {
@@ -458,14 +466,14 @@ Window {
         }
         clearResults()
         waitingStandardPhysicsResult = isPhysicsStandardRequest(d4Count, d6Count, d8Count, d10Count, d12Count)
-            && diceController.is_map_window_open()
+            && isVisualRollMode(rollVisibilityMode)
         console.log("[dice-ui-debug] rollStandardOnly waiting=" + waitingStandardPhysicsResult
             + " d4=" + d4Count + " d6=" + d6Count + " d8=" + d8Count + " d10=" + d10Count + " d12=" + d12Count
             + " bonus=" + standardBonus)
         if (waitingStandardPhysicsResult) {
             physicsFallbackTimer.restart()
         }
-        diceController.request_roll_standard(d4Count, d6Count, d8Count, d10Count, d12Count, standardBonus)
+        diceController.request_roll_standard(d4Count, d6Count, d8Count, d10Count, d12Count, standardBonus, rollVisibilityMode)
     }
     function rollSingleStandardDie(sides, configuredCount) {
         var c = effectiveCount(configuredCount)
@@ -481,18 +489,18 @@ Window {
         else if (sides === 12) d12 = c
         clearResults()
         waitingStandardPhysicsResult = isPhysicsStandardRequest(d4, d6, d8, d10, d12)
-            && diceController.is_map_window_open()
+            && isVisualRollMode(rollVisibilityMode)
         console.log("[dice-ui-debug] rollSingleStandardDie sides=" + sides + " configured=" + configuredCount
             + " effective=" + c + " waiting=" + waitingStandardPhysicsResult
             + " d4=" + d4 + " d6=" + d6 + " d8=" + d8 + " d10=" + d10 + " d12=" + d12 + " bonus=" + standardBonus)
         if (waitingStandardPhysicsResult) {
             physicsFallbackTimer.restart()
         }
-        diceController.request_roll_standard(d4, d6, d8, d10, d12, standardBonus)
+        diceController.request_roll_standard(d4, d6, d8, d10, d12, standardBonus, rollVisibilityMode)
     }
     function rollD100Only() {
         clearResults()
-        diceController.request_roll_d100()
+        diceController.request_roll_d100(rollVisibilityMode)
     }
     function rollAll() {
         if (!canRollAll()) {
@@ -503,7 +511,7 @@ Window {
         clearResults()
         waitingStandardPhysicsResult = hasStandard
             && isPhysicsStandardRequest(d4Count, d6Count, d8Count, d10Count, d12Count)
-            && diceController.is_map_window_open()
+            && isVisualRollMode(rollVisibilityMode)
         console.log("[dice-ui-debug] rollAll split requests=" + (hasD20 || hasStandard)
             + " d20=" + d20Count + " mode=" + d20Mode + " d20Bonus=" + d20Bonus
             + " standard(d4/d6/d8/d10/d12)=" + d4Count + "/" + d6Count + "/" + d8Count + "/" + d10Count + "/" + d12Count
@@ -512,10 +520,10 @@ Window {
             physicsFallbackTimer.restart()
         }
         if (hasD20) {
-            diceController.request_roll_d20(effectiveCount(d20Count), d20Mode, d20Bonus)
+            diceController.request_roll_d20(effectiveCount(d20Count), d20Mode, d20Bonus, rollVisibilityMode)
         }
         if (hasStandard) {
-            diceController.request_roll_standard(d4Count, d6Count, d8Count, d10Count, d12Count, standardBonus)
+            diceController.request_roll_standard(d4Count, d6Count, d8Count, d10Count, d12Count, standardBonus, rollVisibilityMode)
         }
     }
     function handleRollCompleted(payload) {
@@ -537,7 +545,8 @@ Window {
         } else if (payload.kind === "standard") {
             var expectsPhysics = waitingStandardPhysicsResult
                 || payload.mode === "physics_fallback_random"
-                || payload.requested_mode === "physics"
+                || payload.requested_mode === "physics_map"
+                || payload.requested_mode === "physics_window"
             if (expectsPhysics) {
                 if (payload.mode === "physics") {
                     waitingStandardPhysicsResult = false
@@ -1354,6 +1363,9 @@ Window {
         resetState()
         loadDieStylesFromSettings()
         loadDieStyleTemplatesFromSettings()
+        eventBus.publish("dice.roll_visibility_mode_changed", {
+            "mode": rollVisibilityMode
+        })
         if (!useLiveMainDicePreview && diceMainPreviewCache) {
             diceMainPreviewCache.prewarmAll()
         }

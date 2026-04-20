@@ -34,6 +34,8 @@ class WindowManager:
         self._event_bus.subscribe("scene.open_requested", self._on_scene_open_requested)
         self._event_bus.subscribe("scene.saved", self._on_scene_saved)
         self._event_bus.subscribe("dice.open_requested", self._on_dice_open_requested)
+        self._event_bus.subscribe("dice.roll_visibility_mode_changed", self._on_roll_visibility_mode_changed)
+        self._event_bus.subscribe("dice.roll_window.ensure_open", self._on_roll_window_ensure_open)
         self._event_bus.subscribe("app.exit_requested", self._on_app_exit_requested)
 
     def create_windows(self) -> None:
@@ -51,6 +53,7 @@ class WindowManager:
         self._windows["map"] = None
         self._windows["background"] = None
         self._windows["dice"] = None
+        self._windows["roll_window"] = None
         self._set_map_window_open_state(False)
 
     def _find_existing_window(self, object_name: str) -> object | None:
@@ -100,6 +103,9 @@ class WindowManager:
         elif key == "dice":
             qml_name = "DiceWindow.qml"
             object_name = "diceWindow"
+        elif key == "roll_window":
+            qml_name = "DiceRollWindow.qml"
+            object_name = "diceRollWindow"
         else:
             return
         if self._windows.get(key) is None:
@@ -152,6 +158,7 @@ class WindowManager:
                 "background": "backgroundWindow",
                 "launcher": "launcherWindow",
                 "dice": "diceWindow",
+                "roll_window": "diceRollWindow",
             }.get(key, "")
             existing_window = self._find_existing_window(object_name) if object_name else None
             if existing_window is not None:
@@ -272,7 +279,9 @@ class WindowManager:
             return
         self._shutdown_in_progress = True
 
-        for key in ("map", "background", "dice", "launcher"):
+        for key in ("map", "background", "dice", "roll_window", "launcher"):
+            if key == "launcher":
+                continue
             window = self._windows.get(key)
             if window is None:
                 continue
@@ -283,11 +292,45 @@ class WindowManager:
                     pass
             self._windows[key] = None
 
+        launcher = self._windows.get("launcher")
+        if launcher is not None:
+            if hasattr(launcher, "close"):
+                try:
+                    launcher.close()
+                except RuntimeError:
+                    pass
+            self._windows["launcher"] = None
+
         self._set_map_window_open_state(False)
 
         app = QGuiApplication.instance()
         if app is not None:
             app.quit()
+
+    def _close_window_if_alive(self, key: str) -> None:
+        window = self._windows.get(key)
+        if window is None:
+            return
+        try:
+            if hasattr(window, "close"):
+                window.close()
+        except RuntimeError:
+            pass
+        self._windows[key] = None
+
+    def _on_roll_visibility_mode_changed(self, event_name: str, payload: dict[str, object]) -> None:
+        mode = int(payload.get("mode") or 1)
+        if mode == 2:
+            window = self._open_or_recreate_window("roll_window")
+            if window is not None:
+                self._activate_window(window)
+            return
+        self._close_window_if_alive("roll_window")
+
+    def _on_roll_window_ensure_open(self, event_name: str, payload: dict[str, object]) -> None:
+        window = self._open_or_recreate_window("roll_window")
+        if window is not None:
+            self._activate_window(window)
 
     def _set_window_title(self, key: str, title: str) -> None:
         window = self._windows.get(key)
