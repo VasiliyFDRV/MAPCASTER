@@ -338,6 +338,7 @@
       height: 96px;
       transform: translate(-50%, -50%);
       transform-style: preserve-3d;
+      z-index: 1;
     }
 
     .d20-outline {
@@ -349,7 +350,7 @@
       transform: translate(-50%, -50%);
       transform-style: preserve-3d;
       pointer-events: none;
-      z-index: -1;
+      z-index: 0;
       opacity: 0;
     }
 
@@ -1405,14 +1406,10 @@
           const ry = Number(ft.ry || 0);
           const rz = Number(ft.rz || 0);
           const tz = Number(ft.tz === undefined ? 19.6 : ft.tz);
-          const fClip = String(ft.clipPath || spec.faceClipPath || '');
           face.style.width = String(fw.toFixed(4)) + 'px';
           face.style.height = String(fh.toFixed(4)) + 'px';
           face.style.marginLeft = String((-0.5 * fw).toFixed(4)) + 'px';
           face.style.marginTop = String((-0.5 * fh).toFixed(4)) + 'px';
-          if (fClip.length > 0) {
-            face.style.clipPath = fClip;
-          }
           const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
           svg.setAttribute('class', 'd20-outline-svg');
           svg.setAttribute('viewBox', '0 0 100 100');
