@@ -1193,73 +1193,51 @@
         const p = clamp(Number(pulse || 0), 0, 1);
         if (kind === 'adv-winner') {
           return {
-            faceShadows: [
-              `inset 0 0 0 ${(1.15 + p * 0.55).toFixed(2)}px ${colorWithAlpha('#38aa60', 0.92 + p * 0.08)}`,
-              `inset 0 0 ${(11 + p * 8).toFixed(2)}px ${colorWithAlpha('#2d9454', 0.22 + p * 0.22)}`,
-              `0 0 ${(8 + p * 10).toFixed(2)}px ${colorWithAlpha('#60ffa4', 0.18 + p * 0.30)}`
-            ],
-            filterExtras: [
-              `drop-shadow(0 0 ${(4 + p * 5).toFixed(2)}px ${colorWithAlpha('#60ffa4', 0.14 + p * 0.20)})`
-            ],
+            faceShadows: [],
+            filterExtras: [],
             labelColor: '#2f8b4b',
             labelStroke: '0px transparent',
             labelShadow: appendCommaSeparated('none', [
-              `0 0 ${(4.5 + p * 3.5).toFixed(2)}px ${colorWithAlpha('#2f8b4b', 0.30 + p * 0.24)}`
+              `0 0 ${(4.5 + p * 2.0).toFixed(2)}px ${colorWithAlpha('#2f8b4b', 0.18 + p * 0.12)}`,
+              `0 0 ${(8.0 + p * 3.0).toFixed(2)}px ${colorWithAlpha('#60ffa4', 0.08 + p * 0.08)}`
             ])
           };
         }
         if (kind === 'dis-winner') {
           return {
-            faceShadows: [
-              `inset 0 0 0 ${(1.15 + p * 0.55).toFixed(2)}px ${colorWithAlpha('#9c2f2f', 0.92 + p * 0.08)}`,
-              `inset 0 0 ${(11 + p * 8).toFixed(2)}px ${colorWithAlpha('#822222', 0.22 + p * 0.22)}`,
-              `0 0 ${(8 + p * 10).toFixed(2)}px ${colorWithAlpha('#ff7676', 0.16 + p * 0.28)}`
-            ],
-            filterExtras: [
-              `drop-shadow(0 0 ${(4 + p * 5).toFixed(2)}px ${colorWithAlpha('#ff7676', 0.14 + p * 0.20)})`
-            ],
+            faceShadows: [],
+            filterExtras: [],
             labelColor: '#a33c3c',
             labelStroke: '0px transparent',
             labelShadow: appendCommaSeparated('none', [
-              `0 0 ${(4.5 + p * 3.5).toFixed(2)}px ${colorWithAlpha('#a33c3c', 0.30 + p * 0.24)}`
+              `0 0 ${(4.5 + p * 2.0).toFixed(2)}px ${colorWithAlpha('#a33c3c', 0.18 + p * 0.12)}`,
+              `0 0 ${(8.0 + p * 3.0).toFixed(2)}px ${colorWithAlpha('#ff7676', 0.08 + p * 0.08)}`
             ])
           };
         }
         if (kind === 'crit-success') {
           return {
-            faceShadows: [
-              `inset 0 0 0 ${(1.05 + p * 0.60).toFixed(2)}px ${colorWithAlpha('#ffdb5e', 0.94)}`,
-              `inset 0 0 ${(12 + p * 8).toFixed(2)}px ${colorWithAlpha('#ffc436', 0.26 + p * 0.22)}`,
-              `0 0 ${(10 + p * 10).toFixed(2)}px ${colorWithAlpha('#ffd55c', 0.22 + p * 0.18)}`
-            ],
-            filterExtras: [
-              `drop-shadow(0 0 ${(5 + p * 4).toFixed(2)}px ${colorWithAlpha('#ffd55c', 0.18 + p * 0.12)})`
-            ],
+            faceShadows: [],
+            filterExtras: [],
             labelColor: '#ffffcc',
             labelStroke: `1px ${colorWithAlpha('#6e4210', 0.98)}`,
             labelShadow: appendCommaSeparated('none', [
               `0 0 2px ${colorWithAlpha('#9a5a10', 0.95)}`,
-              `0 0 ${(6 + p * 3).toFixed(2)}px ${colorWithAlpha('#ffffcc', 0.74)}`,
-              `0 0 ${(11 + p * 4).toFixed(2)}px ${colorWithAlpha('#ffff99', 0.58 + p * 0.08)}`
+              `0 0 ${(5.5 + p * 2.0).toFixed(2)}px ${colorWithAlpha('#ffffcc', 0.42 + p * 0.12)}`,
+              `0 0 ${(9.0 + p * 3.0).toFixed(2)}px ${colorWithAlpha('#ffff99', 0.20 + p * 0.08)}`
             ])
           };
         }
         if (kind === 'crit-fail') {
           return {
-            faceShadows: [
-              `inset 0 0 0 ${(1.05 + p * 0.60).toFixed(2)}px ${colorWithAlpha('#982434', 0.94)}`,
-              `inset 0 0 ${(12 + p * 8).toFixed(2)}px ${colorWithAlpha('#741625', 0.28 + p * 0.20)}`,
-              `0 0 ${(10 + p * 10).toFixed(2)}px ${colorWithAlpha('#922230', 0.22 + p * 0.18)}`
-            ],
-            filterExtras: [
-              `drop-shadow(0 0 ${(5 + p * 4).toFixed(2)}px ${colorWithAlpha('#c73d55', 0.16 + p * 0.14)})`
-            ],
+            faceShadows: [],
+            filterExtras: [],
             labelColor: '#ffb5b5',
             labelStroke: `1px ${colorWithAlpha('#5a1f1f', 0.98)}`,
             labelShadow: appendCommaSeparated('none', [
               `0 0 2px ${colorWithAlpha('#7b1c1c', 0.95)}`,
-              `0 0 ${(6 + p * 3).toFixed(2)}px ${colorWithAlpha('#ffb5b5', 0.72)}`,
-              `0 0 ${(10 + p * 4).toFixed(2)}px ${colorWithAlpha('#d64e4e', 0.52 + p * 0.08)}`
+              `0 0 ${(5.5 + p * 2.0).toFixed(2)}px ${colorWithAlpha('#ffb5b5', 0.40 + p * 0.12)}`,
+              `0 0 ${(9.0 + p * 3.0).toFixed(2)}px ${colorWithAlpha('#d64e4e', 0.18 + p * 0.08)}`
             ])
           };
         }
@@ -1271,10 +1249,10 @@
           return;
         }
         const wrap = state.wrap;
-        wrap.classList.toggle('d20-picked-adv', String(state.d20OutcomeHighlight || '') === 'adv-winner');
-        wrap.classList.toggle('d20-picked-dis', String(state.d20OutcomeHighlight || '') === 'dis-winner');
-        wrap.classList.toggle('d20-crit-success', String(state.d20CritState || '') === 'crit-success');
-        wrap.classList.toggle('d20-crit-fail', String(state.d20CritState || '') === 'crit-fail');
+        wrap.classList.toggle('debug-d20-picked-adv', String(state.d20OutcomeHighlight || '') === 'adv-winner');
+        wrap.classList.toggle('debug-d20-picked-dis', String(state.d20OutcomeHighlight || '') === 'dis-winner');
+        wrap.classList.toggle('debug-d20-crit-success', String(state.d20CritState || '') === 'crit-success');
+        wrap.classList.toggle('debug-d20-crit-fail', String(state.d20CritState || '') === 'crit-fail');
       }
 
       function findD20ResultFaceEl(state) {
@@ -1576,7 +1554,7 @@
         const outcomePulseUntil = Number(state.d20OutcomePulseUntil || 0);
         const critPulseUntil = Number(state.d20CritPulseUntil || 0);
         const outcomePulse = outcomeKey ? clamp((outcomePulseUntil - now) / 220, 0, 1) : 0;
-        const critPulse = critKey ? (0.5 + 0.5 * Math.sin(now / 170)) : 0;
+        const critPulse = critKey ? (0.26 + 0.18 * (0.5 + 0.5 * Math.sin(now / 220))) : 0;
 
         if (outcomeKey) {
           const accent = buildD20AccentPalette(outcomeKey, outcomePulse);
