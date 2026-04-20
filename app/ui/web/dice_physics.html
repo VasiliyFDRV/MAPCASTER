@@ -340,6 +340,36 @@
       transform-style: preserve-3d;
     }
 
+    .d20-outline {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      width: 96px;
+      height: 96px;
+      transform: translate(-50%, -50%);
+      transform-style: preserve-3d;
+      pointer-events: none;
+      z-index: 0;
+      opacity: 0;
+    }
+
+    .d20-outline-face {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      width: 34px;
+      height: 29.4449px;
+      margin-left: -17px;
+      margin-top: -14.72245px;
+      clip-path: polygon(50% 0%, 0% 100%, 100% 100%);
+      background: transparent;
+      box-sizing: border-box;
+      backface-visibility: hidden;
+      transform-origin: 50% 50%;
+      overflow: hidden;
+      border: 1.25px solid rgba(255, 255, 255, 0.32);
+    }
+
     .d20-face {
       position: absolute;
       left: 50%;
@@ -1280,6 +1310,130 @@
         face.style.filter = appendSpaceSeparated(face.style.filter, accent.filterExtras);
       }
 
+      function buildD20OutlinePalette(kind, pulse) {
+        const p = clamp(Number(pulse || 0), 0, 1);
+        if (kind === 'adv-winner') {
+          return {
+            scale: (1.034 + p * 0.010).toFixed(4),
+            opacity: (0.34 + p * 0.16).toFixed(3),
+            borderColor: colorWithAlpha('#38aa60', 0.24 + p * 0.14),
+            faceShadow: appendCommaSeparated('none', [
+              `0 0 ${(2.0 + p * 1.2).toFixed(2)}px ${colorWithAlpha('#38aa60', 0.12 + p * 0.08)}`,
+              `0 0 ${(4.0 + p * 1.8).toFixed(2)}px ${colorWithAlpha('#60ffa4', 0.04 + p * 0.04)}`
+            ])
+          };
+        }
+        if (kind === 'dis-winner') {
+          return {
+            scale: (1.034 + p * 0.010).toFixed(4),
+            opacity: (0.34 + p * 0.16).toFixed(3),
+            borderColor: colorWithAlpha('#9c2f2f', 0.24 + p * 0.14),
+            faceShadow: appendCommaSeparated('none', [
+              `0 0 ${(2.0 + p * 1.2).toFixed(2)}px ${colorWithAlpha('#9c2f2f', 0.12 + p * 0.08)}`,
+              `0 0 ${(4.0 + p * 1.8).toFixed(2)}px ${colorWithAlpha('#ff7676', 0.04 + p * 0.04)}`
+            ])
+          };
+        }
+        if (kind === 'crit-success') {
+          return {
+            scale: (1.038 + p * 0.012).toFixed(4),
+            opacity: (0.38 + p * 0.18).toFixed(3),
+            borderColor: colorWithAlpha('#ffd55c', 0.26 + p * 0.14),
+            faceShadow: appendCommaSeparated('none', [
+              `0 0 ${(2.2 + p * 1.4).toFixed(2)}px ${colorWithAlpha('#ffd55c', 0.14 + p * 0.08)}`,
+              `0 0 ${(4.2 + p * 2.0).toFixed(2)}px ${colorWithAlpha('#fff3a0', 0.05 + p * 0.05)}`
+            ])
+          };
+        }
+        if (kind === 'crit-fail') {
+          return {
+            scale: (1.038 + p * 0.012).toFixed(4),
+            opacity: (0.38 + p * 0.18).toFixed(3),
+            borderColor: colorWithAlpha('#982434', 0.26 + p * 0.14),
+            faceShadow: appendCommaSeparated('none', [
+              `0 0 ${(2.2 + p * 1.4).toFixed(2)}px ${colorWithAlpha('#982434', 0.14 + p * 0.08)}`,
+              `0 0 ${(4.2 + p * 2.0).toFixed(2)}px ${colorWithAlpha('#ff8896', 0.05 + p * 0.05)}`
+            ])
+          };
+        }
+        return null;
+      }
+
+      function ensureD20OutlineNodes(state) {
+        if (!state || String(state.modelKind || '') !== 'd20' || !state.wrap || !state.diceSpec) {
+          return null;
+        }
+        if (state.outlineDice && Array.isArray(state.outlineFaceEls) && state.outlineFaceEls.length > 0) {
+          return state.outlineDice;
+        }
+        const spec = state.diceSpec;
+        const outlineDice = document.createElement('div');
+        outlineDice.className = 'd20-outline';
+        const outlineFaceEls = [];
+        const transforms = Array.isArray(spec.faceTransforms) ? spec.faceTransforms : [];
+        for (let i = 0; i < transforms.length; i += 1) {
+          const ft = transforms[i] || {};
+          const face = document.createElement('div');
+          face.className = 'd20-outline-face f' + String(Number(ft.id || (i + 1)));
+          const fw = Number(ft.fw || spec.faceWidth || 34);
+          const fh = Number(ft.fh || spec.faceHeight || 29.4449);
+          const fx = Number(ft.fx || 0);
+          const fy = Number(ft.fy || 0);
+          const rx = Number(ft.rx || 0);
+          const ry = Number(ft.ry || 0);
+          const rz = Number(ft.rz || 0);
+          const tz = Number(ft.tz === undefined ? 19.6 : ft.tz);
+          const fClip = String(ft.clipPath || spec.faceClipPath || '');
+          face.style.width = String(fw.toFixed(4)) + 'px';
+          face.style.height = String(fh.toFixed(4)) + 'px';
+          face.style.marginLeft = String((-0.5 * fw).toFixed(4)) + 'px';
+          face.style.marginTop = String((-0.5 * fh).toFixed(4)) + 'px';
+          if (fClip.length > 0) {
+            face.style.clipPath = fClip;
+          }
+          face.style.transform =
+            'rotateY(' + String(ry) + 'deg) rotateX(' + String(rx) + 'deg) rotateZ(' + String(rz) + 'deg) translateX(' + String(fx.toFixed(4)) + 'px) translateY(' + String(fy.toFixed(4)) + 'px) translateZ(' + String(tz) + 'px)';
+          outlineDice.appendChild(face);
+          outlineFaceEls.push(face);
+        }
+        state.wrap.insertBefore(outlineDice, state.dice);
+        state.outlineDice = outlineDice;
+        state.outlineFaceEls = outlineFaceEls;
+        return outlineDice;
+      }
+
+      function removeD20OutlineNodes(state) {
+        if (!state) {
+          return;
+        }
+        if (state.outlineDice && state.outlineDice.parentNode) {
+          state.outlineDice.parentNode.removeChild(state.outlineDice);
+        }
+        state.outlineDice = null;
+        state.outlineFaceEls = [];
+      }
+
+      function applyD20OutlineStyle(state, accent) {
+        if (!state || !accent) {
+          removeD20OutlineNodes(state);
+          return;
+        }
+        const outlineDice = ensureD20OutlineNodes(state);
+        const outlineFaceEls = Array.isArray(state.outlineFaceEls) ? state.outlineFaceEls : [];
+        if (!outlineDice || outlineFaceEls.length <= 0) {
+          return;
+        }
+        outlineDice.style.opacity = String(accent.opacity);
+        outlineDice.style.transform =
+          `translate(-50%, -50%) scale(${accent.scale}) rotateZ(${state.rz}deg) rotateY(${state.ry}deg) rotateX(${state.rx}deg)`;
+        for (let i = 0; i < outlineFaceEls.length; i += 1) {
+          const face = outlineFaceEls[i];
+          if (!face) continue;
+          face.style.borderColor = accent.borderColor;
+          face.style.boxShadow = accent.faceShadow;
+        }
+      }
+
       function applyD20AccentToLabels(face, accent) {
         if (!face || !accent) {
           return;
@@ -1556,7 +1710,9 @@
 
         if (outcomeKey) {
           const accent = buildD20AccentPalette(outcomeKey, outcomePulse);
+          const outlineAccent = buildD20OutlinePalette(outcomeKey, outcomePulse);
           const targetFaceEl = findD20ResultFaceEl(state);
+          applyD20OutlineStyle(state, outlineAccent);
           if (accent && targetFaceEl) {
             applyD20AccentToFace(targetFaceEl, accent);
             applyD20AccentToLabels(targetFaceEl, accent);
@@ -1565,12 +1721,17 @@
 
         if (critKey) {
           const accent = buildD20AccentPalette(critKey, critPulse);
+          const outlineAccent = buildD20OutlinePalette(critKey, critPulse);
           const targetFaceEl = findD20ResultFaceEl(state);
+          applyD20OutlineStyle(state, outlineAccent);
           if (accent && targetFaceEl) {
             applyD20AccentToFace(targetFaceEl, accent);
             applyD20AccentToLabels(targetFaceEl, accent);
           }
+          return;
         }
+
+        removeD20OutlineNodes(state);
       }
 
       function clampSpinToFloor(current, floorAbs) {
@@ -3713,6 +3874,8 @@
           shadow: nodes.shadow,
           faceEls: nodes.faceEls || [],
           coreEl: nodes.coreEl || null,
+          outlineDice: null,
+          outlineFaceEls: [],
           modelKind: modelKind,
           diceSpec: nodes.spec || getDiceSpec(modelKind),
           alignConfig: null,
@@ -3740,6 +3903,7 @@
             cancelAnimationFrame(raf);
             raf = 0;
           }
+          removeD20OutlineNodes(state);
           activeRollStates.delete(rollId);
           if (state.wrap && state.wrap.parentNode) {
             state.wrap.parentNode.removeChild(state.wrap);
