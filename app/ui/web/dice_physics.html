@@ -366,8 +366,26 @@
       box-sizing: border-box;
       backface-visibility: hidden;
       transform-origin: 50% 50%;
-      overflow: hidden;
-      border: 1.25px solid rgba(255, 255, 255, 0.32);
+      overflow: visible;
+      border: none;
+    }
+
+    .d20-outline-svg {
+      position: absolute;
+      inset: -3px;
+      width: calc(100% + 6px);
+      height: calc(100% + 6px);
+      overflow: visible;
+      pointer-events: none;
+    }
+
+    .d20-outline-shape {
+      fill: none;
+      stroke: rgba(255, 255, 255, 0.52);
+      stroke-width: 2.6;
+      vector-effect: non-scaling-stroke;
+      stroke-linejoin: round;
+      stroke-linecap: round;
     }
 
     .d20-face {
@@ -1314,45 +1332,49 @@
         const p = clamp(Number(pulse || 0), 0, 1);
         if (kind === 'adv-winner') {
           return {
-            scale: (1.034 + p * 0.010).toFixed(4),
-            opacity: (0.34 + p * 0.16).toFixed(3),
-            borderColor: colorWithAlpha('#38aa60', 0.24 + p * 0.14),
+            scale: (1.075 + p * 0.018).toFixed(4),
+            opacity: (0.58 + p * 0.18).toFixed(3),
+            strokeColor: colorWithAlpha('#4ce07a', 0.58 + p * 0.16),
+            strokeWidth: (2.6 + p * 0.6).toFixed(3),
             faceShadow: appendCommaSeparated('none', [
-              `0 0 ${(2.0 + p * 1.2).toFixed(2)}px ${colorWithAlpha('#38aa60', 0.12 + p * 0.08)}`,
-              `0 0 ${(4.0 + p * 1.8).toFixed(2)}px ${colorWithAlpha('#60ffa4', 0.04 + p * 0.04)}`
+              `0 0 ${(2.8 + p * 1.4).toFixed(2)}px ${colorWithAlpha('#38aa60', 0.20 + p * 0.10)}`,
+              `0 0 ${(5.4 + p * 2.2).toFixed(2)}px ${colorWithAlpha('#60ffa4', 0.08 + p * 0.06)}`
             ])
           };
         }
         if (kind === 'dis-winner') {
           return {
-            scale: (1.034 + p * 0.010).toFixed(4),
-            opacity: (0.34 + p * 0.16).toFixed(3),
-            borderColor: colorWithAlpha('#9c2f2f', 0.24 + p * 0.14),
+            scale: (1.075 + p * 0.018).toFixed(4),
+            opacity: (0.58 + p * 0.18).toFixed(3),
+            strokeColor: colorWithAlpha('#d44646', 0.58 + p * 0.16),
+            strokeWidth: (2.6 + p * 0.6).toFixed(3),
             faceShadow: appendCommaSeparated('none', [
-              `0 0 ${(2.0 + p * 1.2).toFixed(2)}px ${colorWithAlpha('#9c2f2f', 0.12 + p * 0.08)}`,
-              `0 0 ${(4.0 + p * 1.8).toFixed(2)}px ${colorWithAlpha('#ff7676', 0.04 + p * 0.04)}`
+              `0 0 ${(2.8 + p * 1.4).toFixed(2)}px ${colorWithAlpha('#9c2f2f', 0.20 + p * 0.10)}`,
+              `0 0 ${(5.4 + p * 2.2).toFixed(2)}px ${colorWithAlpha('#ff7676', 0.08 + p * 0.06)}`
             ])
           };
         }
         if (kind === 'crit-success') {
           return {
-            scale: (1.038 + p * 0.012).toFixed(4),
-            opacity: (0.38 + p * 0.18).toFixed(3),
-            borderColor: colorWithAlpha('#ffd55c', 0.26 + p * 0.14),
+            scale: (1.082 + p * 0.020).toFixed(4),
+            opacity: (0.64 + p * 0.18).toFixed(3),
+            strokeColor: colorWithAlpha('#ffd55c', 0.62 + p * 0.16),
+            strokeWidth: (2.8 + p * 0.8).toFixed(3),
             faceShadow: appendCommaSeparated('none', [
-              `0 0 ${(2.2 + p * 1.4).toFixed(2)}px ${colorWithAlpha('#ffd55c', 0.14 + p * 0.08)}`,
-              `0 0 ${(4.2 + p * 2.0).toFixed(2)}px ${colorWithAlpha('#fff3a0', 0.05 + p * 0.05)}`
+              `0 0 ${(3.0 + p * 1.6).toFixed(2)}px ${colorWithAlpha('#ffd55c', 0.22 + p * 0.10)}`,
+              `0 0 ${(5.8 + p * 2.4).toFixed(2)}px ${colorWithAlpha('#fff3a0', 0.10 + p * 0.06)}`
             ])
           };
         }
         if (kind === 'crit-fail') {
           return {
-            scale: (1.038 + p * 0.012).toFixed(4),
-            opacity: (0.38 + p * 0.18).toFixed(3),
-            borderColor: colorWithAlpha('#982434', 0.26 + p * 0.14),
+            scale: (1.082 + p * 0.020).toFixed(4),
+            opacity: (0.64 + p * 0.18).toFixed(3),
+            strokeColor: colorWithAlpha('#b3364b', 0.62 + p * 0.16),
+            strokeWidth: (2.8 + p * 0.8).toFixed(3),
             faceShadow: appendCommaSeparated('none', [
-              `0 0 ${(2.2 + p * 1.4).toFixed(2)}px ${colorWithAlpha('#982434', 0.14 + p * 0.08)}`,
-              `0 0 ${(4.2 + p * 2.0).toFixed(2)}px ${colorWithAlpha('#ff8896', 0.05 + p * 0.05)}`
+              `0 0 ${(3.0 + p * 1.6).toFixed(2)}px ${colorWithAlpha('#982434', 0.22 + p * 0.10)}`,
+              `0 0 ${(5.8 + p * 2.4).toFixed(2)}px ${colorWithAlpha('#ff8896', 0.10 + p * 0.06)}`
             ])
           };
         }
@@ -1391,6 +1413,15 @@
           if (fClip.length > 0) {
             face.style.clipPath = fClip;
           }
+          const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+          svg.setAttribute('class', 'd20-outline-svg');
+          svg.setAttribute('viewBox', '0 0 100 100');
+          svg.setAttribute('preserveAspectRatio', 'none');
+          const poly = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
+          poly.setAttribute('class', 'd20-outline-shape');
+          poly.setAttribute('points', '50,0 0,100 100,100');
+          svg.appendChild(poly);
+          face.appendChild(svg);
           face.style.transform =
             'rotateY(' + String(ry) + 'deg) rotateX(' + String(rx) + 'deg) rotateZ(' + String(rz) + 'deg) translateX(' + String(fx.toFixed(4)) + 'px) translateY(' + String(fy.toFixed(4)) + 'px) translateZ(' + String(tz) + 'px)';
           outlineDice.appendChild(face);
@@ -1429,8 +1460,12 @@
         for (let i = 0; i < outlineFaceEls.length; i += 1) {
           const face = outlineFaceEls[i];
           if (!face) continue;
-          face.style.borderColor = accent.borderColor;
           face.style.boxShadow = accent.faceShadow;
+          const shape = face.querySelector('.d20-outline-shape');
+          if (shape) {
+            shape.style.stroke = accent.strokeColor;
+            shape.style.strokeWidth = String(accent.strokeWidth);
+          }
         }
       }
 
