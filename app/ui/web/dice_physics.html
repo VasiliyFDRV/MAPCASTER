@@ -1195,9 +1195,6 @@
           return {
             faceShadows: [],
             filterExtras: [],
-            diceFilterExtras: [
-              `drop-shadow(0 0 ${(2.2 + p * 1.0).toFixed(2)}px ${colorWithAlpha('#38aa60', 0.22 + p * 0.12)})`
-            ],
             labelColor: '#2f8b4b',
             labelStroke: '0px transparent',
             labelShadow: appendCommaSeparated('none', [
@@ -1210,9 +1207,6 @@
           return {
             faceShadows: [],
             filterExtras: [],
-            diceFilterExtras: [
-              `drop-shadow(0 0 ${(2.2 + p * 1.0).toFixed(2)}px ${colorWithAlpha('#9c2f2f', 0.22 + p * 0.12)})`
-            ],
             labelColor: '#a33c3c',
             labelStroke: '0px transparent',
             labelShadow: appendCommaSeparated('none', [
@@ -1225,9 +1219,6 @@
           return {
             faceShadows: [],
             filterExtras: [],
-            diceFilterExtras: [
-              `drop-shadow(0 0 ${(2.4 + p * 1.2).toFixed(2)}px ${colorWithAlpha('#ffd55c', 0.24 + p * 0.10)})`
-            ],
             labelColor: '#ffffcc',
             labelStroke: '0px transparent',
             labelShadow: appendCommaSeparated('none', [
@@ -1240,9 +1231,6 @@
           return {
             faceShadows: [],
             filterExtras: [],
-            diceFilterExtras: [
-              `drop-shadow(0 0 ${(2.4 + p * 1.2).toFixed(2)}px ${colorWithAlpha('#982434', 0.24 + p * 0.10)})`
-            ],
             labelColor: '#ffb5b5',
             labelStroke: '0px transparent',
             labelShadow: appendCommaSeparated('none', [
@@ -1290,13 +1278,6 @@
         }
         face.style.boxShadow = appendCommaSeparated(face.style.boxShadow, accent.faceShadows);
         face.style.filter = appendSpaceSeparated(face.style.filter, accent.filterExtras);
-      }
-
-      function applyD20AccentToDice(state, accent) {
-        if (!state || !state.dice || !accent) {
-          return;
-        }
-        state.dice.style.filter = appendSpaceSeparated(state.dice.style.filter, accent.diceFilterExtras || []);
       }
 
       function applyD20AccentToLabels(face, accent) {
@@ -1577,7 +1558,6 @@
           const accent = buildD20AccentPalette(outcomeKey, outcomePulse);
           const targetFaceEl = findD20ResultFaceEl(state);
           if (accent && targetFaceEl) {
-            applyD20AccentToDice(state, accent);
             applyD20AccentToFace(targetFaceEl, accent);
             applyD20AccentToLabels(targetFaceEl, accent);
           }
@@ -1587,7 +1567,6 @@
           const accent = buildD20AccentPalette(critKey, critPulse);
           const targetFaceEl = findD20ResultFaceEl(state);
           if (accent && targetFaceEl) {
-            applyD20AccentToDice(state, accent);
             applyD20AccentToFace(targetFaceEl, accent);
             applyD20AccentToLabels(targetFaceEl, accent);
           }
