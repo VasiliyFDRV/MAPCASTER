@@ -499,13 +499,13 @@
     }
     .shadow {
       position: absolute;
-      width: 68px;
-      height: 14px;
+      width: 62px;
+      height: 12px;
       border-radius: 50%;
-      background: rgba(0, 0, 0, 0.26);
+      background: rgba(0, 0, 0, 0.20);
       left: 0;
       top: 0;
-      filter: blur(4px);
+      filter: blur(3px);
       will-change: transform, opacity;
       opacity: 0;
     }
@@ -3056,10 +3056,13 @@
         state.dice.style.transform =
           `translate(-50%, -50%) rotateZ(${state.rz}deg) rotateY(${state.ry}deg) rotateX(${state.rx}deg)`;
 
-        const shadowScale = state.previewMode ? (0.72 * previewScale * previewFitScale * previewViewportScale * (previewIdle ? 1.04 : 1.0)) : (0.78 + (1 - zNorm) * 0.26);
-        const shadowOpacity = (state.previewMode ? (previewIdle ? 0.28 : 0.22) : clamp((1 - zNorm) * 0.38, 0, 0.36)) * state.alpha;
+        const shadowBreath = previewIdle ? 1.02 : 1.0;
+        const shadowScale = state.previewMode
+          ? (0.64 * previewScale * previewFitScale * previewViewportScale * shadowBreath)
+          : (0.70 + (1 - zNorm) * 0.18);
+        const shadowOpacity = (state.previewMode ? (previewIdle ? 0.18 : 0.14) : clamp((1 - zNorm) * 0.28, 0, 0.24)) * state.alpha;
         state.shadow.style.opacity = String(shadowOpacity);
-        state.shadow.style.transform = `translate(${state.px}px, ${state.py + 28}px) translate(-50%, -50%) scale(${shadowScale})`;
+        state.shadow.style.transform = `translate(${state.px}px, ${state.py}px) translate(-50%, -50%) scale(${shadowScale})`;
 
         applyLighting(state);
       }
@@ -3875,5 +3878,4 @@
   </script>
 </body>
 </html>
-
 
