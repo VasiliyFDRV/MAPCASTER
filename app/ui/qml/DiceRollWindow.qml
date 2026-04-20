@@ -14,9 +14,32 @@ Window {
 
     property color textPrimary: "#EFEFF2"
     property color textSecondary: "#B0B0B0"
+    readonly property real cardRadius: 18
     readonly property color resultsFillColor: Qt.rgba(30 / 255, 30 / 255, 30 / 255, 1.0)
-    readonly property color resultsInsetDarkColor: Qt.rgba(12 / 255, 13 / 255, 15 / 255, 0.92)
-    readonly property color resultsInsetLightColor: Qt.rgba(88 / 255, 90 / 255, 96 / 255, 0.18)
+    readonly property color resultsInsetDarkColor: {
+        if (!neumoTheme) {
+            return Qt.rgba(0, 0, 0, 0.9)
+        }
+        var deltaR = neumoTheme.baseColor.r - neumoTheme.shadowDarkBase.r
+        var deltaG = neumoTheme.baseColor.g - neumoTheme.shadowDarkBase.g
+        var deltaB = neumoTheme.baseColor.b - neumoTheme.shadowDarkBase.b
+        var r = Math.max(0, resultsFillColor.r - deltaR)
+        var g = Math.max(0, resultsFillColor.g - deltaG)
+        var b = Math.max(0, resultsFillColor.b - deltaB)
+        return Qt.rgba(r, g, b, neumoTheme.insetDarkAlpha / 1.2)
+    }
+    readonly property color resultsInsetLightColor: {
+        if (!neumoTheme) {
+            return Qt.rgba(59 / 255, 60 / 255, 64 / 255, 0.4)
+        }
+        var deltaR = neumoTheme.shadowLightBase.r - neumoTheme.baseColor.r
+        var deltaG = neumoTheme.shadowLightBase.g - neumoTheme.baseColor.g
+        var deltaB = neumoTheme.shadowLightBase.b - neumoTheme.baseColor.b
+        var r = Math.min(1, resultsFillColor.r + deltaR)
+        var g = Math.min(1, resultsFillColor.g + deltaG)
+        var b = Math.min(1, resultsFillColor.b + deltaB)
+        return Qt.rgba(r, g, b, neumoTheme.insetLightAlpha / 1.5)
+    }
 
     property var neumoTheme: NeumoTheme {
         baseColor: "#2D2D2D"
@@ -34,7 +57,7 @@ Window {
         anchors.margins: 12
         theme: neumoTheme
         useFrameProfile: true
-        radius: 20
+        radius: cardRadius
         fillColor: resultsFillColor
         insetDarkColor: resultsInsetDarkColor
         insetLightColor: resultsInsetLightColor
